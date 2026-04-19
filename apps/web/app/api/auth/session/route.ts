@@ -14,6 +14,14 @@
  * limitations under the License.
  */
 
-import { handlers } from "@/lib/auth"
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 
-export const { GET, POST } = handlers
+export async function GET() {
+  try {
+    const session = await auth();
+    return NextResponse.json(session || {});
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to fetch session" }, { status: 500 });
+  }
+}

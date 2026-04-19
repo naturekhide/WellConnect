@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Copyright 2026 Ibrahim Aswad Nindow
  * 
@@ -14,6 +16,25 @@
  * limitations under the License.
  */
 
-import { handlers } from "@/lib/auth"
 
-export const { GET, POST } = handlers
+import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+
+export default function LogoutButton() {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    router.push("/login");
+    router.refresh();
+  };
+
+  return (
+    <button
+      onClick={handleLogout}
+      className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200 transition-colors"
+    >
+      Sign Out
+    </button>
+  );
+}
