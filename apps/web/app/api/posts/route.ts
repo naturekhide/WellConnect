@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       take: 50,
     });
 
-    const transformedPosts = posts.map((post) => {
+    const transformedPosts = posts.map((post: any) => {
       const reactionCounts: Record<string, number> = {
         HUG: 0,
         GROWTH: 0,
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         GRATEFUL: 0,
       };
 
-      post.reactions.forEach((reaction) => {
+      post.reactions.forEach((reaction: any) => {
         if (reaction.type in reactionCounts) {
           reactionCounts[reaction.type]++;
         }
