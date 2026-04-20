@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const transformedGroups = groups.map((group) => ({
+    const transformedGroups = groups.map((group: any) => ({
       id: group.id,
       name: group.name,
       description: group.description,
