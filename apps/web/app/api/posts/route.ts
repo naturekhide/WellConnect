@@ -1,30 +1,13 @@
-/**
- * Copyright 2026 Ibrahim Aswad Nindow
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 
 const prisma = new PrismaClient();
 
-// GET /api/posts - Fetch all posts for feed
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const token = await getToken({ req: request });
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -50,12 +33,11 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      take: 50, // Limit to 50 posts for now
+      take: 50,
     });
 
-    // Transform posts to include reaction counts
     const transformedPosts = posts.map((post) => {
-      const reactionCounts = {
+      const reactionCounts: Record<string, number> = {
         HUG: 0,
         GROWTH: 0,
         STRENGTH: 0,
@@ -64,7 +46,7 @@ export async function GET(request: NextRequest) {
 
       post.reactions.forEach((reaction) => {
         if (reaction.type in reactionCounts) {
-          reactionCounts[reaction.type as keyof typeof reactionCounts]++;
+          reactionCounts[reaction.type]++;
         }
       });
 
@@ -97,11 +79,10 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/posts - Create a new post
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const token = await getToken({ req: request });
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -118,7 +99,7 @@ export async function POST(request: NextRequest) {
     const post = await prisma.post.create({
       data: {
         content: content.trim(),
-        userId: session.user.id,
+        userId: token.sub,
         groupId: groupId || null,
       },
       include: {

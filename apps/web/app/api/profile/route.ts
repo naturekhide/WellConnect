@@ -1,35 +1,18 @@
-/**
- * Copyright 2026 Ibrahim Aswad Nindow
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 
 const prisma = new PrismaClient();
 
-// GET /api/profile - Get current user's profile
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const token = await getToken({ req: request });
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: token.sub },
       select: {
         id: true,
         name: true,
@@ -52,9 +35,8 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Get user's recent posts
     const recentPosts = await prisma.post.findMany({
-      where: { userId: session.user.id },
+      where: { userId: token.sub },
       orderBy: { createdAt: "desc" },
       take: 5,
       include: {
@@ -91,11 +73,10 @@ export async function GET() {
   }
 }
 
-// PUT /api/profile - Update user's profile
 export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const token = await getToken({ req: request });
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -103,7 +84,7 @@ export async function PUT(request: NextRequest) {
     const { name, bio } = body;
 
     const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: token.sub },
       data: {
         name: name?.trim() || null,
         bio: bio?.trim() || null,

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { auth } from "../../../../lib/auth";
+import { getToken } from "next-auth/jwt";
 
 const prisma = new PrismaClient();
 
 // GET /api/groups - Fetch all groups
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const token = await getToken({ req: request });
+    if (!token) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -49,8 +49,8 @@ export async function GET(request: NextRequest) {
 // POST /api/groups - Create a new group
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const token = await getToken({ req: request });
+    if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
 
     await prisma.groupMember.create({
       data: {
-        userId: session.user.id,
+        userId: token.sub,
         groupId: group.id,
         role: "ADMIN",
       },
