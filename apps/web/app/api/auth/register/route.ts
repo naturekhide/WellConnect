@@ -15,31 +15,74 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, email, password } = body;
+    const { name, username, email, password } = body;
 
-    if (!name || !email || !password) {
+    // Validation
+    if (!name || name.trim().length === 0) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: "Full name is required" },
         { status: 400 }
       );
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
+    if (!username || username.trim().length < 3) {
+      return NextResponse.json(
+        { error: "Username must be at least 3 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Username format validation (alphanumeric, underscore, period)
+    const usernameRegex = /^[a-zA-Z0-9_.]+$/;
+    if (!usernameRegex.test(username)) {
+      return NextResponse.json(
+        { error: "Username can only contain letters, numbers, underscores, and periods" },
+        { status: 400 }
+      );
+    }
+
+    if (!email || !email.includes('@')) {
+      return NextResponse.json(
+        { error: "Valid email is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!password || password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingEmail = await prisma.user.findUnique({
+      where: { email: email.toLowerCase() },
     });
 
-    if (existingUser) {
+    if (existingEmail) {
       return NextResponse.json(
-        { error: "User with this email already exists" },
+        { error: "Email already registered" },
+        { status: 400 }
+      );
+    }
+
+    // Check if username already exists
+    const existingUsername = await prisma.user.findUnique({
+      where: { username: username.trim() },
+    });
+
+    if (existingUsername) {
+      return NextResponse.json(
+        { error: "Username already taken" },
         { status: 400 }
       );
     }
@@ -50,19 +93,21 @@ export async function POST(request: NextRequest) {
     // Create new user
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: name.trim(),
+        username: username.trim(),
+        email: email.toLowerCase(),
         password: hashedPassword,
       },
     });
 
     return NextResponse.json(
       { 
-        message: "User created successfully", 
+        message: "Account created successfully", 
         user: { 
           id: user.id, 
-          email: user.email, 
-          name: user.name 
+          name: user.name,
+          username: user.username,
+          email: user.email,
         } 
       },
       { status: 201 }

@@ -1,202 +1,54 @@
 "use client";
 
-/**
- * Copyright 2026 Ibrahim Aswad Nindow
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import CreateGroupModal from "@/components/CreateGroupModal";
 
-interface Group {
-  id: string;
-  name: string;
-  description: string | null;
-  category: string;
-  imageUrl: string | null;
-  isPrivate: boolean;
-  memberCount: number;
-  postCount: number;
-  createdAt: string;
-}
-
 export default function GroupsPage() {
-  const router = useRouter();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userName, setUserName] = useState("");
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState("all");
+  var router = useRouter();
+  var [groups, setGroups] = useState<any[]>([]);
+  var [isLoading, setIsLoading] = useState(true);
+  var [userName, setUserName] = useState("");
+  var [currentUserId, setCurrentUserId] = useState("");
+  var [showCreateModal, setShowCreateModal] = useState(false);
+  var [selectedCategory, setSelectedCategory] = useState("all");
+  var categories = ["all", "anxiety", "depression", "wellness", "mindfulness", "support", "general"];
 
-  const categories = ["all", "anxiety", "depression", "wellness", "mindfulness", "support", "general"];
+  useEffect(function() { fetchGroups(); fetchUser(); }, []);
 
-  useEffect(() => {
-    fetchGroups();
-    fetchUserName();
-  }, []);
-
-  const fetchUserName = async () => {
-    try {
-      const response = await fetch("/api/auth/session");
-      const session = await response.json();
-      setUserName(session?.user?.name || "Friend");
-    } catch (error) {
-      console.error("Error fetching user:", error);
+  var fetchUser = async function() { var r = await fetch("/api/auth/session"); if (r.ok) { var s = await r.json(); setUserName(s?.user?.name || "Friend"); setCurrentUserId(s?.user?.id || ""); } };
+  var fetchGroups = async function() {
+    var gr = await fetch("/api/groups");
+    var mr = await fetch("/api/groups/my-memberships");
+    if (gr.ok) {
+      var gd = await gr.json();
+      var mids: string[] = [];
+      if (mr.ok) { var md = await mr.json(); mids = md.map(function(m: any) { return m.groupId; }); }
+      setGroups(gd.map(function(g: any) { return { ...g, isMember: mids.includes(g.id) }; }));
     }
+    setIsLoading(false);
   };
 
-  const fetchGroups = async () => {
-    try {
-      const response = await fetch("/api/groups");
-      if (response.ok) {
-        const data = await response.json();
-        setGroups(data);
-      } else if (response.status === 401) {
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("Error fetching groups:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  var handleJoin = async function(id: string) {
+    var r = await fetch("/api/groups/" + id + "/join", { method: "POST" });
+    if (r.ok) setGroups(groups.map(function(g: any) { return g.id === id ? { ...g, isMember: true, memberCount: g.memberCount + 1 } : g; }));
   };
 
-  const handleGroupCreated = (newGroup: Group) => {
-    setGroups([newGroup, ...groups]);
-    setShowCreateModal(false);
+  var handleViewGroup = function(id: string) {
+    router.push("/groups/" + id);
   };
 
-  const handleJoinGroup = async (groupId: string) => {
-    try {
-      const response = await fetch(`/api/groups/${groupId}/join`, {
-        method: "POST",
-      });
-      if (response.ok) {
-        fetchGroups();
-      }
-    } catch (error) {
-      console.error("Error joining group:", error);
-    }
-  };
+  if (isLoading) return <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800"><Header userName={userName} /><div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div></div></div>;
 
-  const filteredGroups = selectedCategory === "all" 
-    ? groups 
-    : groups.filter(g => g.category === selectedCategory);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-        <Header userName={userName} />
-        <main className="mx-auto max-w-7xl px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading groups...</p>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  var filtered = selectedCategory === "all" ? groups : groups.filter(function(g: any) { return g.category === selectedCategory; });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-      <Header userName={userName} />
-      
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Header with Create Button */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Communities</h1>
-            <p className="mt-2 text-gray-600">Find your people and join the conversation</p>
-          </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
-          >
-            + Create Group
-          </button>
-        </div>
-
-        {/* Category Filter */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                selectedCategory === cat
-                  ? "bg-green-600 text-white"
-                  : "bg-white text-gray-700 hover:bg-gray-100"
-              }`}
-            >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        {/* Groups Grid */}
-        {filteredGroups.length === 0 ? (
-          <div className="rounded-2xl bg-white p-12 text-center shadow-md">
-            <p className="text-gray-600">No groups yet. Create the first one!</p>
-          </div>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredGroups.map((group) => (
-              <div key={group.id} className="rounded-2xl bg-white p-6 shadow-md hover:shadow-lg transition-shadow">
-                <div className="mb-4 flex items-start justify-between">
-                  <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-green-400 to-blue-400 flex items-center justify-center text-white text-xl font-bold">
-                    {group.name.charAt(0)}
-                  </div>
-                  {group.isPrivate && (
-                    <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                      🔒 Private
-                    </span>
-                  )}
-                </div>
-                
-                <h3 className="text-lg font-semibold text-gray-900">{group.name}</h3>
-                <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                  {group.description || "No description yet."}
-                </p>
-                
-                <div className="mt-4 flex items-center gap-4 text-xs text-gray-500">
-                  <span>👥 {group.memberCount} members</span>
-                  <span>📝 {group.postCount} posts</span>
-                </div>
-                
-                <div className="mt-4">
-                  <button
-                    onClick={() => handleJoinGroup(group.id)}
-                    className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 transition-colors"
-                  >
-                    Join Group
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </main>
-
-      {/* Create Group Modal */}
-      {showCreateModal && (
-        <CreateGroupModal
-          onClose={() => setShowCreateModal(false)}
-          onGroupCreated={handleGroupCreated}
-        />
-      )}
-    </div>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800"><Header userName={userName} /><main className="mx-auto max-w-7xl px-4 py-8">
+      <div className="mb-8 flex items-center justify-between"><div><h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Communities</h1><p className="mt-2 text-gray-600 dark:text-gray-400">Find your people</p></div><button onClick={function() { setShowCreateModal(true); }} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white">+ Create Group</button></div>
+      <div className="mb-6 flex flex-wrap gap-2">{categories.map(function(c: string) { return <button key={c} onClick={function() { setSelectedCategory(c); }} className={"rounded-full px-4 py-2 text-sm font-medium " + (selectedCategory === c ? "bg-green-600 text-white" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300")}>{c.charAt(0).toUpperCase() + c.slice(1)}</button>; })}</div>
+      {filtered.length === 0 ? <div className="rounded-2xl bg-white dark:bg-gray-800 p-12 text-center shadow-md"><p className="text-gray-600 dark:text-gray-400">No groups yet</p></div> : <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(function(g: any) { return <div key={g.id} className="rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-md"><div className="mb-4 flex items-start justify-between"><div className="h-12 w-12 rounded-lg bg-gradient-to-br from-green-400 to-blue-400 flex items-center justify-center text-white text-xl font-bold">{g.name.charAt(0)}</div>{g.isPrivate && <span className="rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs text-gray-600 dark:text-gray-400">🔒</span>}</div><h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{g.name}</h3><p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{g.description || "No description"}</p><div className="mt-4 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400"><span>👥 {g.memberCount}</span><span>📝 {g.postCount}</span></div><div className="mt-4">{g.isMember ? <button onClick={function() { handleViewGroup(g.id); }} className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700">View Group</button> : <button onClick={function() { handleJoin(g.id); }} className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700">Join Group</button>}</div></div>; })}</div>}
+      {showCreateModal && <CreateGroupModal onClose={function() { setShowCreateModal(false); }} onGroupCreated={function(ng: any) { setGroups([{ ...ng, isMember: true }, ...groups]); setShowCreateModal(false); }} />}
+    </main></div>
   );
 }

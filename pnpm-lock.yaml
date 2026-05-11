@@ -28,6 +28,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      emoji-picker-react:
+        specifier: ^4.19.1
+        version: 4.19.1(react@18.3.1)
       lucide-react:
         specifier: ^1.8.0
         version: 1.8.0(react@18.3.1)
@@ -1282,6 +1285,16 @@ packages:
     resolution: {integrity: sha512-q9n5T4BR4Xwa2cwbrwcsDJtHD/enpQ5S1xF1IAtdqf5AAgqDFmR/aakqH3ChFdqd/QXJhS3rnnXFtexU7rax6Q==}
     dev: true
 
+  /emoji-picker-react@4.19.1(react@18.3.1):
+    resolution: {integrity: sha512-BmDdqInKFVYJpv7qS9WI6L9656cDAC+FkDvUjJds56nKHbaVTBNeDmLwKBytRnzu37zWHs9Isg7gt5PT43y6xA==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16'
+    dependencies:
+      flairup: 1.0.0
+      react: 18.3.1
+    dev: false
+
   /emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
     dev: true
@@ -1770,6 +1783,10 @@ packages:
       locate-path: 6.0.0
       path-exists: 4.0.0
     dev: true
+
+  /flairup@1.0.0:
+    resolution: {integrity: sha512-IKlE+pNvL2R+kVL1kEhUYqRxVqeFnjiIvHWDMLFXNaqyUdFXQM2wte44EfMYJNHkW16X991t2Zg8apKkhv7OBA==}
+    dev: false
 
   /flat-cache@3.2.0:
     resolution: {integrity: sha512-CYcENa+FtcUKLmhhqyctpclsq7QF38pKjZHsGNiSQF5r4FtoKDWabFDl3hzaEQMvT1LHEysw5twgLvpYYb4vbw==}

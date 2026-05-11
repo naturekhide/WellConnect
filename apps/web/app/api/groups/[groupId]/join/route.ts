@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getToken } from "next-auth/jwt";
-import { AUTH_SECRET } from "@/lib/auth-config";
 
 const prisma = new PrismaClient();
 
@@ -12,8 +11,9 @@ export async function POST(
   try {
     const token = await getToken({ 
       req: request, 
-      secret: process.env.NEXTAUTH_SECRET
+      secret: process.env.NEXTAUTH_SECRET 
     });
+    
     if (!token?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -38,10 +38,7 @@ export async function POST(
     });
 
     if (existingMember) {
-      return NextResponse.json(
-        { error: "Already a member" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Already a member" }, { status: 400 });
     }
 
     await prisma.groupMember.create({
@@ -55,9 +52,6 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error joining group:", error);
-    return NextResponse.json(
-      { error: "Failed to join group" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to join group" }, { status: 500 });
   }
 }

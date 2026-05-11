@@ -1,143 +1,103 @@
 "use client";
 
-/**
- * Copyright 2026 Ibrahim Aswad Nindow
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *     http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import PostCard from "@/components/PostCard";
 import CreatePostForm from "@/components/CreatePostForm";
-
-interface Post {
-  id: string;
-  content: string;
-  imageUrl?: string;
-  createdAt: string;
-  author: {
-    name: string;
-    image: string | null;
-  };
-  reactions: {
-    hug: number;
-    growth: number;
-    strength: number;
-    grateful: number;
-  };
-  commentCount: number;
-}
+import PollForm from "@/components/PollForm";
 
 export default function FeedPage() {
-  const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userName, setUserName] = useState("");
+  var router = useRouter();
+  var [posts, setPosts] = useState<any[]>([]);
+  var [isLoading, setIsLoading] = useState(true);
+  var [userName, setUserName] = useState("");
+  var [currentUserId, setCurrentUserId] = useState("");
+  var [activeTab, setActiveTab] = useState("for-you");
+  var [showPoll, setShowPoll] = useState(false);
 
-  useEffect(() => {
-    fetchPosts();
-    fetchUserName();
-  }, []);
+  useEffect(function() { fetchPosts(); fetchUserData(); }, [activeTab]);
 
-  const fetchUserName = async () => {
-    try {
-      const response = await fetch("/api/auth/session");
-      const session = await response.json();
-      setUserName(session?.user?.name || "Friend");
-    } catch (error) {
-      console.error("Error fetching user:", error);
-    }
+  var fetchUserData = async function() {
+    var r = await fetch("/api/auth/session");
+    if (r.ok) { var s = await r.json(); setUserName(s?.user?.name || "Friend"); setCurrentUserId(s?.user?.id || ""); }
   };
 
-  const fetchPosts = async () => {
-    try {
-      const response = await fetch("/api/posts");
-      if (response.ok) {
-        const data = await response.json();
-        setPosts(data);
-      } else if (response.status === 401) {
-        router.push("/login");
-      }
-    } catch (error) {
-      console.error("Error fetching posts:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  var fetchPosts = async function() {
+    var r = await fetch("/api/posts?feed=" + activeTab);
+    if (r.ok) setPosts(await r.json());
+    else if (r.status === 401) router.push("/login");
+    setIsLoading(false);
   };
 
-  const handlePostCreated = (newPost: Post) => {
-    setPosts([newPost, ...posts]);
-  };
+  var handlePostCreated = function(np: any) { setPosts([np, ...posts]); };
+  var handleReactionUpdate = function(pid: string, nr: any) { setPosts(posts.map(function(p: any) { return p.id === pid ? { ...p, reactions: nr } : p; })); };
+  var handlePollUpdate = function(pid: string, up: any) { setPosts(posts.map(function(p: any) { return p.id === pid ? { ...p, poll: up } : p; })); };
+  var handlePostDelete = function(postId: string) { setPosts(posts.filter(function(p: any) { return p.id !== postId; })); };
 
-  const handleReactionUpdate = (postId: string, newReactions: Post["reactions"]) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, reactions: newReactions }
-        : post
-    ));
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
-        <Header userName={userName} />
-        <main className="mx-auto max-w-3xl px-4 py-8">
-          <div className="text-center py-12">
-            <p className="text-gray-600">Loading feed...</p>
-          </div>
-        </main>
+  if (isLoading) return (
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
+      <Header userName={userName} />
+      <div className="flex justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800">
       <Header userName={userName} />
-      
-      <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* Create Post Form */}
+      <main className="mx-auto max-w-3xl px-4 py-8">
         <CreatePostForm onPostCreated={handlePostCreated} />
 
-        {/* Feed Tabs */}
-        <div className="mb-4 flex gap-4 border-b border-gray-200">
-          <button className="border-b-2 border-green-600 px-2 py-2 text-sm font-medium text-green-600">
-            For You
-          </button>
-          <button className="px-2 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
-            Following
-          </button>
-          <button className="px-2 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
-            Trending
-          </button>
+        <div className="mb-4">
+          {!showPoll ? (
+            <button onClick={function() { setShowPoll(true); }} className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 font-medium bg-white dark:bg-gray-800 rounded-2xl px-4 py-3 shadow-sm w-full">
+              📊 Create a Poll
+            </button>
+          ) : (
+            <PollForm
+              onPollCreated={function(p: any) { handlePostCreated(p); setShowPoll(false); }}
+              onCancel={function() { setShowPoll(false); }}
+            />
+          )}
         </div>
 
-        {/* Posts Feed */}
+        <div className="mb-4 flex gap-6 border-b border-gray-200 dark:border-gray-700">
+          {["for-you", "following", "trending"].map(function(t: string) {
+            return (
+              <button
+                key={t}
+                onClick={function() { setActiveTab(t); setIsLoading(true); }}
+                className={"relative pb-2 text-sm font-medium capitalize " + (activeTab === t ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400")}
+              >
+                {t === "for-you" ? "For You" : t}
+                {activeTab === t && <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-green-600"></div>}
+              </button>
+            );
+          })}
+        </div>
+
         {posts.length === 0 ? (
-          <div className="rounded-2xl bg-white p-8 text-center shadow-md">
-            <p className="text-gray-600">No posts yet. Be the first to share!</p>
+          <div className="rounded-2xl bg-white dark:bg-gray-800 p-8 text-center shadow-md">
+            <p className="text-gray-600 dark:text-gray-400">
+              {activeTab === "following" ? "Follow some users to see their posts here!" : activeTab === "trending" ? "No trending posts yet." : "No posts yet. Be the first to share!"}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
-            {posts.map((post) => (
-              <PostCard 
-                key={post.id} 
-                post={post} 
-                onReactionUpdate={handleReactionUpdate}
-              />
-            ))}
+            {posts.map(function(p: any) {
+              return (
+                <PostCard
+                  key={p.id}
+                  post={p}
+                  onReactionUpdate={handleReactionUpdate}
+                  onPollUpdate={handlePollUpdate}
+                  onPostDelete={handlePostDelete}
+                  currentUserId={currentUserId}
+                />
+              );
+            })}
           </div>
         )}
       </main>

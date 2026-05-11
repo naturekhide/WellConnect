@@ -1,116 +1,57 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getToken } from "next-auth/jwt";
-import { AUTH_SECRET } from "@/lib/auth-config";
 
-const prisma = new PrismaClient();
+var prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
   try {
-    const token = await getToken({ 
-      req: request, 
-      secret: process.env.NEXTAUTH_SECRET 
-    });;
-    if (!token?.sub) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    var token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token?.sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const user = await prisma.user.findUnique({
+    var user = await prisma.user.findUnique({
       where: { id: token.sub },
       select: {
-        id: true,
-        name: true,
-        email: true,
-        bio: true,
-        image: true,
-        createdAt: true,
-        _count: {
-          select: {
-            posts: true,
-            comments: true,
-            reactions: true,
-            groupMembers: true,
-          },
-        },
+        id: true, name: true, username: true, email: true, bio: true, image: true, website: true, createdAt: true,
+        _count: { select: { posts: true, comments: true, reactions: true, groupMembers: true, followers: true, following: true } },
       },
     });
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    const recentPosts = await prisma.post.findMany({
+    var recentPosts = await prisma.post.findMany({
       where: { userId: token.sub },
       orderBy: { createdAt: "desc" },
       take: 5,
-      include: {
-        _count: {
-          select: {
-            reactions: true,
-            comments: true,
-          },
-        },
-      },
+      include: { _count: { select: { reactions: true, comments: true } } },
     });
 
     return NextResponse.json({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      bio: user.bio,
-      image: user.image,
-      createdAt: user.createdAt,
+      id: user.id, name: user.name, username: user.username, email: user.email,
+      bio: user.bio, image: user.image, website: user.website, createdAt: user.createdAt,
       stats: {
-        posts: user._count.posts,
-        comments: user._count.comments,
-        reactions: user._count.reactions,
-        groups: user._count.groupMembers,
+        posts: user._count.posts, comments: user._count.comments, reactions: user._count.reactions,
+        groups: user._count.groupMembers, followers: user._count.followers, following: user._count.following,
       },
       recentPosts,
     });
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch profile" },
-      { status: 500 }
-    );
-  }
+  } catch (e) { return NextResponse.json({ error: "Failed" }, { status: 500 }); }
 }
 
 export async function PUT(request: NextRequest) {
   try {
-    const token = await getToken({ 
-      req: request, 
-      secret: process.env.NEXTAUTH_SECRET 
-    });;
-    if (!token?.sub) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    var token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
+    if (!token?.sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const body = await request.json();
-    const { name, bio } = body;
+    var body = await request.json();
+    var { name, bio, website } = body;
 
-    const updatedUser = await prisma.user.update({
+    var updatedUser = await prisma.user.update({
       where: { id: token.sub },
-      data: {
-        name: name?.trim() || null,
-        bio: bio?.trim() || null,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        bio: true,
-        image: true,
-      },
+      data: { name: name?.trim() || null, bio: bio?.trim() || null, website: website?.trim() || null },
+      select: { id: true, name: true, username: true, email: true, bio: true, image: true, website: true },
     });
 
     return NextResponse.json(updatedUser);
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    return NextResponse.json(
-      { error: "Failed to update profile" },
-      { status: 500 }
-    );
-  }
+  } catch (e) { return NextResponse.json({ error: "Failed" }, { status: 500 }); }
 }
