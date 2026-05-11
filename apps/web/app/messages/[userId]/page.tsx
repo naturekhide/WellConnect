@@ -82,15 +82,7 @@ export default function MessagesLayout() {
     typingTimeoutRef.current = setTimeout(function() { setIsTyping(false); }, 2000);
   };
 
-  var handleSend = async function() {
-    if (!newMessage.trim() || !userId) return;
-    setIsTyping(false);
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    var temp = newMessage; setNewMessage("");
-    var replyId = replyTo?.id || null; setReplyTo(null);
-    var r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientId: userId, content: temp, replyToId: replyId }) });
-    if (r.ok) { var d = await r.json(); setMessages(function(p: any) { return [...p, d]; }); fetchConversations(); setIsAtBottom(true); } else { setNewMessage(temp); }
-  };
+  var handleSend = async function() { if (!newMessage.trim() || !userId) return; setIsTyping(false); if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current); var temp = newMessage; setNewMessage(""); var replyId = replyTo?.id || null; setReplyTo(null); var r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientId: userId, content: temp, replyToId: replyId }) }); if (r.ok) { var d = await r.json(); setMessages(function(p: any) { return [...p, d]; }); fetchConversations(); setIsAtBottom(true); } else { setNewMessage(temp); } };
   var handleSendAudio = async function(audioUrl: string) { if (!userId) return; var r = await fetch("/api/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ recipientId: userId, content: "", audioUrl: audioUrl }) }); if (r.ok) { var d = await r.json(); setMessages(function(p: any) { return [...p, d]; }); fetchConversations(); setIsAtBottom(true); } };
   var handleDelete = async function() { if (!menuMsgId) return; if (!confirm("Delete?")) { setMenuMsgId(null); return; } await fetch("/api/messages/" + menuMsgId, { method: "DELETE" }); setMessages(function(p: any) { return p.filter(function(m: any) { return m.id !== menuMsgId; }); }); setMenuMsgId(null); fetchConversations(); };
   var handleEdit = function(msg: any) { setMenuMsgId(null); setEditingId(msg.id); setEditContent(msg.content); };
@@ -105,8 +97,28 @@ export default function MessagesLayout() {
   var isWithin15Min = function(d: string) { return (Date.now() - new Date(d).getTime()) < 15 * 60 * 1000; };
   var formatTime = function(d: string) { return new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); };
   var formatTimeAgo = function(d: string) { var diff = (Date.now() - new Date(d).getTime()) / 60000; if (diff < 1) return "now"; if (diff < 60) return Math.floor(diff) + "m"; if (diff < 1440) return Math.floor(diff / 60) + "h"; return Math.floor(diff / 1440) + "d"; };
-  var getFileName = function(url: string) { return url.split("/").pop()?.replace(/^\d+-/, "").replace(/_/g, " ").replace(/\.[^.]+$/, "") || "File"; };
-  var scrollToMessage = function(msgId: string) { var el = document.getElementById("msg-" + msgId); if (el) { el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.add("bg-yellow-100", "dark:bg-yellow-900"); setTimeout(function() { el.classList.remove("bg-yellow-100", "dark:bg-yellow-900"); }, 2000); } };
+
+  var getFileName = function(url: string) {
+    var parts = url.split("/");
+    var name = parts[parts.length - 1];
+    if (!name) return "File";
+    var di = name.indexOf("-");
+    if (di > 0) name = name.substring(di + 1);
+    return name.replace(/_/g, " ").replace(/\.[^.]+$/, "") || "File";
+  };
+
+  var scrollToMessage = function(msgId: string) {
+    var el = document.getElementById("msg-" + msgId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("bg-yellow-100", "dark:bg-yellow-900");
+      setTimeout(function() {
+        if (el) {
+          el.classList.remove("bg-yellow-100", "dark:bg-yellow-900");
+        }
+      }, 2000);
+    }
+  };
 
   if (isLoading) return <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800"><Header userName={userName} /><div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div></div></div>;
 
@@ -150,7 +162,6 @@ export default function MessagesLayout() {
           {pinnedMessages.length > 0 && <div className="px-4 py-2 bg-[#f0f2f5] dark:bg-gray-800 border-b dark:border-gray-700"><div className="flex items-center gap-2 overflow-x-auto"><Pin className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />{pinnedMessages.map(function(pm: any) { return <button key={pm.id} onClick={function() { scrollToMessage(pm.id); }} className="flex-shrink-0 bg-white dark:bg-gray-700 rounded-full px-3 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border dark:border-gray-600">{pm.content?.substring(0, 30) || "Media"}...</button>; })}</div></div>}
           <div className="flex-1 overflow-y-auto p-4 space-y-1 dark:bg-gray-900" onScroll={handleScroll}>
             {messages.map(function(msg: any) { var isMine = msg.senderId === currentUserId; var canEdit = isMine && isWithin15Min(msg.createdAt) && msg.content && !msg.audioUrl && !msg.imageUrl && !msg.fileUrl; return <div key={msg.id} id={"msg-" + msg.id} className={"flex " + (isMine ? "justify-end" : "justify-start")} onTouchStart={function(e: any) { handleTouchStart(e, msg); }} onTouchEnd={function(e: any) { handleTouchEnd(e, msg); }}><div className={"relative group max-w-[60%] " + (isMine ? "order-1" : "")}>{isMine && <button data-menu onClick={function(e: any) { e.stopPropagation(); setMenuMsgId(menuMsgId === msg.id ? null : msg.id); }} className="absolute -top-2 -right-2 bg-white dark:bg-gray-700 rounded-full p-0.5 shadow opacity-0 group-hover:opacity-100 z-10"><span className="text-gray-500 dark:text-gray-300 text-xs px-1">⋮</span></button>}{menuMsgId === msg.id && <div data-menu className="absolute -top-2 right-6 bg-white dark:bg-gray-700 rounded-lg shadow-lg py-1 z-20 min-w-[140px]" onClick={function(e: any) { e.stopPropagation(); }}><button onClick={function() { handleReply(msg); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600">↩️ Reply</button><button onClick={function() { handleForward(msg); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600">↗️ Forward</button><button onClick={function() { handlePin(msg); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600">{msg.pinned ? "📌 Unpin" : "📌 Pin"}</button>{canEdit && <button onClick={function() { handleEdit(msg); }} className="w-full text-left px-4 py-2 text-sm text-gray-900 dark:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-600">✏️ Edit</button>}<button onClick={handleDelete} className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-gray-100 dark:hover:bg-gray-600">🗑️ Delete</button><button onClick={function() { setMenuMsgId(null); }} className="w-full text-left px-4 py-2 text-sm text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-600">✕ Cancel</button></div>}<div className={"rounded-lg px-3 py-2 shadow-sm " + (isMine ? "bg-[#d9fdd3] dark:bg-green-800" : "bg-white dark:bg-gray-700")}>{msg.pinned && <div className="flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 mb-1"><Pin className="h-3 w-3" /> Pinned</div>}{editingId === msg.id ? <div className="flex gap-2"><input type="text" value={editContent} onChange={function(e: any) { setEditContent(e.target.value); }} className="flex-1 rounded px-2 py-1 text-sm border dark:border-gray-600 bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100" onKeyDown={function(e: any) { if (e.key === "Enter") handleSaveEdit(); if (e.key === "Escape") cancelEdit(); }} autoFocus /><button onClick={handleSaveEdit} className="text-green-600"><Check className="h-4 w-4" /></button></div> : <>{msg.replyTo && <div className="border-l-4 border-green-500 pl-2 mb-1 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-600 rounded py-1">{msg.replyTo.content || "Media"}</div>}{msg.content && <p className="text-sm text-gray-900 dark:text-gray-100">{msg.content}{msg.edited && <span className="text-[10px] text-gray-400 ml-1">edited</span>}</p>}{msg.imageUrl && <img src={msg.imageUrl} className="mt-1 max-h-60 rounded-lg" />}{msg.fileUrl && <a href={msg.fileUrl} target="_blank" className="flex items-center gap-3 p-2 mt-1 rounded-lg bg-white dark:bg-gray-600 border dark:border-gray-500"><div className="h-10 w-10 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center"><FileText className="h-5 w-5 text-green-600 dark:text-green-400" /></div><div><p className="text-sm font-medium text-gray-900 dark:text-gray-100">{getFileName(msg.fileUrl)}</p><p className="text-xs text-gray-500 dark:text-gray-400">Document</p></div></a>}{msg.audioUrl && <audio controls className="mt-1 max-w-full h-8"><source src={msg.audioUrl} type="audio/webm" /></audio>}<div className="flex items-center justify-end gap-1 mt-0.5"><span className="text-[10px] text-gray-500 dark:text-gray-400">{formatTime(msg.createdAt)}</span>{isMine && <span className="text-[10px] text-blue-500 dark:text-blue-400">{msg.readAt ? "✓✓" : "✓"}</span>}</div></>}</div></div></div>; })}
-            {/* Typing Indicator */}
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-white dark:bg-gray-700 border border-gray-100 dark:border-gray-600 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
@@ -164,11 +175,7 @@ export default function MessagesLayout() {
             )}
             <div ref={messagesEndRef} />
           </div>
-          {isTyping && (
-            <div className="px-4 py-1 bg-gray-50 dark:bg-gray-800/50">
-              <p className="text-xs text-green-600 dark:text-green-400 italic">Typing...</p>
-            </div>
-          )}
+          {isTyping && <div className="px-4 py-1 bg-gray-50 dark:bg-gray-800/50"><p className="text-xs text-green-600 dark:text-green-400 italic">Typing...</p></div>}
           {replyTo && <div className="px-4 py-2 bg-[#f0f2f5] dark:bg-gray-800 border-t dark:border-gray-700 flex items-center justify-between"><div><p className="text-xs font-medium text-green-600 dark:text-green-400">Replying to {replyTo.senderName}</p><p className="text-xs text-gray-500 dark:text-gray-400 truncate">{replyTo.content}</p></div><button onClick={function() { setReplyTo(null); }} className="text-gray-400"><X className="h-4 w-4" /></button></div>}
           {showRecorder && <div className="px-4 py-2 bg-[#f0f2f5] dark:bg-gray-800 border-t"><VoiceRecorder onAudioReady={function(url: string) { handleSendAudio(url); setShowRecorder(false); }} onCancel={function() { setShowRecorder(false); }} /></div>}
           {showAttach && <div className="px-4 py-2 bg-[#f0f2f5] dark:bg-gray-800 border-t flex gap-4"><button onClick={function() { fileInputRef.current?.click(); }} className="flex flex-col items-center gap-1 text-sm text-gray-700 dark:text-gray-300"><div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center"><Image className="h-6 w-6 text-green-600 dark:text-green-400" /></div>Image</button><button onClick={function() { fileInputRef.current?.click(); }} className="flex flex-col items-center gap-1 text-sm text-gray-700 dark:text-gray-300"><div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center"><Paperclip className="h-6 w-6 text-blue-600 dark:text-blue-400" /></div>Document</button></div>}
