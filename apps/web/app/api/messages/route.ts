@@ -7,31 +7,27 @@ var prisma = new PrismaClient();
 export async function GET(request: NextRequest) {
   try {
     var token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token || !token.sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    var sub = token.sub;
     var otherUserId = new URL(request.url).searchParams.get('userId');
 
     if (otherUserId) {
       var messages = await prisma.message.findMany({
         where: {
           OR: [
-            { senderId: token.sub, recipientId: otherUserId },
-            { senderId: otherUserId, recipientId: token.sub },
+            { senderId: sub, recipientId: otherUserId },
+            { senderId: otherUserId, recipientId: sub },
           ],
         },
         orderBy: { createdAt: "asc" },
         take: 100,
       });
 
-      // Only mark as read if the recipient (token.sub) has read receipts ON
-      var me = await prisma.user.findUnique({
-        where: { id: token.sub },
-        select: { readReceipts: true },
-      });
-
+      var me = await prisma.user.findUnique({ where: { id: sub }, select: { readReceipts: true } });
       if (me?.readReceipts !== false) {
         await prisma.message.updateMany({
-          where: { senderId: otherUserId, recipientId: token.sub, readAt: null },
+          where: { senderId: otherUserId, recipientId: sub, readAt: null },
           data: { readAt: new Date() },
         });
       }
@@ -40,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     var allMessages = await prisma.message.findMany({
-      where: { OR: [{ senderId: token.sub }, { recipientId: token.sub }] },
+      where: { OR: [{ senderId: sub }, { recipientId: sub }] },
       orderBy: { createdAt: "desc" },
       include: {
         sender: { select: { id: true, name: true, username: true, image: true } },
@@ -51,12 +47,12 @@ export async function GET(request: NextRequest) {
 
     var conversations = new Map();
     allMessages.forEach(function(message: any) {
-      var otherUser = message.senderId === token.sub ? message.recipient : message.sender;
+      var otherUser = message.senderId === sub ? message.recipient : message.sender;
       if (!conversations.has(otherUser.id)) {
         conversations.set(otherUser.id, {
           user: otherUser,
           lastMessage: message,
-          unreadCount: message.recipientId === token.sub && !message.readAt ? 1 : 0,
+          unreadCount: message.recipientId === sub && !message.readAt ? 1 : 0,
         });
       }
     });
@@ -68,8 +64,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     var token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-    if (!token?.sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!token || !token.sub) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    var sub = token.sub;
     var body = await request.json();
     var { recipientId, content, audioUrl, imageUrl, fileUrl, replyToId } = body;
 
@@ -78,13 +75,8 @@ export async function POST(request: NextRequest) {
 
     var message = await prisma.message.create({
       data: {
-        content: content?.trim() || "",
-        audioUrl: audioUrl || null,
-        imageUrl: imageUrl || null,
-        fileUrl: fileUrl || null,
-        replyToId: replyToId || null,
-        senderId: token.sub,
-        recipientId,
+        content: content?.trim() || "", audioUrl: audioUrl || null, imageUrl: imageUrl || null,
+        fileUrl: fileUrl || null, replyToId: replyToId || null, senderId: sub, recipientId,
       },
       include: {
         sender: { select: { id: true, name: true, username: true, image: true } },
@@ -92,20 +84,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Check if muted before sending notification
     var isMuted = await prisma.mutedConversation.findUnique({
-      where: { userId_mutedUserId: { userId: recipientId, mutedUserId: token.sub } },
+      where: { userId_mutedUserId: { userId: recipientId, mutedUserId: sub } },
     });
 
     if (!isMuted) {
       try {
         await prisma.notification.create({
           data: {
-            userId: recipientId,
-            type: "MESSAGE",
+            userId: recipientId, type: "MESSAGE",
             message: audioUrl ? "New voice message" : imageUrl ? "New image" : fileUrl ? "New file" : "New message",
-            link: "/messages/" + token.sub,
-            fromUserId: token.sub,
+            link: "/messages/" + sub, fromUserId: sub,
           },
         });
       } catch (e) {}
