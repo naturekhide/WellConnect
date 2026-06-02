@@ -25,13 +25,13 @@ export async function GET(request: NextRequest) {
     var today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    var dates = entries.map(function(e: any) {
+    var dates: number[] = entries.map(function(e: any) {
       var d = new Date(e.createdAt);
       d.setHours(0, 0, 0, 0);
       return d.getTime();
     });
 
-    var uniqueDates = Array.from(new Set(dates)).sort(function(a: any, b: any) { return b - a; });
+    var uniqueDates: number[] = Array.from(new Set(dates)).sort(function(a: number, b: number) { return b - a; });
 
     var checkDate = today.getTime();
     for (var i = 0; i < uniqueDates.length; i++) {
