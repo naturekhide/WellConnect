@@ -3,6 +3,8 @@ import { getToken } from "next-auth/jwt";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: NextRequest) {
   try {
     var token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });

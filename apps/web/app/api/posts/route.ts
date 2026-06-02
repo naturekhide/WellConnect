@@ -5,6 +5,8 @@ import { extractAndSaveHashtags } from "@/lib/hashtags";
 import { detectCrisisKeywords } from "@/lib/sentiment";
 import { classifySentiment } from "@/lib/ai";
 
+export const dynamic = "force-dynamic";
+
 var prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
