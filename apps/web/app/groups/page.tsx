@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
 import CreateGroupModal from "@/components/CreateGroupModal";
+import { Users, Plus, Lock } from "lucide-react";
 
 export default function GroupsPage() {
   var router = useRouter();
@@ -35,20 +36,93 @@ export default function GroupsPage() {
     if (r.ok) setGroups(groups.map(function(g: any) { return g.id === id ? { ...g, isMember: true, memberCount: g.memberCount + 1 } : g; }));
   };
 
-  var handleViewGroup = function(id: string) {
-    router.push("/groups/" + id);
-  };
+  var handleViewGroup = function(id: string) { router.push("/groups/" + id); };
 
-  if (isLoading) return <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800"><Header userName={userName} /><div className="flex justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-green-600 border-t-transparent"></div></div></div>;
+  if (isLoading) return (
+    <div className="min-h-screen bg-[#f8faf9] dark:bg-gray-950 flex items-center justify-center pb-20">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent"></div>
+    </div>
+  );
 
   var filtered = selectedCategory === "all" ? groups : groups.filter(function(g: any) { return g.category === selectedCategory; });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-gray-900 dark:to-gray-800"><Header userName={userName} /><main className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-8 flex items-center justify-between"><div><h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Communities</h1><p className="mt-2 text-gray-600 dark:text-gray-400">Find your people</p></div><button onClick={function() { setShowCreateModal(true); }} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white">+ Create Group</button></div>
-      <div className="mb-6 flex flex-wrap gap-2">{categories.map(function(c: string) { return <button key={c} onClick={function() { setSelectedCategory(c); }} className={"rounded-full px-4 py-2 text-sm font-medium " + (selectedCategory === c ? "bg-green-600 text-white" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300")}>{c.charAt(0).toUpperCase() + c.slice(1)}</button>; })}</div>
-      {filtered.length === 0 ? <div className="rounded-2xl bg-white dark:bg-gray-800 p-12 text-center shadow-md"><p className="text-gray-600 dark:text-gray-400">No groups yet</p></div> : <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{filtered.map(function(g: any) { return <div key={g.id} className="rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-md"><div className="mb-4 flex items-start justify-between"><div className="h-12 w-12 rounded-lg bg-gradient-to-br from-green-400 to-blue-400 flex items-center justify-center text-white text-xl font-bold">{g.name.charAt(0)}</div>{g.isPrivate && <span className="rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs text-gray-600 dark:text-gray-400">🔒</span>}</div><h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{g.name}</h3><p className="mt-2 text-sm text-gray-600 dark:text-gray-400 line-clamp-2">{g.description || "No description"}</p><div className="mt-4 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400"><span>👥 {g.memberCount}</span><span>📝 {g.postCount}</span></div><div className="mt-4">{g.isMember ? <button onClick={function() { handleViewGroup(g.id); }} className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700">View Group</button> : <button onClick={function() { handleJoin(g.id); }} className="w-full rounded-lg bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700">Join Group</button>}</div></div>; })}</div>}
+    <div className="min-h-screen bg-[#f8faf9] dark:bg-gray-950 pb-20">
+      <div className="sticky top-0 z-20 bg-[#f8faf9]/90 dark:bg-gray-950/90 backdrop-blur-md border-b border-gray-100 dark:border-gray-800">
+        <div className="mx-auto max-w-5xl px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Communities</h1>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Find your people</p>
+          </div>
+          <button onClick={function() { setShowCreateModal(true); }} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-all">
+            <Plus className="h-4 w-4" /> Create
+          </button>
+        </div>
+      </div>
+
+      <main className="mx-auto max-w-5xl px-4 py-4">
+        <div className="flex flex-wrap gap-1.5 mb-6">
+          {categories.map(function(c: string) {
+            return (
+              <button
+                key={c}
+                onClick={function() { setSelectedCategory(c); }}
+                className={"rounded-full px-4 py-2 text-sm font-medium transition-all " +
+                  (selectedCategory === c
+                    ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900 shadow-md"
+                    : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-800")}
+              >
+                {c.charAt(0).toUpperCase() + c.slice(1)}
+              </button>
+            );
+          })}
+        </div>
+
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="h-16 w-16 rounded-2xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mx-auto mb-4">
+              <Users className="h-8 w-8 text-emerald-500" />
+            </div>
+            <p className="text-gray-500 dark:text-gray-400 font-medium">No groups yet</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Create one or check back later</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map(function(g: any) {
+              return (
+                <div key={g.id} className="bg-white dark:bg-gray-900 rounded-2xl p-5 border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-400 flex items-center justify-center text-white text-lg font-bold">
+                      {g.name.charAt(0)}
+                    </div>
+                    {g.isPrivate && <Lock className="h-4 w-4 text-gray-400" />}
+                  </div>
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">{g.name}</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{g.description || "No description"}</p>
+                  <div className="mt-4 flex items-center gap-4 text-xs text-gray-400 dark:text-gray-500">
+                    <span>👥 {g.memberCount}</span>
+                    <span>📝 {g.postCount}</span>
+                  </div>
+                  <div className="mt-4">
+                    {g.isMember ? (
+                      <button onClick={function() { handleViewGroup(g.id); }} className="w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 transition-all">
+                        View Group
+                      </button>
+                    ) : (
+                      <button onClick={function() { handleJoin(g.id); }} className="w-full rounded-xl bg-emerald-600 px-3 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 transition-all">
+                        Join Group
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
       {showCreateModal && <CreateGroupModal onClose={function() { setShowCreateModal(false); }} onGroupCreated={function(ng: any) { setGroups([{ ...ng, isMember: true }, ...groups]); setShowCreateModal(false); }} />}
-    </main></div>
+      <BottomNav />
+    </div>
   );
 }

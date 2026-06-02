@@ -25,10 +25,10 @@ export async function GET(request: NextRequest) {
 
     const results: any = {};
 
-    // Search Users - SQLite compatible (without mode: 'insensitive')
     if (type === 'all' || type === 'users') {
       const users = await prisma.user.findMany({
         where: {
+          id: { not: token.sub },
           OR: [
             { username: { contains: query } },
             { name: { contains: query } },
@@ -53,7 +53,6 @@ export async function GET(request: NextRequest) {
       results.users = users;
     }
 
-    // Search Groups - SQLite compatible
     if (type === 'all' || type === 'groups') {
       const groups = await prisma.group.findMany({
         where: {
