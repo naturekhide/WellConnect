@@ -7,6 +7,7 @@ import Link from "next/link";
 export default function RegisterPage() {
   var router = useRouter();
   var [name, setName] = useState("");
+  var [username, setUsername] = useState("");
   var [email, setEmail] = useState("");
   var [password, setPassword] = useState("");
   var [error, setError] = useState("");
@@ -18,10 +19,10 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      var r = await fetch("/api/register", {
+      var r = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, username, email, password }),
       });
 
       if (r.ok) {
@@ -60,6 +61,15 @@ export default function RegisterPage() {
             value={name}
             onChange={function(e: any) { setName(e.target.value); }}
             placeholder="Full name"
+            required
+            className="w-full rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+          />
+
+          <input
+            type="text"
+            value={username}
+            onChange={function(e: any) { setUsername(e.target.value); }}
+            placeholder="Username"
             required
             className="w-full rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
           />
