@@ -87,9 +87,9 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={function(e: any) { setPassword(e.target.value); }}
-            placeholder="Password (min 6 characters)"
+            placeholder="Password (min 8 characters)"
             required
-            minLength={6}
+            minLength={8}
             className="w-full rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 px-4 py-3 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
           />
 
