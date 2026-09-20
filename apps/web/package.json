@@ -1,0 +1,26 @@
+{
+  "name": "wellconnect-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "26.4.0",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "prisma": "5.22.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@prisma/client": "5.22.0",
+    "bcryptjs": "^3.0.3",
+    "next": "14.2.3",
+    "next-auth": "5.0.0-beta.30",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}
