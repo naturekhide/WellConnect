@@ -77,6 +77,13 @@ export default function DashboardPage() {
         } catch (e) { }
     };
 
+    var handleSignOut = async function () {
+        var { signOut } = await import("next-auth/react");
+        await signOut({ redirect: false });
+        router.push("/login");
+        router.refresh();
+    };
+
     if (loading) {
         return (
             <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -86,39 +93,35 @@ export default function DashboardPage() {
     }
 
     return (
-        <main style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <main style={{ padding: "1.25rem", maxWidth: "600px", margin: "0 auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
                 <div>
-                    <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+                    <h1 style={{ fontSize: "1.375rem", fontWeight: 700 }}>
                         Welcome, {userName?.split(" ")[0] || "Friend"} 👋
                     </h1>
-                    <p style={{ color: "#6b7280", marginTop: "0.5rem" }}>
+                    <p style={{ color: "#6b7280", marginTop: "0.25rem", fontSize: "0.875rem" }}>
                         Your digital wellbeing at a glance
                     </p>
                 </div>
                 <button
-                    onClick={async function () {
-                        await fetch("/api/auth/signout", { method: "POST" });
-                        router.push("/login");
-                        router.refresh();
-                    }}
+                    onClick={handleSignOut}
                     style={{
                         background: "none",
                         border: "1px solid #e5e7eb",
-                        padding: "0.5rem 1rem",
+                        padding: "0.5rem 0.875rem",
                         borderRadius: "0.75rem",
                         color: "#6b7280",
                         fontSize: "0.75rem",
                         cursor: "pointer",
+                        flexShrink: 0,
                     }}
                 >
                     Sign Out
                 </button>
             </div>
 
-            {/* AI Insight */}
             {insight && (
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderLeft: "4px solid #059669", borderRadius: "1rem", padding: "1.25rem", marginTop: "1.5rem" }}>
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderLeft: "4px solid #059669", borderRadius: "1rem", padding: "1.25rem", marginTop: "1.25rem" }}>
                     <h2 style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.5rem" }}>💡 {insight.title}</h2>
                     <p style={{ color: "#374151", fontSize: "0.875rem", lineHeight: 1.6 }}>
                         {insight.description}
@@ -131,88 +134,85 @@ export default function DashboardPage() {
                 </div>
             )}
 
-            {/* Daily Check-in */}
-            <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "1rem", padding: "1.5rem", marginTop: "1rem" }}>
-                <h2 style={{ fontWeight: 600, marginBottom: "1rem" }}>🧠 How are you feeling today?</h2>
+            {!checkedToday && !submitted && (
+                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "1rem", padding: "1.25rem", marginTop: "1rem" }}>
+                    <h2 style={{ fontWeight: 600, marginBottom: "1rem", fontSize: "1rem" }}>🧠 How are you feeling today?</h2>
 
-                {submitted ? (
-                    <div style={{ background: "#ecfdf5", padding: "1rem", borderRadius: "0.75rem", textAlign: "center", color: "#059669", fontWeight: 600 }}>
-                        ✅ Thanks for checking in!
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.625rem", marginBottom: "1rem" }}>
+                        {moodOptions.map(function (mood: any) {
+                            var isSelected = selectedMood?.label === mood.label;
+                            return (
+                                <button
+                                    key={mood.label}
+                                    onClick={function () { setSelectedMood(mood); }}
+                                    style={{
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: "0.375rem",
+                                        padding: "1rem 0.75rem",
+                                        borderRadius: "0.75rem",
+                                        border: isSelected ? "2px solid #059669" : "2px solid #e5e7eb",
+                                        background: isSelected ? "#ecfdf5" : "#fff",
+                                        cursor: "pointer",
+                                        minHeight: 88,
+                                        transition: "all 0.15s ease",
+                                    }}
+                                >
+                                    <span style={{ fontSize: "1.75rem" }}>{mood.emoji}</span>
+                                    <span style={{ fontSize: "0.875rem", color: isSelected ? "#059669" : "#374151", fontWeight: 600 }}>
+                                        {mood.text}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
-                ) : checkedToday ? (
-                    <div style={{ background: "#f9fafb", padding: "1rem", borderRadius: "0.75rem", textAlign: "center", color: "#6b7280" }}>
-                        You've already checked in today. See you tomorrow!
-                    </div>
-                ) : (
-                    <>
-                        <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>
-                            {moodOptions.map(function (mood: any) {
-                                var isSelected = selectedMood?.label === mood.label;
-                                return (
-                                    <button
-                                        key={mood.label}
-                                        onClick={function () { setSelectedMood(mood); }}
-                                        style={{
-                                            flex: 1,
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "center",
-                                            gap: "0.25rem",
-                                            padding: "0.75rem",
-                                            borderRadius: "0.75rem",
-                                            border: isSelected ? "2px solid #059669" : "2px solid #e5e7eb",
-                                            background: isSelected ? "#ecfdf5" : "#fff",
-                                            cursor: "pointer",
-                                        }}
-                                    >
-                                        <span style={{ fontSize: "1.5rem" }}>{mood.emoji}</span>
-                                        <span style={{ fontSize: "0.75rem", color: isSelected ? "#059669" : "#6b7280", fontWeight: 600 }}>
-                                            {mood.text}
-                                        </span>
-                                    </button>
-                                );
-                            })}
-                        </div>
 
-                        <textarea
-                            value={note}
-                            onChange={function (e: any) { setNote(e.target.value); }}
-                            placeholder="Add a note (optional)..."
-                            rows={2}
-                            style={{
-                                width: "100%",
-                                padding: "0.75rem",
-                                borderRadius: "0.75rem",
-                                border: "1px solid #e5e7eb",
-                                fontSize: "0.875rem",
-                                resize: "none",
-                                marginBottom: "0.75rem",
-                            }}
-                        />
+                    <textarea
+                        value={note}
+                        onChange={function (e: any) { setNote(e.target.value); }}
+                        placeholder="Add a note (optional)..."
+                        rows={2}
+                        style={{
+                            width: "100%",
+                            padding: "0.75rem",
+                            borderRadius: "0.75rem",
+                            border: "1px solid #e5e7eb",
+                            fontSize: "0.875rem",
+                            resize: "none",
+                            marginBottom: "0.75rem",
+                            fontFamily: "inherit",
+                        }}
+                    />
 
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!selectedMood}
-                            style={{
-                                width: "100%",
-                                padding: "0.875rem",
-                                borderRadius: "0.75rem",
-                                background: selectedMood ? "#059669" : "#e5e7eb",
-                                color: selectedMood ? "#fff" : "#9ca3af",
-                                border: "none",
-                                fontSize: "0.875rem",
-                                fontWeight: 600,
-                                cursor: selectedMood ? "pointer" : "not-allowed",
-                            }}
-                        >
-                            Submit
-                        </button>
-                    </>
-                )}
-            </div>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!selectedMood}
+                        style={{
+                            width: "100%",
+                            padding: "0.875rem",
+                            borderRadius: "0.75rem",
+                            background: selectedMood ? "#059669" : "#e5e7eb",
+                            color: selectedMood ? "#fff" : "#9ca3af",
+                            border: "none",
+                            fontSize: "0.875rem",
+                            fontWeight: 600,
+                            cursor: selectedMood ? "pointer" : "not-allowed",
+                        }}
+                    >
+                        Submit
+                    </button>
+                </div>
+            )}
 
-            {/* Quick links */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1.5rem" }}>
+            {submitted && (
+                <div style={{ background: "#ecfdf5", border: "1px solid #059669", borderRadius: "1rem", padding: "1.5rem", marginTop: "1rem", textAlign: "center", color: "#059669", fontWeight: 600 }}>
+                    ✅ Thanks for checking in!
+                </div>
+            )}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "1.25rem" }}>
                 <Link href="/journal" style={{ textDecoration: "none", padding: "1.25rem", borderRadius: "1rem", background: "#fff", border: "1px solid #e5e7eb", color: "#111827" }}>
                     <span style={{ fontSize: "1.5rem" }}>📝</span>
                     <h2 style={{ fontWeight: 600, marginTop: "0.5rem", fontSize: "0.875rem" }}>Journal</h2>

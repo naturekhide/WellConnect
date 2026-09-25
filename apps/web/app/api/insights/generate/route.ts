@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { auth } from "@/lib/auth";
+import { classifySentiment, analyzeEmotion } from "@/lib/ai";
 
 var prisma = new PrismaClient();
 
@@ -20,9 +21,15 @@ export async function POST() {
         orderBy: { createdAt: "asc" },
     });
 
+    var journals = await prisma.journalEntry.findMany({
+        where: { userId, createdAt: { gte: twoWeeksAgo } },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+    });
+
     var insights: any[] = [];
 
-    // Auto-dismiss baseline_intro once user has 3+ entries
+    // Auto-dismiss baseline_intro when user hits 3+ entries
     if (entries.length >= 3) {
         await prisma.insight.updateMany({
             where: { userId, type: "baseline_intro", dismissed: false },
@@ -59,22 +66,54 @@ export async function POST() {
                 description: "Your mood has been stable this week. Consistency is a form of strength.",
             });
         }
+    }
 
-        var recentJournals = await prisma.journalEntry.findMany({
-            where: { userId, createdAt: { gte: twoWeeksAgo } },
-            orderBy: { createdAt: "desc" },
-            take: 5,
-        });
+    // AI Journal Analysis — analyze recent journal entries
+    if (journals.length >= 3) {
+        var negativeCount = 0;
+        var positiveCount = 0;
 
-        if (recentJournals.length >= 3) {
+        for (var i = 0; i < journals.length; i++) {
+            var j = journals[i];
+            if (!j.sentiment) {
+                try {
+                    var s = await classifySentiment(j.content);
+                    if (s.sentiment === "low") negativeCount++;
+                    else if (s.sentiment === "positive") positiveCount++;
+
+                    await prisma.journalEntry.update({
+                        where: { id: j.id },
+                        data: { sentiment: s.sentiment },
+                    });
+                } catch (e) { }
+            } else {
+                if (j.sentiment === "low") negativeCount++;
+                else if (j.sentiment === "positive") positiveCount++;
+            }
+        }
+
+        if (negativeCount >= 3) {
+            insights.push({
+                type: "mood_shift",
+                title: "Your writing has been heavy",
+                description: "Your recent journal entries reflect some difficult feelings. You're not alone — consider talking to someone you trust.",
+                actionLink: "/journal",
+            });
+        } else if (positiveCount >= 3) {
+            insights.push({
+                type: "positive_trend",
+                title: "Your words shine ✨",
+                description: "Your recent journal entries reflect a lot of positive energy. Whatever you're doing, keep doing it.",
+            });
+        } else {
             insights.push({
                 type: "pattern_nudge",
                 title: "You've been reflecting 🎉",
-                description: "You've written " + recentJournals.length + " journal entries in the last 2 weeks. Self-reflection is a powerful habit.",
+                description: "You've written " + journals.length + " entries recently. Self-reflection is a powerful habit.",
                 actionLink: "/journal",
             });
         }
-    } else if (entries.length > 0) {
+    } else if (entries.length >= 1 && entries.length < 3) {
         var baselineShown = await prisma.insight.findFirst({
             where: { userId, type: "baseline_intro" },
         });
@@ -89,8 +128,8 @@ export async function POST() {
     }
 
     var saved: any[] = [];
-    for (var i = 0; i < insights.length; i++) {
-        var insight = insights[i];
+    for (var k = 0; k < insights.length; k++) {
+        var insight = insights[k];
 
         var existing = await prisma.insight.findFirst({
             where: { userId, type: insight.type, dismissed: false },

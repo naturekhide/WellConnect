@@ -14,6 +14,8 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
+                console.log("Login attempt with:", credentials?.identifier);
+
                 if (!credentials?.identifier || !credentials?.password) return null;
 
                 var user = await prisma.user.findFirst({
@@ -25,12 +27,16 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
                     },
                 });
 
+                console.log("User found:", user ? user.email : "none");
+
                 if (!user || !user.password) return null;
 
                 var isValid = await bcrypt.compare(
                     credentials.password as string,
                     user.password
                 );
+
+                console.log("Password valid:", isValid);
 
                 if (!isValid) return null;
 
