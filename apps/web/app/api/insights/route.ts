@@ -1,16 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/get-user";
 
 var prisma = new PrismaClient();
 
-export async function GET() {
-    var session = await auth();
-    if (!session?.user) {
+export async function GET(request: NextRequest) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    var userId = (session.user as any).id;
 
     var insights = await prisma.insight.findMany({
         where: { userId, dismissed: false },
@@ -18,7 +16,6 @@ export async function GET() {
         take: 1,
     });
 
-    // Auto-dismiss after fetch — the user just saw it
     if (insights.length > 0) {
         await prisma.insight.update({
             where: { id: insights[0].id },
@@ -29,9 +26,9 @@ export async function GET() {
     return NextResponse.json(insights);
 }
 
-export async function PUT(request: Request) {
-    var session = await auth();
-    if (!session?.user) {
+export async function PUT(request: NextRequest) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

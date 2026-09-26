@@ -1,14 +1,34 @@
 var API_URL = "https://well-connect-web.vercel.app";
+var TOKEN_KEY = "wellconnect_token";
 
-export async function apiFetch(path: string, options?: any) {
-    var url = API_URL + path;
-    var res = await fetch(url, {
+// Simple in-memory + AsyncStorage-style token storage
+var tokenStorage: string | null = null;
+
+export function setAuthToken(token: string) {
+    tokenStorage = token;
+}
+
+export function getAuthToken(): string | null {
+    return tokenStorage;
+}
+
+export function clearAuthToken() {
+    tokenStorage = null;
+}
+
+async function apiFetch(path: string, options?: any) {
+    var headers: any = {
+        "Content-Type": "application/json",
+        ...(options?.headers || {}),
+    };
+
+    if (tokenStorage) {
+        headers["Authorization"] = "Bearer " + tokenStorage;
+    }
+
+    var res = await fetch(API_URL + path, {
         ...options,
-        headers: {
-            "Content-Type": "application/json",
-            ...(options?.headers || {}),
-        },
-        credentials: "include",
+        headers: headers,
     });
 
     if (!res.ok) {
@@ -19,41 +39,38 @@ export async function apiFetch(path: string, options?: any) {
     return res.json();
 }
 
-export async function login(identifier: string, password: string) {
-    var csrfRes = await fetch(API_URL + "/api/auth/csrf");
-    var csrfData = await csrfRes.json();
-    var cookies = csrfRes.headers.get("set-cookie") || "";
-
-    var res = await fetch(API_URL + "/api/auth/callback/credentials", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Cookie": cookies,
-        },
-        body: new URLSearchParams({
-            identifier: identifier,
-            password: password,
-            csrfToken: csrfData.csrfToken,
-        }).toString(),
-        redirect: "manual",
-    });
-
-    if (res.ok || res.status === 302) {
-        var sessionRes = await fetch(API_URL + "/api/auth/session", {
-            headers: { "Cookie": cookies },
-        });
-        var sessionData = await sessionRes.json();
-        return { url: sessionData?.user ? "/dashboard" : null, user: sessionData?.user };
-    }
-
-    return { error: "Invalid credentials" };
-}
-
 export async function registerUser(name: string, username: string, email: string, password: string) {
-    return apiFetch("/api/auth/register", {
+    var res = await fetch(API_URL + "/api/mobile/register", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, username, email, password }),
     });
+
+    if (!res.ok) {
+        var err = await res.json();
+        throw new Error(err.error || "Registration failed");
+    }
+
+    var data = await res.json();
+    setAuthToken(data.token);
+    return data;
+}
+
+export async function login(identifier: string, password: string) {
+    var res = await fetch(API_URL + "/api/mobile/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier, password }),
+    });
+
+    if (!res.ok) {
+        var err = await res.json();
+        throw new Error(err.error || "Login failed");
+    }
+
+    var data = await res.json();
+    setAuthToken(data.token);
+    return data;
 }
 
 export async function getSession() {
@@ -73,10 +90,6 @@ export async function getMoodToday() {
 
 export async function getMoodStats() {
     return apiFetch("/api/mood/stats");
-}
-
-export async function getMoodHistory(days?: number) {
-    return apiFetch("/api/mood?days=" + (days || 30));
 }
 
 export async function getInsights() {

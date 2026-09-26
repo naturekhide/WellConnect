@@ -1,47 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { auth } from "@/lib/auth";
+import { getCurrentUserId } from "@/lib/get-user";
 
 var prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
-  var session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    var userId = await getCurrentUserId(request);
+    if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  var body = await request.json();
-  var { title, frequency } = body;
+    var body = await request.json();
+    var { title, frequency } = body;
 
-  if (!title || title.trim().length === 0) {
-    return NextResponse.json({ error: "Title required" }, { status: 400 });
-  }
+    if (!title || title.trim().length === 0) {
+        return NextResponse.json({ error: "Title required" }, { status: 400 });
+    }
 
-  var userId = (session.user as any).id;
+    var goal = await prisma.goal.create({
+        data: {
+            userId,
+            title: title.trim(),
+            frequency: frequency || "daily",
+        },
+    });
 
-  var goal = await prisma.goal.create({
-    data: {
-      userId,
-      title: title.trim(),
-      frequency: frequency || "daily",
-    },
-  });
-
-  return NextResponse.json(goal, { status: 201 });
+    return NextResponse.json(goal, { status: 201 });
 }
 
-export async function GET() {
-  var session = await auth();
-  if (!session?.user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(request: NextRequest) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  var userId = (session.user as any).id;
+    var goals = await prisma.goal.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+    });
 
-  var goals = await prisma.goal.findMany({
-    where: { userId },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return NextResponse.json(goals);
+    return NextResponse.json(goals);
 }
