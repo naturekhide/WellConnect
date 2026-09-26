@@ -1,7 +1,5 @@
 var API_URL = "https://well-connect-web.vercel.app";
-var TOKEN_KEY = "wellconnect_token";
 
-// Simple in-memory + AsyncStorage-style token storage
 var tokenStorage: string | null = null;
 
 export function setAuthToken(token: string) {
@@ -90,6 +88,10 @@ export async function getMoodToday() {
 
 export async function getMoodStats() {
     return apiFetch("/api/mood/stats");
+}
+
+export async function getMoodHistory(days?: number) {
+    return apiFetch("/api/mood?days=" + (days || 30));
 }
 
 export async function getInsights() {
