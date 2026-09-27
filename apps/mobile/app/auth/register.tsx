@@ -1,77 +1,105 @@
 import { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, ScrollView } from "react-native";
 import { Link, useRouter } from "expo-router";
 import { useAuthStore } from "../../src/store/authStore";
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
     var router = useRouter();
-    var { login } = useAuthStore();
-    var [identifier, setIdentifier] = useState("");
+    var { register } = useAuthStore();
+    var [name, setName] = useState("");
+    var [username, setUsername] = useState("");
+    var [email, setEmail] = useState("");
     var [password, setPassword] = useState("");
     var [error, setError] = useState("");
     var [loading, setLoading] = useState(false);
 
-    var handleLogin = async function () {
-        if (!identifier || !password) {
+    var handleRegister = async function () {
+        if (!name || !username || !email || !password) {
             setError("Please fill in all fields");
             return;
         }
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters");
+            return;
+        }
+
         setError("");
         setLoading(true);
-        var success = await login(identifier, password);
+
+        var result = await register(name, username, email, password);
+
         setLoading(false);
-        if (success) {
+
+        if (result.success) {
             router.replace("/(tabs)/home");
         } else {
-            setError("Invalid email/username or password");
+            setError(result.error || "Registration failed");
         }
     };
 
     return (
         <View style={styles.container}>
-            <View style={styles.inner}>
+            <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
                 <Text style={styles.logo}>🌱</Text>
-                <Text style={styles.title}>WellConnect</Text>
-                <Text style={styles.subtitle}>Welcome back</Text>
+                <Text style={styles.title}>Join WellConnect</Text>
+                <Text style={styles.subtitle}>Find your people. Feel understood.</Text>
 
                 {error ? <Text style={styles.error}>{error}</Text> : null}
 
                 <TextInput
                     style={styles.input}
-                    placeholder="Email or username"
+                    placeholder="Full name"
                     placeholderTextColor="#9ca3af"
-                    value={identifier}
-                    onChangeText={setIdentifier}
+                    value={name}
+                    onChangeText={setName}
+                />
+
+                <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    placeholderTextColor="#9ca3af"
+                    value={username}
+                    onChangeText={setUsername}
                     autoCapitalize="none"
                 />
 
                 <TextInput
                     style={styles.input}
-                    placeholder="Password"
+                    placeholder="Email"
+                    placeholderTextColor="#9ca3af"
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                />
+
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password (min 8 characters)"
                     placeholderTextColor="#9ca3af"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
                 />
 
-                <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
+                <TouchableOpacity style={styles.button} onPress={handleRegister} disabled={loading}>
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create Account</Text>}
                 </TouchableOpacity>
 
-                <Link href="/auth/register" style={styles.link}>
-                    Don't have an account? Register
+                <Link href="/auth/login" style={styles.link}>
+                    Already have an account? Sign in
                 </Link>
-            </View>
+            </ScrollView>
         </View>
     );
 }
 
 var styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#f8faf9" },
-    inner: { flex: 1, justifyContent: "center", padding: 24 },
+    inner: { flexGrow: 1, justifyContent: "center", padding: 24 },
     logo: { fontSize: 48, textAlign: "center", marginBottom: 8 },
     title: { fontSize: 28, fontWeight: "700", color: "#059669", textAlign: "center" },
-    subtitle: { fontSize: 16, color: "#6b7280", textAlign: "center", marginBottom: 32 },
+    subtitle: { fontSize: 16, color: "#6b7280", textAlign: "center", marginBottom: 24 },
     error: { backgroundColor: "#fee2e2", color: "#dc2626", padding: 12, borderRadius: 12, marginBottom: 12, textAlign: "center", fontSize: 14 },
     input: { backgroundColor: "#fff", borderRadius: 12, padding: 14, fontSize: 16, marginBottom: 12, borderWidth: 1, borderColor: "#e5e7eb", color: "#111827" },
     button: { backgroundColor: "#059669", borderRadius: 12, padding: 16, alignItems: "center", marginTop: 8 },

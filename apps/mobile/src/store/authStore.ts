@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { login as apiLogin, registerUser, setAuthToken, clearAuthToken } from "../api/client";
+import { login as apiLogin, registerUser, clearAuthToken, loadToken, getAuthToken } from "../api/client";
 
 interface AuthState {
     user: any | null;
@@ -7,7 +7,7 @@ interface AuthState {
     isLoading: boolean;
     login: (identifier: string, password: string) => Promise<boolean>;
     register: (name: string, username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-    logout: () => void;
+    logout: () => Promise<void>;
     checkAuth: () => Promise<void>;
 }
 
@@ -15,7 +15,7 @@ export var useAuthStore = create<AuthState>(function (set) {
     return {
         user: null,
         isAuthenticated: false,
-        isLoading: false,
+        isLoading: true,
 
         login: async function (identifier, password) {
             try {
@@ -37,13 +37,23 @@ export var useAuthStore = create<AuthState>(function (set) {
             }
         },
 
-        logout: function () {
-            clearAuthToken();
+        logout: async function () {
+            await clearAuthToken();
             set({ user: null, isAuthenticated: false });
         },
 
         checkAuth: async function () {
-            set({ isLoading: false });
+            try {
+                await loadToken();
+                var token = getAuthToken();
+                if (token) {
+                    set({ isAuthenticated: true, isLoading: false });
+                } else {
+                    set({ isAuthenticated: false, isLoading: false });
+                }
+            } catch (e) {
+                set({ isAuthenticated: false, isLoading: false });
+            }
         },
     };
 });

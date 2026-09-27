@@ -36,6 +36,12 @@ export default function JournalScreen() {
         setSaving(false);
     };
 
+    var getSentimentEmoji = function (sentiment: string | null) {
+        if (sentiment === "positive") return "🟢";
+        if (sentiment === "low") return "🟠";
+        return "⚪";
+    };
+
     var formatDate = function (d: string) {
         return new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     };
@@ -48,11 +54,14 @@ export default function JournalScreen() {
         );
     }
 
+    var canSave = content.trim().length > 0 && !saving;
+
     return (
         <View style={styles.container}>
             <ScrollView
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#059669"]} />}
+                keyboardShouldPersistTaps="handled"
             >
                 <Text style={styles.subtitle}>Private. Just you and your thoughts.</Text>
 
@@ -67,9 +76,9 @@ export default function JournalScreen() {
                         textAlignVertical="top"
                     />
                     <TouchableOpacity
-                        style={[styles.button, !content.trim() && styles.buttonDisabled]}
+                        style={[styles.button, !canSave && styles.buttonDisabled]}
                         onPress={handleSave}
-                        disabled={!content.trim() || saving}
+                        disabled={!canSave}
                     >
                         <Text style={styles.buttonText}>{saving ? "Saving..." : "Save Entry"}</Text>
                     </TouchableOpacity>
@@ -79,14 +88,19 @@ export default function JournalScreen() {
 
                 {entries.length === 0 ? (
                     <View style={styles.emptyBox}>
-                        <Text style={styles.emptyText}>No entries yet. Start writing!</Text>
+                        <Text style={styles.emptyEmoji}>📝</Text>
+                        <Text style={styles.emptyText}>No entries yet</Text>
+                        <Text style={styles.emptySubtext}>Start writing — your thoughts are safe here.</Text>
                     </View>
                 ) : (
                     entries.map(function (entry: any) {
                         return (
                             <View key={entry.id} style={styles.entryCard}>
+                                <View style={styles.entryHeader}>
+                                    <Text style={styles.entryEmoji}>{getSentimentEmoji(entry.sentiment)}</Text>
+                                    <Text style={styles.entryDate}>{formatDate(entry.createdAt)}</Text>
+                                </View>
                                 <Text style={styles.entryText}>{entry.content}</Text>
-                                <Text style={styles.entryDate}>{formatDate(entry.createdAt)}</Text>
                             </View>
                         );
                     })
@@ -99,17 +113,21 @@ export default function JournalScreen() {
 var styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#f8faf9" },
     center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8faf9" },
-    content: { padding: 16, gap: 14 },
-    subtitle: { fontSize: 14, color: "#6b7280" },
+    content: { padding: 16, gap: 14, paddingBottom: 32 },
+    subtitle: { fontSize: 14, color: "#6b7280", marginBottom: 2 },
     card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e5e7eb" },
-    textArea: { backgroundColor: "#f9fafb", borderRadius: 12, padding: 14, fontSize: 15, color: "#111827", minHeight: 120, marginBottom: 12 },
+    textArea: { backgroundColor: "#f9fafb", borderRadius: 12, padding: 14, fontSize: 15, color: "#111827", minHeight: 130, marginBottom: 12 },
     button: { backgroundColor: "#059669", borderRadius: 12, padding: 14, alignItems: "center" },
     buttonDisabled: { opacity: 0.4 },
     buttonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
-    sectionTitle: { fontSize: 15, fontWeight: "600", color: "#111827", marginTop: 8 },
+    sectionTitle: { fontSize: 13, fontWeight: "600", color: "#6b7280", marginTop: 8, marginBottom: 2 },
     emptyBox: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#e5e7eb" },
-    emptyText: { color: "#9ca3af", fontSize: 14 },
+    emptyEmoji: { fontSize: 32, marginBottom: 8 },
+    emptyText: { color: "#111827", fontSize: 15, fontWeight: "600", marginBottom: 4 },
+    emptySubtext: { color: "#6b7280", fontSize: 13, textAlign: "center" },
     entryCard: { backgroundColor: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#e5e7eb" },
+    entryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+    entryEmoji: { fontSize: 14 },
+    entryDate: { fontSize: 11, color: "#9ca3af" },
     entryText: { fontSize: 14, color: "#374151", lineHeight: 20 },
-    entryDate: { fontSize: 11, color: "#9ca3af", marginTop: 8 },
 });
