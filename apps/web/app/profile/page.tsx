@@ -117,6 +117,20 @@ export default function ProfilePage() {
                 </div>
             </div>
 
+            {/* Quick links */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "1rem" }}>
+                <Link href="/achievements" style={{ textDecoration: "none", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "1rem", padding: "1.25rem" }}>
+                    <span style={{ fontSize: "1.5rem" }}>🏆</span>
+                    <p style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827", marginTop: "0.5rem" }}>Achievements</p>
+                    <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>See what you've earned</p>
+                </Link>
+                <Link href="/stats" style={{ textDecoration: "none", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "1rem", padding: "1.25rem" }}>
+                    <span style={{ fontSize: "1.5rem" }}>📈</span>
+                    <p style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827", marginTop: "0.5rem" }}>Stats</p>
+                    <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>Your progress</p>
+                </Link>
+            </div>
+
             <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "1rem", padding: "1.5rem", marginTop: "1rem" }}>
                 <h2 style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "1rem" }}>Edit Profile</h2>
 
