@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getCurrentUserId } from "@/lib/get-user";
+import { checkAchievements } from "@/lib/achievements";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
             completedAt: !goal.completed ? new Date() : null,
         },
     });
+
+    if (updated.completed) {
+        checkAchievements(userId).catch(function () { });
+    }
 
     return NextResponse.json(updated);
 }

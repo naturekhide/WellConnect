@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getCurrentUserId } from "@/lib/get-user";
+import { checkAchievements } from "@/lib/achievements";
+
+export const dynamic = "force-dynamic";
 
 var prisma = new PrismaClient();
 
@@ -27,6 +30,8 @@ export async function POST(request: NextRequest) {
         update: { score, label, note: note || null },
         create: { userId, score, label, note: note || null, createdAt: today },
     });
+
+    checkAchievements(userId).catch(function () { });
 
     return NextResponse.json(entry);
 }

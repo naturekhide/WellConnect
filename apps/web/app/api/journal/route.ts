@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getCurrentUserId } from "@/lib/get-user";
 import { classifySentiment } from "@/lib/ai";
+import { checkAchievements } from "@/lib/achievements";
+
+export const dynamic = "force-dynamic";
 
 var prisma = new PrismaClient();
 
@@ -23,6 +26,8 @@ export async function POST(request: NextRequest) {
     var entry = await prisma.journalEntry.create({
         data: { userId, content: trimmed },
     });
+
+    checkAchievements(userId).catch(function () { });
 
     try {
         var sentiment = await classifySentiment(trimmed);

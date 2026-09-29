@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { login as apiLogin, registerUser, clearAuthToken, loadToken, getAuthToken } from "../api/client";
+import { login as apiLogin, registerUser, clearAuthToken, loadToken, getAuthToken, getStoredUser } from "../api/client";
 
 interface AuthState {
     user: any | null;
@@ -46,13 +46,16 @@ export var useAuthStore = create<AuthState>(function (set) {
             try {
                 await loadToken();
                 var token = getAuthToken();
-                if (token) {
-                    set({ isAuthenticated: true, isLoading: false });
+                var user = getStoredUser();
+                console.log("checkAuth:", { token: !!token, user: user });
+                if (token && user) {
+                    set({ user: user, isAuthenticated: true, isLoading: false });
                 } else {
-                    set({ isAuthenticated: false, isLoading: false });
+                    set({ user: null, isAuthenticated: false, isLoading: false });
                 }
             } catch (e) {
-                set({ isAuthenticated: false, isLoading: false });
+                console.log("checkAuth error:", e);
+                set({ user: null, isAuthenticated: false, isLoading: false });
             }
         },
     };

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Redirect } from "expo-router";
 import { View, ActivityIndicator } from "react-native";
 import { useAuthStore } from "../src/store/authStore";
+import { colors } from "../src/theme";
 
 export default function Index() {
     var { isAuthenticated, isLoading, checkAuth } = useAuthStore();
@@ -12,8 +13,8 @@ export default function Index() {
 
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8faf9" }}>
-                <ActivityIndicator size="large" color="#059669" />
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background }}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }

@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, TextInput, ScrollView, RefreshControl } from "react-native";
 import { getJournal, saveJournal } from "../../src/api/client";
+import { Button, EmptyState, Skeleton } from "../../src/components";
+import { useColors, spacing, radius, shadow } from "../../src/theme";
 
 export default function JournalScreen() {
+    var colors = useColors();
     var [entries, setEntries] = useState<any[]>([]);
     var [content, setContent] = useState("");
     var [loading, setLoading] = useState(true);
@@ -48,59 +51,57 @@ export default function JournalScreen() {
 
     if (loading) {
         return (
-            <View style={styles.center}>
-                <ActivityIndicator size="large" color="#059669" />
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
+                <View style={styles.content}>
+                    <Skeleton width={180} height={28} />
+                    <Skeleton width={220} height={16} style={{ marginTop: 8 }} />
+                    <Skeleton width="100%" height={180} style={{ marginTop: 16 }} />
+                    <Skeleton width={120} height={14} style={{ marginTop: 16 }} />
+                    <Skeleton width="100%" height={80} style={{ marginTop: 8 }} />
+                    <Skeleton width="100%" height={80} style={{ marginTop: 8 }} />
+                </View>
             </View>
         );
     }
 
-    var canSave = content.trim().length > 0 && !saving;
-
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
                 contentContainerStyle={styles.content}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#059669"]} />}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
                 keyboardShouldPersistTaps="handled"
             >
-                <Text style={styles.subtitle}>Private. Just you and your thoughts.</Text>
+                <Text style={[styles.title, { color: colors.textPrimary }]}>💭 Your thoughts</Text>
+                <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Private. Just you and your words.</Text>
 
-                <View style={styles.card}>
+                <View style={[styles.composerCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <TextInput
-                        style={styles.textArea}
+                        style={[styles.textArea, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary }]}
                         placeholder="What's on your mind today?"
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.textTertiary}
                         multiline
                         value={content}
                         onChangeText={setContent}
                         textAlignVertical="top"
                     />
-                    <TouchableOpacity
-                        style={[styles.button, !canSave && styles.buttonDisabled]}
-                        onPress={handleSave}
-                        disabled={!canSave}
-                    >
-                        <Text style={styles.buttonText}>{saving ? "Saving..." : "Save Entry"}</Text>
-                    </TouchableOpacity>
+                    <View style={{ marginTop: spacing.md }}>
+                        <Button label={saving ? "Saving..." : "Save Entry"} onPress={handleSave} loading={saving} disabled={!content.trim()} />
+                    </View>
                 </View>
 
-                <Text style={styles.sectionTitle}>Previous Entries</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Previous entries</Text>
 
                 {entries.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={styles.emptyEmoji}>📝</Text>
-                        <Text style={styles.emptyText}>No entries yet</Text>
-                        <Text style={styles.emptySubtext}>Start writing — your thoughts are safe here.</Text>
-                    </View>
+                    <EmptyState emoji="📝" title="No entries yet" subtitle="Start writing — your thoughts are safe here." />
                 ) : (
                     entries.map(function (entry: any) {
                         return (
-                            <View key={entry.id} style={styles.entryCard}>
+                            <View key={entry.id} style={[styles.entryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                                 <View style={styles.entryHeader}>
                                     <Text style={styles.entryEmoji}>{getSentimentEmoji(entry.sentiment)}</Text>
-                                    <Text style={styles.entryDate}>{formatDate(entry.createdAt)}</Text>
+                                    <Text style={[styles.entryDate, { color: colors.textTertiary }]}>{formatDate(entry.createdAt)}</Text>
                                 </View>
-                                <Text style={styles.entryText}>{entry.content}</Text>
+                                <Text style={[styles.entryText, { color: colors.textPrimary }]}>{entry.content}</Text>
                             </View>
                         );
                     })
@@ -111,23 +112,31 @@ export default function JournalScreen() {
 }
 
 var styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: "#f8faf9" },
-    center: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f8faf9" },
-    content: { padding: 16, gap: 14, paddingBottom: 32 },
-    subtitle: { fontSize: 14, color: "#6b7280", marginBottom: 2 },
-    card: { backgroundColor: "#fff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e5e7eb" },
-    textArea: { backgroundColor: "#f9fafb", borderRadius: 12, padding: 14, fontSize: 15, color: "#111827", minHeight: 130, marginBottom: 12 },
-    button: { backgroundColor: "#059669", borderRadius: 12, padding: 14, alignItems: "center" },
-    buttonDisabled: { opacity: 0.4 },
-    buttonText: { color: "#fff", fontSize: 15, fontWeight: "600" },
-    sectionTitle: { fontSize: 13, fontWeight: "600", color: "#6b7280", marginTop: 8, marginBottom: 2 },
-    emptyBox: { backgroundColor: "#fff", borderRadius: 16, padding: 32, alignItems: "center", borderWidth: 1, borderColor: "#e5e7eb" },
-    emptyEmoji: { fontSize: 32, marginBottom: 8 },
-    emptyText: { color: "#111827", fontSize: 15, fontWeight: "600", marginBottom: 4 },
-    emptySubtext: { color: "#6b7280", fontSize: 13, textAlign: "center" },
-    entryCard: { backgroundColor: "#fff", borderRadius: 12, padding: 14, borderWidth: 1, borderColor: "#e5e7eb" },
-    entryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+    container: { flex: 1 },
+    content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
+    title: { fontSize: 24, fontWeight: "700" },
+    subtitle: { fontSize: 14, marginBottom: spacing.sm },
+    composerCard: {
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        borderWidth: 1,
+        ...shadow.sm,
+    },
+    textArea: {
+        borderRadius: radius.md,
+        padding: spacing.md,
+        fontSize: 15,
+        minHeight: 130,
+    },
+    sectionTitle: { fontSize: 13, fontWeight: "600", marginTop: spacing.sm },
+    entryCard: {
+        borderRadius: radius.lg,
+        padding: spacing.lg,
+        borderWidth: 1,
+        ...shadow.sm,
+    },
+    entryHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.sm },
     entryEmoji: { fontSize: 14 },
-    entryDate: { fontSize: 11, color: "#9ca3af" },
-    entryText: { fontSize: 14, color: "#374151", lineHeight: 20 },
+    entryDate: { fontSize: 11 },
+    entryText: { fontSize: 14, lineHeight: 20 },
 });

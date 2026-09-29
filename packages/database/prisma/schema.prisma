@@ -22,6 +22,7 @@ model User {
   goals         Goal[]
   insights      Insight[]
   patterns      UserPattern[]
+  achievements  Achievement[]
 }
 
 model MoodEntry {
@@ -88,4 +89,15 @@ model UserPattern {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key         String
+  unlockedAt  DateTime @default(now())
+
+  @@unique([userId, key])
+  @@index([userId])
 }

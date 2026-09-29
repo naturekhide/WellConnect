@@ -1,35 +1,46 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
 
 var tokenStorage: string | null = null;
+var userStorage: any = null;
 
 export async function loadToken() {
     try {
-        var token = await AsyncStorage.getItem("wellconnect_token");
+        var token = await getItem("wellconnect_token");
+        var userJson = await getItem("wellconnect_user");
         tokenStorage = token;
+        userStorage = userJson ? JSON.parse(userJson) : null;
     } catch (e) { }
 }
 
-export async function setAuthToken(token: string) {
+export async function setAuthToken(token: string, user: any) {
     tokenStorage = token;
-    try {
-        await AsyncStorage.setItem("wellconnect_token", token);
-    } catch (e) { }
+    userStorage = user;
+    await setItem("wellconnect_token", token);
+    await setItem("wellconnect_user", JSON.stringify(user));
 }
 
 export function getAuthToken(): string | null {
     return tokenStorage;
 }
 
+export function getStoredUser(): any {
+    return userStorage;
+}
+
 export async function clearAuthToken() {
     tokenStorage = null;
-    try {
-        await AsyncStorage.removeItem("wellconnect_token");
-    } catch (e) { }
+    userStorage = null;
+    await removeItem("wellconnect_token");
+    await removeItem("wellconnect_user");
 }
 
 async function apiFetch(path: string, options?: any) {
+    if (!tokenStorage) {
+        await loadToken();
+    }
+
     var headers: any = {
         "Content-Type": "application/json",
         ...(options?.headers || {}),
@@ -65,7 +76,7 @@ export async function registerUser(name: string, username: string, email: string
     }
 
     var data = await res.json();
-    await setAuthToken(data.token);
+    await setAuthToken(data.token, data.user);
     return data;
 }
 
@@ -82,7 +93,7 @@ export async function login(identifier: string, password: string) {
     }
 
     var data = await res.json();
-    await setAuthToken(data.token);
+    await setAuthToken(data.token, data.user);
     return data;
 }
 
