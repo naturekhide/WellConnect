@@ -56,7 +56,7 @@ export default function YouScreen() {
                         <Skeleton width="31%" height={80} />
                     </View>
                     <Skeleton width="100%" height={60} style={{ marginTop: 16 }} />
-                    <Skeleton width="100%" height={220} style={{ marginTop: 16 }} />
+                    <Skeleton width="100%" height={280} style={{ marginTop: 16 }} />
                 </View>
             </View>
         );
@@ -104,7 +104,10 @@ export default function YouScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
 
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/(tabs)/journal"); }}>
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
+                        onPress={function () { router.push("/(tabs)/journal"); }}
+                    >
                         <Text style={styles.menuIcon}>💭</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Journal</Text>
@@ -113,11 +116,26 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/(tabs)/goals"); }}>
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
+                        onPress={function () { router.push("/(tabs)/goals"); }}
+                    >
                         <Text style={styles.menuIcon}>🎯</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Goals</Text>
                             <Text style={[styles.menuSub, { color: colors.textTertiary }]}>{goalCount} active</Text>
+                        </View>
+                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.menuItem, styles.lastMenuItem]}
+                        onPress={function () { router.push("/achievements"); }}
+                    >
+                        <Text style={styles.menuIcon}>🏆</Text>
+                        <View style={styles.menuContent}>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Achievements</Text>
+                            <Text style={[styles.menuSub, { color: colors.textTertiary }]}>See what you've earned</Text>
                         </View>
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
@@ -126,7 +144,10 @@ export default function YouScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
 
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}>
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
+                        onPress={function () { router.push("/notifications"); }}
+                    >
                         <Text style={styles.menuIcon}>🔔</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Notifications</Text>

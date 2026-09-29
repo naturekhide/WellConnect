@@ -41,11 +41,11 @@ export async function notifyAchievement(userId: string, achievementKey: string) 
     var a = achievements[achievementKey];
     if (!a) return false;
 
-    return createNotification(userId, "achievement", a.title, a.body, "/achievements");
+    return createNotification(userId, "achievement", a.title, a.body);
 }
 
 export async function notifyNewInsight(userId: string, insightTitle: string, insightBody: string) {
-    return createNotification(userId, "insight", "💡 " + insightTitle, insightBody, "/(tabs)/home");
+    return createNotification(userId, "insight", "💡 " + insightTitle, insightBody);
 }
 
 export async function notifyStreakReminder(userId: string, streak: number) {
@@ -53,7 +53,6 @@ export async function notifyStreakReminder(userId: string, streak: number) {
         userId,
         "streak",
         "🔥 Keep your streak alive",
-        "You're on a " + streak + "-day streak. Check in today to keep it going.",
-        "/(tabs)/home"
+        "You're on a " + streak + "-day streak. Check in today to keep it going."
     );
 }
