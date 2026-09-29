@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { auth } from "@/lib/auth";
-import { classifySentiment, analyzeEmotion } from "@/lib/ai";
+import { getCurrentUserId } from "@/lib/get-user";
+import { classifySentiment } from "@/lib/ai";
+import { notifyNewInsight } from "@/lib/notifications";
+
+export const dynamic = "force-dynamic";
 
 var prisma = new PrismaClient();
 
-export async function POST() {
-    var session = await auth();
-    if (!session?.user) {
+export async function POST(request: NextRequest) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    var userId = (session.user as any).id;
 
     var twoWeeksAgo = new Date();
     twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
@@ -29,7 +30,6 @@ export async function POST() {
 
     var insights: any[] = [];
 
-    // Auto-dismiss baseline_intro when user hits 3+ entries
     if (entries.length >= 3) {
         await prisma.insight.updateMany({
             where: { userId, type: "baseline_intro", dismissed: false },
@@ -68,7 +68,6 @@ export async function POST() {
         }
     }
 
-    // AI Journal Analysis — analyze recent journal entries
     if (journals.length >= 3) {
         var negativeCount = 0;
         var positiveCount = 0;
@@ -146,6 +145,8 @@ export async function POST() {
                 },
             });
             saved.push(created);
+
+            await notifyNewInsight(userId, insight.title, insight.description);
         }
     }
 
