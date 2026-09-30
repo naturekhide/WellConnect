@@ -4,9 +4,10 @@ import { StatusBar } from "expo-status-bar";
 import { useColorScheme } from "react-native";
 import { useAuthStore } from "../src/store/authStore";
 import { loadToken } from "../src/api/client";
+import { registerForPushNotifications } from "../src/push";
 
 export default function RootLayout() {
-    var { checkAuth } = useAuthStore();
+    var { checkAuth, isAuthenticated } = useAuthStore();
     var scheme = useColorScheme();
 
     useEffect(function () {
@@ -15,6 +16,12 @@ export default function RootLayout() {
             await checkAuth();
         })();
     }, []);
+
+    useEffect(function () {
+        if (isAuthenticated) {
+            registerForPushNotifications();
+        }
+    }, [isAuthenticated]);
 
     return (
         <>

@@ -20,19 +20,24 @@
         "backgroundColor": "#f8faf9"
       },
       "userInterfaceStyle": "automatic",
-      "package": "app.wellconnect"
+      "package": "app.wellconnect",
+      "permissions": [
+        "NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-notifications"
     ],
     "extra": {
       "router": {},
       "eas": {
         "projectId": "4cd4d98e-a22f-4988-a840-2b5c5b0f2409"
       }
-    }
+    },
+    "owner": "nature66"
   }
 }
