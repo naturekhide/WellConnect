@@ -9,8 +9,6 @@ export default function RootLayout() {
     var { checkAuth } = useAuthStore();
     var scheme = useColorScheme();
 
-    console.log("Color scheme:", scheme);
-
     useEffect(function () {
         (async function () {
             await loadToken();
@@ -26,6 +24,9 @@ export default function RootLayout() {
                 <Stack.Screen name="auth/login" />
                 <Stack.Screen name="auth/register" />
                 <Stack.Screen name="(tabs)" />
+                <Stack.Screen name="achievements" />
+                <Stack.Screen name="notifications" />
+                <Stack.Screen name="privacy" />
                 <Stack.Screen name="modal" options={{ presentation: "modal" }} />
             </Stack>
         </>

@@ -155,7 +155,10 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}>
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
+                        onPress={function () { router.push("/privacy"); }}
+                    >
                         <Text style={styles.menuIcon}>🔒</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Privacy</Text>

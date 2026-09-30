@@ -1,27 +1,26 @@
 {
   "expo": {
-    "name": "mobile",
-    "slug": "mobile",
+    "name": "WellConnect",
+    "slug": "wellconnect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#f8faf9"
-    },
+    "scheme": "wellconnect",
     "ios": {
       "supportsTablet": true,
-      "userInterfaceStyle": "automatic"
+      "userInterfaceStyle": "automatic",
+      "bundleIdentifier": "app.wellconnect"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
         "backgroundColor": "#f8faf9"
       },
-      "userInterfaceStyle": "automatic"
+      "userInterfaceStyle": "automatic",
+      "package": "app.wellconnect"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,7 +28,11 @@
     "plugins": [
       "expo-router"
     ],
-    "scheme": "wellconnect",
-    "main": "expo-router/entry"
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4cd4d98e-a22f-4988-a840-2b5c5b0f2409"
+      }
+    }
   }
 }

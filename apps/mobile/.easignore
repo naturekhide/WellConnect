@@ -1,0 +1,10 @@
+**/node_modules
+**/.expo
+**/.next
+**/.git
+**/.agents
+**/.claude
+**/.windsurf
+**/skills
+packages/database/.agents
+packages/database/.claude
