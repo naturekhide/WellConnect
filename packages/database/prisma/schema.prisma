@@ -14,8 +14,10 @@ model User {
   password      String
   name          String
   username      String?   @unique
+  expoPushToken String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  
 
   moodEntries   MoodEntry[]
   journalEntries JournalEntry[]
