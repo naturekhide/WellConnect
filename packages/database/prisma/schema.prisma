@@ -15,6 +15,7 @@ model User {
   name          String
   username      String?   @unique
   expoPushToken String?
+  notificationPreference NotificationPreference?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
@@ -118,4 +119,18 @@ model Notification {
 
   @@index([userId, createdAt])
   @@index([userId, isRead])
+}
+
+model NotificationPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyCheckin       Boolean  @default(true)
+  checkinTime        String   @default("09:00")  // HH:MM format
+  achievements       Boolean  @default(true)
+  insights           Boolean  @default(true)
+  streakReminders    Boolean  @default(true)
+  weeklySummary      Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
