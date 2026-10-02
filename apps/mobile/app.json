@@ -13,6 +13,7 @@
       "bundleIdentifier": "app.wellconnect"
     },
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
@@ -21,9 +22,7 @@
       },
       "userInterfaceStyle": "automatic",
       "package": "app.wellconnect",
-      "permissions": [
-        "NOTIFICATIONS"
-      ]
+      "permissions": [ "NOTIFICATIONS" ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -33,11 +32,9 @@
       "expo-notifications"
     ],
     "extra": {
-      "router": {},
       "eas": {
-        "projectId": "4cd4d98e-a22f-4988-a840-2b5c5b0f2409"
+        "projectId": "4cad4d98-a22f-4988-a840-2b5c5b0f2409"
       }
-    },
-    "owner": "nature66"
+    }
   }
 }
