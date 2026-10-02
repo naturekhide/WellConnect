@@ -7,4 +7,5 @@ node_modules
 .DS_Store
 .vercel
 .env*
- 
+ apps/web/public/uploads/*
+!apps/web/public/uploads/.gitkeep
