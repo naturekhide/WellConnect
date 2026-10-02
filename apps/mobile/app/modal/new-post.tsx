@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
 
 var options = [
+    { icon: "✨", title: "Share a Moment", subtitle: "Post to the community feed", route: "/feed/new" },
     { icon: "🧠", title: "Mood Check-in", subtitle: "How are you feeling?", route: "/(tabs)/home" },
     { icon: "📝", title: "Write Journal", subtitle: "Reflect on your day", route: "/(tabs)/journal" },
     { icon: "🎯", title: "Add Goal", subtitle: "Track something new", route: "/(tabs)/goals" },

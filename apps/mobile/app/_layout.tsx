@@ -34,6 +34,7 @@ export default function RootLayout() {
                 <Stack.Screen name="achievements" />
                 <Stack.Screen name="notifications" />
                 <Stack.Screen name="privacy" />
+                <Stack.Screen name="feed/[id]" />
                 <Stack.Screen name="modal" options={{ presentation: "modal" }} />
             </Stack>
         </>

@@ -1,4 +1,3 @@
-import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
@@ -6,21 +5,42 @@ import { getAuthToken } from "./api/client";
 
 var API_URL = "https://well-connect-web.vercel.app";
 
-Notifications.setNotificationHandler({
-    handleNotification: async function () {
-        return {
-            shouldShowAlert: true,
-            shouldShowBanner: true,
-            shouldShowList: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-        };
-    },
-});
+// Only load notifications in a real build (not Expo Go)
+var Notifications: any = null;
+var isExpoGo = Constants.appOwnership === "expo";
+
+if (!isExpoGo) {
+    try {
+        Notifications = require("expo-notifications");
+        Notifications.setNotificationHandler({
+            handleNotification: async function () {
+                return {
+                    shouldShowAlert: true,
+                    shouldShowBanner: true,
+                    shouldShowList: true,
+                    shouldPlaySound: true,
+                    shouldSetBadge: false,
+                };
+            },
+        });
+    } catch (e) {
+        console.log("Notifications module not available");
+    }
+}
 
 export async function registerForPushNotifications() {
+    if (isExpoGo) {
+        console.log("Push notifications skipped (Expo Go)");
+        return null;
+    }
+
+    if (!Notifications) {
+        console.log("Notifications module unavailable");
+        return null;
+    }
+
     if (!Device.isDevice) {
-        console.log("Push notifications require a physical device");
+        console.log("Push requires a physical device");
         return null;
     }
 
@@ -49,7 +69,7 @@ export async function registerForPushNotifications() {
 
         var projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
         if (!projectId) {
-            console.log("No project ID found");
+            console.log("No project ID");
             return null;
         }
 
@@ -85,6 +105,8 @@ export async function registerForPushNotifications() {
 }
 
 export async function unregisterPushNotifications() {
+    if (isExpoGo || !Notifications) return;
+
     try {
         var authToken = getAuthToken();
         if (authToken) {

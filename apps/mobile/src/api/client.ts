@@ -147,3 +147,80 @@ export async function toggleGoal(id: string) {
         method: "POST",
     });
 }
+
+// ━━━━━ Social Feed ━━━━━
+
+export async function getFeed(cursor?: string) {
+    var path = "/api/feed";
+    if (cursor) path += "?cursor=" + cursor;
+    return apiFetch(path);
+}
+
+export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean) {
+    return apiFetch("/api/feed", {
+        method: "POST",
+        body: JSON.stringify({ content, imageUrls, anonymous }),
+    });
+}
+
+export async function getFeedPost(id: string) {
+    return apiFetch("/api/feed/" + id);
+}
+
+export async function deleteFeedPost(id: string) {
+    return apiFetch("/api/feed/" + id, { method: "DELETE" });
+}
+
+export async function reactToPost(id: string, type: string) {
+    return apiFetch("/api/feed/" + id + "/react", {
+        method: "POST",
+        body: JSON.stringify({ type }),
+    });
+}
+
+export async function replyToPost(id: string, content: string, anonymous: boolean) {
+    return apiFetch("/api/feed/" + id + "/reply", {
+        method: "POST",
+        body: JSON.stringify({ content, anonymous }),
+    });
+}
+
+export async function uploadImages(uris: string[]) {
+    var formData = new FormData();
+
+    for (var i = 0; i < uris.length; i++) {
+        var uri = uris[i];
+        var filename = uri.split("/").pop() || "image.jpg";
+        var match = /\.(\w+)$/.exec(filename);
+        var type = match ? "image/" + match[1] : "image/jpeg";
+
+        // React Native FormData format — do NOT set Content-Type header
+        formData.append("files", {
+            uri: uri,
+            name: filename,
+            type: type,
+        } as any);
+    }
+
+    if (!tokenStorage) {
+        await loadToken();
+    }
+
+    var headers: any = {};
+    if (tokenStorage) {
+        headers["Authorization"] = "Bearer " + tokenStorage;
+    }
+
+    var res = await fetch(API_URL + "/api/upload/multi", {
+        method: "POST",
+        headers: headers,
+        body: formData,
+    });
+
+    if (!res.ok) {
+        var error = await res.text();
+        throw new Error(error || "Upload failed");
+    }
+
+    return res.json();
+}
