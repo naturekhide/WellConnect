@@ -1,7 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native";
 import { getAuthToken } from "./api/client";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -10,6 +10,8 @@ Notifications.setNotificationHandler({
     handleNotification: async function () {
         return {
             shouldShowAlert: true,
+            shouldShowBanner: true,
+            shouldShowList: true,
             shouldPlaySound: true,
             shouldSetBadge: false,
         };
@@ -18,7 +20,7 @@ Notifications.setNotificationHandler({
 
 export async function registerForPushNotifications() {
     if (!Device.isDevice) {
-        console.log("Push notifications require a physical device");
+        Alert.alert("Push Debug", "Not a physical device");
         return null;
     }
 
@@ -32,7 +34,7 @@ export async function registerForPushNotifications() {
         }
 
         if (finalStatus !== "granted") {
-            console.log("Push notification permission denied");
+            Alert.alert("Push Debug", "Permission denied: " + finalStatus);
             return null;
         }
 
@@ -47,29 +49,41 @@ export async function registerForPushNotifications() {
 
         var projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
         if (!projectId) {
-            console.log("Project ID not found");
+            Alert.alert("Push Debug", "No project ID");
             return null;
         }
+
+        Alert.alert("Push Debug", "Requesting token, projectId: " + projectId);
 
         var tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         var token = tokenData.data;
 
-        // Send to backend
+        Alert.alert("Push Debug", "Got token: " + token.substring(0, 30) + "...");
+
         var authToken = getAuthToken();
-        if (authToken) {
-            await fetch(API_URL + "/api/push/register", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + authToken,
-                },
-                body: JSON.stringify({ token }),
-            });
+        if (!authToken) {
+            Alert.alert("Push Debug", "No auth token - user not logged in");
+            return null;
         }
 
+        var res = await fetch(API_URL + "/api/push/register", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + authToken,
+            },
+            body: JSON.stringify({ token }),
+        });
+
+        if (!res.ok) {
+            Alert.alert("Push Debug", "Backend save failed: " + res.status);
+            return null;
+        }
+
+        Alert.alert("Push Debug", "SUCCESS - token registered");
         return token;
-    } catch (e) {
-        console.log("Push registration failed:", e);
+    } catch (e: any) {
+        Alert.alert("Push Debug", "Error: " + (e.message || "Unknown"));
         return null;
     }
 }
