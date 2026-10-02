@@ -1,7 +1,7 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { Platform, Alert } from "react-native";
+import { Platform } from "react-native";
 import { getAuthToken } from "./api/client";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -20,7 +20,7 @@ Notifications.setNotificationHandler({
 
 export async function registerForPushNotifications() {
     if (!Device.isDevice) {
-        Alert.alert("Push Debug", "Not a physical device");
+        console.log("Push notifications require a physical device");
         return null;
     }
 
@@ -34,7 +34,7 @@ export async function registerForPushNotifications() {
         }
 
         if (finalStatus !== "granted") {
-            Alert.alert("Push Debug", "Permission denied: " + finalStatus);
+            console.log("Push permission not granted");
             return null;
         }
 
@@ -49,20 +49,16 @@ export async function registerForPushNotifications() {
 
         var projectId = Constants?.expoConfig?.extra?.eas?.projectId || Constants?.easConfig?.projectId;
         if (!projectId) {
-            Alert.alert("Push Debug", "No project ID");
+            console.log("No project ID found");
             return null;
         }
-
-        Alert.alert("Push Debug", "Requesting token, projectId: " + projectId);
 
         var tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         var token = tokenData.data;
 
-        Alert.alert("Push Debug", "Got token: " + token.substring(0, 30) + "...");
-
         var authToken = getAuthToken();
         if (!authToken) {
-            Alert.alert("Push Debug", "No auth token - user not logged in");
+            console.log("User not logged in");
             return null;
         }
 
@@ -76,14 +72,14 @@ export async function registerForPushNotifications() {
         });
 
         if (!res.ok) {
-            Alert.alert("Push Debug", "Backend save failed: " + res.status);
+            console.log("Backend save failed:", res.status);
             return null;
         }
 
-        Alert.alert("Push Debug", "SUCCESS - token registered");
+        console.log("Push token registered");
         return token;
     } catch (e: any) {
-        Alert.alert("Push Debug", "Error: " + (e.message || "Unknown"));
+        console.log("Push registration failed:", e.message);
         return null;
     }
 }
