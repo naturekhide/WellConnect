@@ -7,5 +7,4 @@ node_modules
 .DS_Store
 .vercel
 .env*
-apps/mobile/google-services.json 
-**/google-services.json 
+ 
