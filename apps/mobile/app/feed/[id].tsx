@@ -1,8 +1,20 @@
-import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Image, KeyboardAvoidingView, Platform, Alert } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TextInput,
+    TouchableOpacity,
+    ActivityIndicator,
+    Image,
+    KeyboardAvoidingView,
+    Platform,
+    Alert,
+} from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { getFeedPost, replyToPost, reactToPost } from "../../src/api/client";
-import { useColors, spacing, radius, shadow } from "../../src/theme";
+import { useColors, spacing, radius } from "../../src/theme";
 
 var REACTIONS = [
     { type: "hug", emoji: "🤗" },
@@ -10,6 +22,8 @@ var REACTIONS = [
     { type: "strength", emoji: "💪" },
     { type: "grateful", emoji: "🙏" },
 ];
+
+var IMAGE_BASE = "https://well-connect-web.vercel.app";
 
 export default function FeedPostDetail() {
     var router = useRouter();
@@ -24,7 +38,12 @@ export default function FeedPostDetail() {
     var [myReaction, setMyReaction] = useState<string | null>(null);
     var [reactions, setReactions] = useState<any>({});
 
-    useEffect(function () { load(); }, [postId]);
+    useEffect(
+        function () {
+            load();
+        },
+        [postId]
+    );
 
     var load = async function () {
         try {
@@ -89,58 +108,134 @@ export default function FeedPostDetail() {
             style={[styles.container, { backgroundColor: colors.background }]}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-            <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-                <TouchableOpacity onPress={function () { router.back(); }} style={styles.backButton}>
-                    <Text style={[styles.backText, { color: colors.primary }]}>← Back</Text>
+            <View
+                style={[
+                    styles.topBar,
+                    {
+                        borderBottomColor: colors.border,
+                        backgroundColor: colors.background,
+                    },
+                ]}
+            >
+                <TouchableOpacity
+                    onPress={function () {
+                        router.back();
+                    }}
+                    style={styles.backBtn}
+                >
+                    <Text style={[styles.backText, { color: colors.textPrimary }]}>←</Text>
                 </TouchableOpacity>
+                <Text style={[styles.topTitle, { color: colors.textPrimary }]}>
+                    Moment
+                </Text>
+                <View style={{ width: 32 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-                <View style={[styles.postCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <ScrollView
+                contentContainerStyle={styles.content}
+                keyboardShouldPersistTaps="handled"
+            >
+                <View
+                    style={[styles.postBlock, { borderBottomColor: colors.border }]}
+                >
                     <View style={styles.postHeader}>
-                        <View style={[styles.avatar, { backgroundColor: post.anonymous ? colors.textTertiary : colors.primary }]}>
-                            <Text style={styles.avatarText}>{post.anonymous ? "?" : (post.author?.name?.charAt(0) || "U")}</Text>
-                        </View>
-                        <View style={styles.postHeaderText}>
-                            <Text style={[styles.name, { color: colors.textPrimary }]}>
-                                {post.anonymous ? "Anonymous" : (post.author?.name || "User")}
+                        <View
+                            style={[
+                                styles.avatar,
+                                {
+                                    backgroundColor: post.anonymous
+                                        ? colors.surfaceAlt
+                                        : colors.primary,
+                                    borderColor: post.anonymous ? colors.border : "transparent",
+                                    borderWidth: post.anonymous ? 1 : 0,
+                                },
+                            ]}
+                        >
+                            <Text
+                                style={[
+                                    styles.avatarText,
+                                    { color: post.anonymous ? colors.textSecondary : "#fff" },
+                                ]}
+                            >
+                                {post.anonymous
+                                    ? "🎭"
+                                    : post.author?.name?.charAt(0) || "U"}
                             </Text>
-                            {!post.anonymous && post.author?.username && (
-                                <Text style={[styles.username, { color: colors.textSecondary }]}>@{post.author.username}</Text>
-                            )}
                         </View>
-                        <Text style={[styles.time, { color: colors.textTertiary }]}>{timeAgo(post.createdAt)}</Text>
+                        <View style={{ flex: 1 }}>
+                            <View style={styles.nameRow}>
+                                <Text style={[styles.name, { color: colors.textPrimary }]}>
+                                    {post.anonymous ? "Anonymous" : post.author?.name || "User"}
+                                </Text>
+                                {!post.anonymous && post.author?.username && (
+                                    <Text
+                                        style={[styles.username, { color: colors.textSecondary }]}
+                                    >
+                                        @{post.author.username}
+                                    </Text>
+                                )}
+                                {post.anonymous && (
+                                    <Text
+                                        style={[
+                                            styles.anonBadge,
+                                            { color: colors.primary, borderColor: colors.primary },
+                                        ]}
+                                    >
+                                        anonymous
+                                    </Text>
+                                )}
+                            </View>
+                            <Text style={[styles.time, { color: colors.textTertiary }]}>
+                                {timeAgo(post.createdAt)}
+                            </Text>
+                        </View>
                     </View>
 
-                    <Text style={[styles.postContent, { color: colors.textPrimary }]}>{post.content}</Text>
+                    <Text style={[styles.postText, { color: colors.textPrimary }]}>
+                        {post.content}
+                    </Text>
 
                     {post.imageUrls && post.imageUrls.length > 0 && (
-                        <View style={styles.imageGrid}>
+                        <View style={styles.imageWrap}>
                             {post.imageUrls.map(function (url: string, i: number) {
                                 return (
                                     <Image
                                         key={i}
-                                        source={{ uri: "https://well-connect-web.vercel.app" + url }}
-                                        style={post.imageUrls.length === 1 ? styles.imageSingle : styles.imageMulti}
+                                        source={{ uri: IMAGE_BASE + url }}
+                                        style={[styles.image, { borderColor: colors.border }]}
+                                        resizeMode="cover"
                                     />
                                 );
                             })}
                         </View>
                     )}
 
-                    <View style={styles.reactionsRow}>
+                    <View style={[styles.actions, { borderTopColor: colors.border }]}>
                         {REACTIONS.map(function (r: any) {
                             var isActive = myReaction === r.type;
+                            var count = (reactions && reactions[r.type]) || 0;
                             return (
                                 <TouchableOpacity
                                     key={r.type}
-                                    style={[styles.reactionBtn, isActive && { backgroundColor: colors.primaryLight }]}
-                                    onPress={function () { handleReact(r.type); }}
+                                    style={[
+                                        styles.actionBtn,
+                                        isActive && { backgroundColor: colors.primaryLight },
+                                    ]}
+                                    onPress={function () {
+                                        handleReact(r.type);
+                                    }}
                                 >
-                                    <Text style={styles.reactionEmoji}>{r.emoji}</Text>
-                                    {reactions[r.type] > 0 && (
-                                        <Text style={[styles.reactionCount, { color: isActive ? colors.primary : colors.textSecondary }]}>
-                                            {reactions[r.type]}
+                                    <Text style={styles.actionEmoji}>{r.emoji}</Text>
+                                    {count > 0 && (
+                                        <Text
+                                            style={[
+                                                styles.actionCount,
+                                                {
+                                                    color: isActive ? colors.primary : colors.textSecondary,
+                                                },
+                                            ]}
+                                        >
+                                            {count}
                                         </Text>
                                     )}
                                 </TouchableOpacity>
@@ -150,44 +245,105 @@ export default function FeedPostDetail() {
                 </View>
 
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                    {(post.replies || []).length} {(post.replies || []).length === 1 ? "reply" : "replies"}
+                    {(post.replies || []).length}{" "}
+                    {(post.replies || []).length === 1 ? "reply" : "replies"}
                 </Text>
 
                 {(post.replies || []).map(function (reply: any) {
                     return (
-                        <View key={reply.id} style={[styles.replyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <View
+                            key={reply.id}
+                            style={[styles.replyBlock, { borderBottomColor: colors.border }]}
+                        >
                             <View style={styles.replyHeader}>
-                                <View style={[styles.replyAvatar, { backgroundColor: reply.anonymous ? colors.textTertiary : colors.primary }]}>
-                                    <Text style={styles.replyAvatarText}>{reply.anonymous ? "?" : (reply.author?.name?.charAt(0) || "U")}</Text>
+                                <View
+                                    style={[
+                                        styles.replyAvatar,
+                                        {
+                                            backgroundColor: reply.anonymous
+                                                ? colors.surfaceAlt
+                                                : colors.primary,
+                                            borderColor: reply.anonymous
+                                                ? colors.border
+                                                : "transparent",
+                                            borderWidth: reply.anonymous ? 1 : 0,
+                                        },
+                                    ]}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.replyAvatarText,
+                                            {
+                                                color: reply.anonymous
+                                                    ? colors.textSecondary
+                                                    : "#fff",
+                                            },
+                                        ]}
+                                    >
+                                        {reply.anonymous
+                                            ? "🎭"
+                                            : reply.author?.name?.charAt(0) || "U"}
+                                    </Text>
                                 </View>
                                 <Text style={[styles.replyName, { color: colors.textPrimary }]}>
-                                    {reply.anonymous ? "Anonymous" : (reply.author?.name || "User")}
+                                    {reply.anonymous ? "Anonymous" : reply.author?.name || "User"}
                                 </Text>
-                                <Text style={[styles.replyTime, { color: colors.textTertiary }]}>{timeAgo(reply.createdAt)}</Text>
+                                <Text style={[styles.replyTime, { color: colors.textTertiary }]}>
+                                    {timeAgo(reply.createdAt)}
+                                </Text>
                             </View>
-                            <Text style={[styles.replyContent, { color: colors.textPrimary }]}>{reply.content}</Text>
+                            <Text style={[styles.replyText, { color: colors.textPrimary }]}>
+                                {reply.content}
+                            </Text>
                         </View>
                     );
                 })}
 
                 {(post.replies || []).length === 0 && (
                     <View style={styles.emptyReplies}>
-                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        <Text
+                            style={[styles.emptyReplyText, { color: colors.textSecondary }]}
+                        >
                             No replies yet. Be the first to respond with kindness.
                         </Text>
                     </View>
                 )}
             </ScrollView>
 
-            <View style={[styles.composer, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+            <View
+                style={[
+                    styles.composer,
+                    {
+                        backgroundColor: colors.background,
+                        borderTopColor: colors.border,
+                    },
+                ]}
+            >
                 <TouchableOpacity
-                    style={[styles.anonToggle, anonymousReply && { backgroundColor: colors.primaryLight }]}
-                    onPress={function () { setAnonymousReply(!anonymousReply); }}
+                    style={[
+                        styles.anonToggle,
+                        {
+                            backgroundColor: anonymousReply
+                                ? colors.primaryLight
+                                : colors.surfaceAlt,
+                            borderColor: anonymousReply ? colors.primary : colors.border,
+                        },
+                    ]}
+                    onPress={function () {
+                        setAnonymousReply(!anonymousReply);
+                    }}
                 >
                     <Text style={styles.anonEmoji}>🎭</Text>
                 </TouchableOpacity>
                 <TextInput
-                    style={[styles.replyInput, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary }]}
+                    style={[
+                        styles.replyInput,
+                        {
+                            backgroundColor: colors.surfaceAlt,
+                            color: colors.textPrimary,
+                            borderColor: colors.border,
+                        },
+                    ]}
                     placeholder="Reply with kindness..."
                     placeholderTextColor={colors.textTertiary}
                     value={replyText}
@@ -198,9 +354,23 @@ export default function FeedPostDetail() {
                 <TouchableOpacity
                     onPress={handleReply}
                     disabled={!replyText.trim() || replying}
-                    style={[styles.sendButton, { backgroundColor: replyText.trim() ? colors.primary : colors.border }]}
+                    style={[
+                        styles.sendBtn,
+                        {
+                            backgroundColor: replyText.trim()
+                                ? colors.primary
+                                : colors.surfaceAlt,
+                        },
+                    ]}
                 >
-                    <Text style={styles.sendText}>{replying ? "..." : "Send"}</Text>
+                    <Text
+                        style={[
+                            styles.sendText,
+                            { color: replyText.trim() ? "#fff" : colors.textTertiary },
+                        ]}
+                    >
+                        {replying ? "..." : "→"}
+                    </Text>
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>
@@ -210,52 +380,110 @@ export default function FeedPostDetail() {
 var styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    header: {
+    topBar: {
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "space-between",
         paddingHorizontal: spacing.lg,
         paddingTop: 60,
-        paddingBottom: spacing.sm,
+        paddingBottom: spacing.md,
         borderBottomWidth: 1,
     },
-    backButton: { paddingVertical: spacing.sm },
-    backText: { fontSize: 15, fontWeight: "600" },
-    content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-    postCard: {
+    backBtn: { width: 32, height: 32, justifyContent: "center" },
+    backText: { fontSize: 22 },
+    topTitle: { fontSize: 16, fontWeight: "700" },
+    content: { paddingBottom: spacing.xl },
+    postBlock: {
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.md,
+        borderBottomWidth: 1,
+    },
+    postHeader: {
+        flexDirection: "row",
+        gap: spacing.md,
+        marginBottom: spacing.md,
+    },
+    avatar: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    avatarText: { fontSize: 16, fontWeight: "700" },
+    nameRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 4,
+    },
+    name: { fontSize: 15, fontWeight: "700" },
+    username: { fontSize: 14 },
+    anonBadge: {
+        fontSize: 10,
+        fontWeight: "600",
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 4,
+        borderWidth: 1,
+    },
+    time: { fontSize: 13, marginTop: 2 },
+    postText: { fontSize: 17, lineHeight: 24, marginBottom: spacing.md },
+    imageWrap: { gap: spacing.sm, marginBottom: spacing.md },
+    image: {
+        width: "100%",
+        height: 220,
         borderRadius: radius.lg,
-        padding: spacing.lg,
-        borderWidth: 1,
-        ...shadow.sm,
-    },
-    postHeader: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginBottom: spacing.md },
-    avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" },
-    avatarText: { color: "#fff", fontWeight: "700", fontSize: 16 },
-    postHeaderText: { flex: 1 },
-    name: { fontSize: 15, fontWeight: "600" },
-    username: { fontSize: 12, marginTop: 1 },
-    time: { fontSize: 11 },
-    postContent: { fontSize: 16, lineHeight: 23, marginBottom: spacing.md },
-    imageGrid: { flexDirection: "row", flexWrap: "wrap", gap: 4, marginBottom: spacing.md },
-    imageSingle: { width: "100%", height: 220, borderRadius: radius.md },
-    imageMulti: { width: "48%", height: 140, borderRadius: radius.md },
-    reactionsRow: { flexDirection: "row", gap: spacing.sm },
-    reactionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.md },
-    reactionEmoji: { fontSize: 18 },
-    reactionCount: { fontSize: 13, fontWeight: "600" },
-    sectionTitle: { fontSize: 13, fontWeight: "600", marginTop: spacing.sm },
-    replyCard: {
-        borderRadius: radius.md,
-        padding: spacing.md,
         borderWidth: 1,
     },
-    replyHeader: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginBottom: spacing.sm },
-    replyAvatar: { width: 28, height: 28, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-    replyAvatarText: { color: "#fff", fontWeight: "700", fontSize: 12 },
-    replyName: { fontSize: 13, fontWeight: "600", flex: 1 },
-    replyTime: { fontSize: 11 },
-    replyContent: { fontSize: 14, lineHeight: 20 },
-    emptyReplies: { padding: spacing.lg, alignItems: "center" },
-    emptyText: { fontSize: 13, textAlign: "center" },
+    actions: {
+        flexDirection: "row",
+        gap: spacing.sm,
+        paddingTop: spacing.md,
+        borderTopWidth: 1,
+    },
+    actionBtn: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: spacing.md,
+        paddingVertical: 8,
+        borderRadius: radius.full,
+    },
+    actionEmoji: { fontSize: 18 },
+    actionCount: { fontSize: 14, fontWeight: "600" },
+    sectionTitle: {
+        fontSize: 13,
+        fontWeight: "600",
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.lg,
+        paddingBottom: spacing.sm,
+    },
+    replyBlock: {
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+    },
+    replyHeader: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.sm,
+        marginBottom: 6,
+    },
+    replyAvatar: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    replyAvatarText: { fontSize: 12, fontWeight: "700" },
+    replyName: { fontSize: 14, fontWeight: "600", flex: 1 },
+    replyTime: { fontSize: 12 },
+    replyText: { fontSize: 15, lineHeight: 21 },
+    emptyReplies: { paddingVertical: spacing.xxl, alignItems: "center" },
+    emptyReplyText: { fontSize: 14, textAlign: "center" },
     composer: {
         flexDirection: "row",
         alignItems: "flex-end",
@@ -269,21 +497,24 @@ var styles = StyleSheet.create({
         borderRadius: 20,
         alignItems: "center",
         justifyContent: "center",
+        borderWidth: 1,
     },
-    anonEmoji: { fontSize: 20 },
+    anonEmoji: { fontSize: 18 },
     replyInput: {
         flex: 1,
-        borderRadius: radius.lg,
+        borderRadius: radius.full,
         paddingHorizontal: spacing.md,
         paddingVertical: spacing.sm + 2,
         fontSize: 14,
         maxHeight: 100,
+        borderWidth: 1,
     },
-    sendButton: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.sm + 4,
-        borderRadius: radius.md,
+    sendBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: "center",
         justifyContent: "center",
     },
-    sendText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+    sendText: { fontSize: 18, fontWeight: "700" },
 });

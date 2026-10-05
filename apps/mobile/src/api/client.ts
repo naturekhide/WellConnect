@@ -150,9 +150,11 @@ export async function toggleGoal(id: string) {
 
 // ━━━━━ Social Feed ━━━━━
 
-export async function getFeed(cursor?: string) {
-    var path = "/api/feed";
-    if (cursor) path += "?cursor=" + cursor;
+export async function getFeed(tab?: string, cursor?: string) {
+    var params: string[] = [];
+    if (tab && tab !== "for-you") params.push("tab=" + tab);
+    if (cursor) params.push("cursor=" + cursor);
+    var path = "/api/feed" + (params.length ? "?" + params.join("&") : "");
     return apiFetch(path);
 }
 

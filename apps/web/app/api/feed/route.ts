@@ -16,7 +16,19 @@ export async function GET(request: NextRequest) {
     var url = new URL(request.url);
     var limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
     var cursor = url.searchParams.get("cursor");
+    var tab = url.searchParams.get("tab") || "for-you";
 
+    // ─── Following & Circles: not implemented yet ───
+    // Return empty honestly until follow/circle schema + queries exist.
+    if (tab === "following" || tab === "circles") {
+        return NextResponse.json({
+            posts: [],
+            hasMore: false,
+            nextCursor: null,
+        });
+    }
+
+    // ─── For You (default): global feed ───
     var posts = await prisma.feedPost.findMany({
         take: limit + 1,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
