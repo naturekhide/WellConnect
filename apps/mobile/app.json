@@ -24,7 +24,8 @@
       "package": "app.wellconnect",
       "permissions": [
         "NOTIFICATIONS"
-      ]
+      ],
+      "allowBackup": false
     },
     "web": {
       "favicon": "./assets/favicon.png"

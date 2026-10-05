@@ -2,9 +2,10 @@ import { useEffect } from "react";
 import { Redirect } from "expo-router";
 import { View, ActivityIndicator } from "react-native";
 import { useAuthStore } from "../src/store/authStore";
-import { colors } from "../src/theme";
+import { useColors } from "../src/theme";
 
 export default function Index() {
+    var colors = useColors();
     var { isAuthenticated, isLoading, checkAuth } = useAuthStore();
 
     useEffect(function () {
