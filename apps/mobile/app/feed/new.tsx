@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Alert, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
 import { createFeedPost, uploadImages } from "../../src/api/client";
 
@@ -30,8 +31,23 @@ export default function NewFeedPostScreen() {
         });
 
         if (!result.canceled) {
-            var newUris = result.assets.map(function (a: any) { return a.uri; });
-            setImages(images.concat(newUris).slice(0, MAX_IMAGES));
+            var prepared: string[] = [];
+
+            for (var i = 0; i < result.assets.length; i++) {
+                var asset = result.assets[i];
+                try {
+                    var manipulated = await ImageManipulator.manipulateAsync(
+                        asset.uri,
+                        [{ resize: { width: 1024 } }],
+                        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+                    );
+                    prepared.push(manipulated.uri);
+                } catch (e) {
+                    prepared.push(asset.uri);
+                }
+            }
+
+            setImages(images.concat(prepared).slice(0, MAX_IMAGES));
         }
     };
 

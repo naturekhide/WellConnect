@@ -192,15 +192,19 @@ export async function uploadImages(uris: string[]) {
 
     for (var i = 0; i < uris.length; i++) {
         var uri = uris[i];
-        var filename = uri.split("/").pop() || "image.jpg";
-        var match = /\.(\w+)$/.exec(filename);
-        var type = match ? "image/" + match[1] : "image/jpeg";
+        var filename = uri.split("/").pop() || ("image_" + i + ".jpg");
 
-        // React Native FormData format — do NOT set Content-Type header
+        if (!/\.(jpg|jpeg|png|webp)$/i.test(filename)) {
+            filename = "image_" + i + ".jpg";
+        }
+
+        var ext = filename.split(".").pop()?.toLowerCase() || "jpg";
+        var mime = ext === "png" ? "image/png" : "image/jpeg";
+
         formData.append("files", {
             uri: uri,
             name: filename,
-            type: type,
+            type: mime,
         } as any);
     }
 
