@@ -24,7 +24,7 @@ export default function NewFeedPostScreen() {
         }
 
         var result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
             selectionLimit: MAX_IMAGES - images.length,
             quality: 0.8,
@@ -35,6 +35,8 @@ export default function NewFeedPostScreen() {
 
             for (var i = 0; i < result.assets.length; i++) {
                 var asset = result.assets[i];
+                if (!asset || !asset.uri) continue;
+
                 try {
                     var manipulated = await ImageManipulator.manipulateAsync(
                         asset.uri,
@@ -47,7 +49,9 @@ export default function NewFeedPostScreen() {
                 }
             }
 
-            setImages(images.concat(prepared).slice(0, MAX_IMAGES));
+            if (prepared.length > 0) {
+                setImages(images.concat(prepared).slice(0, MAX_IMAGES));
+            }
         }
     };
 
@@ -68,7 +72,6 @@ export default function NewFeedPostScreen() {
             }
 
             await createFeedPost(content.trim(), uploadedUrls, anonymous);
-
             router.back();
         } catch (e: any) {
             Alert.alert("Failed to post", e.message || "Try again");
