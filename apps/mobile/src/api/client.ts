@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -191,19 +192,32 @@ export async function uploadImages(uris: string[]) {
     var formData = new FormData();
 
     for (var i = 0; i < uris.length; i++) {
-        var uri = uris[i];
-        var filename = uri.split("/").pop() || ("image_" + i + ".jpg");
+        var rawUri = uris[i];
 
-        if (!/\.(jpg|jpeg|png|webp)$/i.test(filename)) {
-            filename = "image_" + i + ".jpg";
+        // Guarantee a filename with an allowed extension
+        var rawName = rawUri.split("/").pop() || ("image_" + i + ".jpg");
+        if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(rawName)) {
+            rawName = "image_" + i + ".jpg";
         }
 
-        var ext = filename.split(".").pop()?.toLowerCase() || "jpg";
-        var mime = ext === "png" ? "image/png" : "image/jpeg";
+        var ext = rawName.split(".").pop()?.toLowerCase() || "jpg";
+        var mime =
+            ext === "png" ? "image/png" :
+                ext === "gif" ? "image/gif" :
+                    ext === "webp" ? "image/webp" :
+                        "image/jpeg";
+
+        // Android needs a plain absolute path or content:// — not file://
+        var uploadUri = rawUri;
+        if (Platform.OS === "android") {
+            if (uploadUri.startsWith("file://")) {
+                uploadUri = uploadUri.replace("file://", "");
+            }
+        }
 
         formData.append("files", {
-            uri: uri,
-            name: filename,
+            uri: uploadUri,
+            name: rawName,
             type: mime,
         } as any);
     }
