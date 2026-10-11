@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/get-user";
 import { classifySentiment } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
-var prisma = new PrismaClient();
+
 
 export async function GET(request: NextRequest) {
     var userId = await getCurrentUserId(request);

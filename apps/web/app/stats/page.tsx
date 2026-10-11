@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { C, S, R } from "@/lib/theme";
 
 export default function StatsPage() {
     var router = useRouter();
@@ -29,70 +30,80 @@ export default function StatsPage() {
 
     if (loading) {
         return (
-            <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-                <p style={{ color: "#6b7280" }}>Loading...</p>
+            <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.background }}>
+                <p style={{ color: C.textSecondary }}>Loading...</p>
             </main>
         );
     }
 
     if (!stats || stats.totalEntries === 0) {
         return (
-            <main style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-                <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", color: "#6b7280", fontSize: "0.875rem", textDecoration: "none", marginBottom: "1rem" }}>
-                    ← Back
-                </Link>
-                <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>📊 Your Stats</h1>
-                <p style={{ color: "#9ca3af", marginTop: "2rem", textAlign: "center" }}>No data yet. Start checking in!</p>
+            <main style={{ background: C.background, minHeight: "100vh" }}>
+                <div style={{ maxWidth: 600, margin: "0 auto" }}>
+                    <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
+                        <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
+                            ← Back
+                        </Link>
+                        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>📊 Your Stats</h1>
+                    </div>
+                    <p style={{ color: C.textTertiary, marginTop: S.xxl, textAlign: "center", fontSize: 14 }}>No data yet. Start checking in!</p>
+                </div>
             </main>
         );
     }
 
     return (
-        <main style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-            <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", color: "#6b7280", fontSize: "0.875rem", textDecoration: "none", marginBottom: "1rem" }}>
-                ← Back
-            </Link>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>📊 Your Stats</h1>
-            <p style={{ color: "#6b7280", marginTop: "0.5rem" }}>Last 30 days</p>
+        <main style={{ background: C.background, minHeight: "100vh" }}>
+            <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem", marginTop: "1.5rem" }}>
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
-                    <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#059669" }}>{stats.averageScore}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>Avg Mood</p>
+                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
+                    <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
+                        ← Back
+                    </Link>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>📊 Your Stats</h1>
+                    <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Last 30 days</p>
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
-                    <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#059669" }}>{stats.totalEntries}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>Check-ins</p>
-                </div>
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
-                    <p style={{ fontSize: "1.5rem", fontWeight: 700, color: "#059669" }}>{stats.streak}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>Day Streak</p>
-                </div>
-            </div>
 
-            <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", marginTop: "0.75rem", textAlign: "center" }}>
-                <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>Dominant Mood</p>
-                <p style={{ fontSize: "1.5rem", fontWeight: 700, marginTop: "0.25rem", textTransform: "capitalize" }}>
-                    {getEmoji(stats.dominantMood)} {stats.dominantMood}
-                </p>
-            </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid " + C.border }}>
+                    <TopStat label="Avg Mood" value={stats.averageScore} />
+                    <TopStat label="Check-ins" value={stats.totalEntries} />
+                    <TopStat label="Day Streak" value={stats.streak} last />
+                </div>
 
-            <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", marginTop: "0.75rem" }}>
-                <h2 style={{ fontWeight: 600, fontSize: "0.875rem", marginBottom: "0.75rem" }}>Mood Breakdown</h2>
-                {Object.entries(stats.labelCounts).map(function (item: any) {
-                    var pct = stats.totalEntries > 0 ? Math.round((item[1] / stats.totalEntries) * 100) : 0;
-                    var colors: any = { thriving: "#059669", managing: "#f59e0b", struggling: "#f97316", crisis: "#ef4444" };
-                    return (
-                        <div key={item[0]} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
-                            <span style={{ fontSize: "0.75rem", width: 70, textTransform: "capitalize" }}>{item[0]}</span>
-                            <div style={{ flex: 1, height: 8, background: "#f3f4f6", borderRadius: 999 }}>
-                                <div style={{ width: pct + "%", height: "100%", background: colors[item[0]] || "#059669", borderRadius: 999 }} />
+                <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border, textAlign: "center" }}>
+                    <p style={{ fontSize: 12, color: C.textSecondary, margin: 0 }}>Dominant Mood</p>
+                    <p style={{ fontSize: 22, fontWeight: 700, marginTop: S.xs, textTransform: "capitalize", color: C.textPrimary, margin: S.xs + "px 0 0 0" }}>
+                        {getEmoji(stats.dominantMood)} {stats.dominantMood}
+                    </p>
+                </div>
+
+                <div style={{ padding: S.lg, paddingBottom: S.xxl }}>
+                    <h2 style={{ fontWeight: 600, fontSize: 14, color: C.textPrimary, marginBottom: S.lg }}>Mood Breakdown</h2>
+                    {Object.entries(stats.labelCounts).map(function (item: any) {
+                        var pct = stats.totalEntries > 0 ? Math.round((item[1] / stats.totalEntries) * 100) : 0;
+                        var barColors: any = { thriving: "#059669", managing: "#f59e0b", struggling: "#f97316", crisis: "#ef4444" };
+                        return (
+                            <div key={item[0]} style={{ display: "flex", alignItems: "center", gap: S.sm, marginBottom: S.md }}>
+                                <span style={{ fontSize: 12, width: 70, textTransform: "capitalize", color: C.textPrimary }}>{item[0]}</span>
+                                <div style={{ flex: 1, height: 8, background: C.borderLight, borderRadius: R.full }}>
+                                    <div style={{ width: pct + "%", height: "100%", background: barColors[item[0]] || C.primary, borderRadius: R.full }} />
+                                </div>
+                                <span style={{ fontSize: 12, width: 30, textAlign: "right", color: C.textPrimary }}>{item[1]}</span>
                             </div>
-                            <span style={{ fontSize: "0.75rem", width: 30, textAlign: "right" }}>{item[1]}</span>
-                        </div>
-                    );
-                })}
+                        );
+                    })}
+                </div>
+
             </div>
         </main>
+    );
+}
+
+function TopStat({ label, value, last }: any) {
+    return (
+        <div style={{ padding: S.lg, textAlign: "center", borderRight: last ? "none" : "1px solid " + C.border }}>
+            <p style={{ fontSize: 22, fontWeight: 700, color: C.primary, margin: 0 }}>{value}</p>
+            <p style={{ fontSize: 12, color: C.textSecondary, margin: S.xs + "px 0 0 0" }}>{label}</p>
+        </div>
     );
 }

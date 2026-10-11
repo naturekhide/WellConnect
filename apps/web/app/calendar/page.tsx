@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { C, S, R } from "@/lib/theme";
+
 
 export default function CalendarPage() {
     var router = useRouter();
@@ -29,7 +31,7 @@ export default function CalendarPage() {
             struggling: "#f97316",
             crisis: "#ef4444",
         };
-        return map[label] || "#e5e7eb";
+        return map[label] || C.border;
     };
 
     var getLastNDays = function (n: number) {
@@ -63,76 +65,86 @@ export default function CalendarPage() {
 
     if (loading) {
         return (
-            <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-                <p style={{ color: "#6b7280" }}>Loading...</p>
+            <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.background }}>
+                <p style={{ color: C.textSecondary }}>Loading...</p>
             </main>
         );
     }
 
     return (
-        <main style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-            <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", color: "#6b7280", fontSize: "0.875rem", textDecoration: "none", marginBottom: "1rem" }}>
-                ← Back
-            </Link>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>📅 Mood Calendar</h1>
-            <p style={{ color: "#6b7280", marginTop: "0.5rem" }}>Your last 28 days</p>
+        <main style={{ background: C.background, minHeight: "100vh" }}>
+            <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-            <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "1rem", padding: "1.5rem", marginTop: "1.5rem" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "0.25rem" }}>
-                    {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(function (day: string) {
-                        return (
-                            <div key={day} style={{ textAlign: "center", fontSize: "0.625rem", color: "#9ca3af", fontWeight: 600, padding: "0.25rem 0" }}>
-                                {day}
-                            </div>
-                        );
-                    })}
-
-                    {getLastNDays(28).map(function (date: Date, i: number) {
-                        var entry = getEntryForDate(date);
-                        var isToday = new Date().toDateString() === date.toDateString();
-
-                        return (
-                            <div
-                                key={i}
-                                title={entry ? entry.label + " (" + entry.score + "/10)" : "No check-in"}
-                                style={{
-                                    aspectRatio: "1",
-                                    borderRadius: "0.375rem",
-                                    background: entry ? getColor(entry.label) : "#f3f4f6",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: "0.625rem",
-                                    color: entry ? "#fff" : "#9ca3af",
-                                    fontWeight: 600,
-                                    cursor: entry ? "pointer" : "default",
-                                    border: isToday ? "2px solid #059669" : "none",
-                                }}
-                            >
-                                {date.getDate()}
-                            </div>
-                        );
-                    })}
+                {/* Header */}
+                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
+                    <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
+                        ← Back
+                    </Link>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>📅 Mood Calendar</h1>
+                    <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Your last 28 days</p>
                 </div>
 
-                <div style={{ display: "flex", gap: "1rem", justifyContent: "center", marginTop: "1rem", fontSize: "0.625rem", color: "#6b7280" }}>
-                    <span>🟢 Thriving</span>
-                    <span>🟡 Managing</span>
-                    <span>🟠 Struggling</span>
-                    <span>🔴 Crisis</span>
-                </div>
-            </div>
+                {/* Calendar grid */}
+                <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: S.xs }}>
+                        {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(function (day: string) {
+                            return (
+                                <div key={day} style={{ textAlign: "center", fontSize: 10, color: C.textTertiary, fontWeight: 600, padding: S.xs + "px 0" }}>
+                                    {day}
+                                </div>
+                            );
+                        })}
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "1rem" }}>
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
-                    <p style={{ fontSize: "1.25rem", fontWeight: 700, color: "#059669" }}>{entries.length}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>Total Check-ins</p>
+                        {getLastNDays(28).map(function (date: Date, i: number) {
+                            var entry = getEntryForDate(date);
+                            var isToday = new Date().toDateString() === date.toDateString();
+
+                            return (
+                                <div
+                                    key={i}
+                                    title={entry ? entry.label + " (" + entry.score + "/10)" : "No check-in"}
+                                    style={{
+                                        aspectRatio: "1",
+                                        borderRadius: 6,
+                                        background: entry ? getColor(entry.label) : C.borderLight,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: 10,
+                                        color: entry ? C.textInverse : C.textTertiary,
+                                        fontWeight: 600,
+                                        cursor: entry ? "pointer" : "default",
+                                        border: isToday ? "2px solid " + C.primary : "none",
+                                        boxSizing: "border-box",
+                                    }}
+                                >
+                                    {date.getDate()}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div style={{ display: "flex", gap: S.lg, justifyContent: "center", marginTop: S.lg, fontSize: 10, color: C.textSecondary }}>
+                        <span>🟢 Thriving</span>
+                        <span>🟡 Managing</span>
+                        <span>🟠 Struggling</span>
+                        <span>🔴 Crisis</span>
+                    </div>
                 </div>
-                <div style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", textAlign: "center" }}>
-                    <p style={{ fontSize: "1.25rem", fontWeight: 700, color: "#059669" }}>{28 - entries.length}</p>
-                    <p style={{ fontSize: "0.75rem", color: "#6b7280" }}>Days Missed</p>
+
+                {/* Summary */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid " + C.border }}>
+                    <div style={{ padding: S.lg, textAlign: "center", borderRight: "1px solid " + C.border }}>
+                        <p style={{ fontSize: 22, fontWeight: 700, color: C.primary, margin: 0 }}>{entries.length}</p>
+                        <p style={{ fontSize: 12, color: C.textSecondary, margin: S.xs + "px 0 0 0" }}>Total Check-ins</p>
+                    </div>
+                    <div style={{ padding: S.lg, textAlign: "center" }}>
+                        <p style={{ fontSize: 22, fontWeight: 700, color: C.primary, margin: 0 }}>{28 - entries.length}</p>
+                        <p style={{ fontSize: 12, color: C.textSecondary, margin: S.xs + "px 0 0 0" }}>Days Missed</p>
+                    </div>
                 </div>
+
             </div>
         </main>
     );
-} 
+}

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { C, S, R } from "@/lib/theme";
+
 
 export default function HistoryPage() {
     var router = useRouter();
@@ -37,42 +39,50 @@ export default function HistoryPage() {
 
     if (loading) {
         return (
-            <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
-                <p style={{ color: "#6b7280" }}>Loading...</p>
+            <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.background }}>
+                <p style={{ color: C.textSecondary }}>Loading...</p>
             </main>
         );
     }
 
     return (
-        <main style={{ padding: "2rem", maxWidth: "600px", margin: "0 auto" }}>
-            <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", color: "#6b7280", fontSize: "0.875rem", textDecoration: "none", marginBottom: "1rem" }}>
-                ← Back
-            </Link>
-            <h1 style={{ fontSize: "1.5rem", fontWeight: 700 }}>📊 Your Mood Timeline</h1>
-            <p style={{ color: "#6b7280", marginTop: "0.5rem" }}>
-                Your journey over the last 30 days
-            </p>
+        <main style={{ background: C.background, minHeight: "100vh" }}>
+            <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-            {entries.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "3rem", color: "#9ca3af" }}>
-                    No entries yet. Start checking in!
+                {/* Header */}
+                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
+                    <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
+                        ← Back
+                    </Link>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>📊 Your Mood Timeline</h1>
+                    <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>
+                        Your journey over the last 30 days
+                    </p>
                 </div>
-            ) : (
-                <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    {entries.map(function (entry: any) {
-                        return (
-                            <div key={entry.id} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                                <span style={{ fontSize: "1.5rem" }}>{getEmoji(entry.label)}</span>
-                                <div style={{ flex: 1 }}>
-                                    <p style={{ fontWeight: 600, fontSize: "0.875rem", textTransform: "capitalize" }}>{entry.label}</p>
-                                    {entry.note && <p style={{ color: "#6b7280", fontSize: "0.75rem", marginTop: "0.25rem" }}>{entry.note}</p>}
+
+                {/* Entries */}
+                {entries.length === 0 ? (
+                    <div style={{ textAlign: "center", padding: S.xxl, color: C.textTertiary, fontSize: 14 }}>
+                        No entries yet. Start checking in!
+                    </div>
+                ) : (
+                    <div>
+                        {entries.map(function (entry: any) {
+                            return (
+                                <div key={entry.id} style={{ padding: S.lg, borderBottom: "1px solid " + C.border, display: "flex", alignItems: "center", gap: S.md }}>
+                                    <span style={{ fontSize: 24 }}>{getEmoji(entry.label)}</span>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <p style={{ fontWeight: 600, fontSize: 14, textTransform: "capitalize", color: C.textPrimary, margin: 0 }}>{entry.label}</p>
+                                        {entry.note && <p style={{ color: C.textSecondary, fontSize: 12, marginTop: 2, margin: "2px 0 0 0" }}>{entry.note}</p>}
+                                    </div>
+                                    <p style={{ color: C.textTertiary, fontSize: 12, margin: 0, flexShrink: 0 }}>{formatDate(entry.createdAt)}</p>
                                 </div>
-                                <p style={{ color: "#9ca3af", fontSize: "0.75rem" }}>{formatDate(entry.createdAt)}</p>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                            );
+                        })}
+                    </div>
+                )}
+
+            </div>
         </main>
     );
 }

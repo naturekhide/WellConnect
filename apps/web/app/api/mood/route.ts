@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/get-user";
 import { checkAchievements } from "@/lib/achievements";
 
 export const dynamic = "force-dynamic";
-
-var prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
     var userId = await getCurrentUserId(request);

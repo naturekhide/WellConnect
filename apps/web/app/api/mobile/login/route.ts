@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { signMobileToken } from "@/lib/mobile-auth";
-
-var prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
     try {
