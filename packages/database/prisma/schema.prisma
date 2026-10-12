@@ -175,7 +175,11 @@ model FeedReply {
   anonymous Boolean  @default(false)
   postId    String
   post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    FeedReply?  @relation("ReplyThread", fields: [parentId], references: [id], onDelete: Cascade)
+  children  FeedReply[] @relation("ReplyThread")
   createdAt DateTime @default(now())
 
   @@index([postId])
+  @@index([parentId])
 }

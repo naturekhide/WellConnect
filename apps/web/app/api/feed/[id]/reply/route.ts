@@ -14,7 +14,7 @@ export async function POST(
     }
 
     var body = await request.json();
-    var { content, anonymous } = body;
+    var { content, anonymous, parentId } = body;
 
     if (!content || content.trim().length === 0) {
         return NextResponse.json({ error: "Content required" }, { status: 400 });
@@ -33,12 +33,25 @@ export async function POST(
         return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
+    // Validate parentId if provided — must be a reply on the same post
+    if (parentId) {
+        var parent = await prisma.feedReply.findUnique({
+            where: { id: parentId },
+            select: { id: true, postId: true },
+        });
+
+        if (!parent || parent.postId !== params.id) {
+            return NextResponse.json({ error: "Invalid parent reply" }, { status: 400 });
+        }
+    }
+
     var reply = await prisma.feedReply.create({
         data: {
             postId: params.id,
             authorId: userId,
             content: content.trim(),
             anonymous: anonymous || false,
+            parentId: parentId || null,
         },
         include: {
             author: { select: { id: true, name: true, username: true } },
@@ -49,7 +62,9 @@ export async function POST(
         id: reply.id,
         content: reply.content,
         anonymous: reply.anonymous,
+        parentId: reply.parentId,
         createdAt: reply.createdAt,
         author: reply.anonymous ? null : reply.author,
+        children: [],
     }, { status: 201 });
 }

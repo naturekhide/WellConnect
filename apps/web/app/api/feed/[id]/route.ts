@@ -39,14 +39,28 @@ export async function GET(
         if (r.userId === userId) mine = r.type;
     });
 
-    var replies = post.replies.map(function (reply) {
-        return {
-            id: reply.id,
-            content: reply.content,
-            anonymous: reply.anonymous,
-            createdAt: reply.createdAt,
-            author: reply.anonymous ? null : reply.author,
+    // Build nested tree from flat list
+    var map: any = {};
+    var roots: any[] = [];
+
+    post.replies.forEach(function (r) {
+        map[r.id] = {
+            id: r.id,
+            content: r.content,
+            anonymous: r.anonymous,
+            parentId: r.parentId,
+            createdAt: r.createdAt,
+            author: r.anonymous ? null : r.author,
+            children: [],
         };
+    });
+
+    post.replies.forEach(function (r) {
+        if (r.parentId && map[r.parentId]) {
+            map[r.parentId].children.push(map[r.id]);
+        } else {
+            roots.push(map[r.id]);
+        }
     });
 
     return NextResponse.json({
@@ -59,7 +73,7 @@ export async function GET(
         author: post.anonymous ? null : post.author,
         reactions: rc,
         myReaction: mine,
-        replyCount: replies.length,
-        replies: replies,
+        replyCount: post.replies.length,
+        replies: roots,
     });
 }
