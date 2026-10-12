@@ -181,10 +181,10 @@ export async function reactToPost(id: string, type: string) {
     });
 }
 
-export async function replyToPost(id: string, content: string, anonymous: boolean) {
+export async function replyToPost(id: string, content: string, anonymous: boolean, parentId?: string | null) {
     return apiFetch("/api/feed/" + id + "/reply", {
         method: "POST",
-        body: JSON.stringify({ content, anonymous }),
+        body: JSON.stringify({ content, anonymous, parentId: parentId || null }),
     });
 }
 
