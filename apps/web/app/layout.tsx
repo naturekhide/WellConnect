@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
     title: "WellConnect — Your Digital Wellbeing",
@@ -9,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
         <html lang="en">
-            <body>{children}</body>
+            <body style={{ margin: 0 }}>
+                <div style={{ paddingBottom: 72 }}>{children}</div>
+                <BottomNav />
+            </body>
         </html>
     );
 }

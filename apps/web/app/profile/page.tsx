@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
-
+import { useColors, S, R } from "@/lib/theme";
 
 export default function ProfilePage() {
+    var C = useColors();
     var router = useRouter();
     var [profile, setProfile] = useState<any>(null);
     var [name, setName] = useState("");
@@ -14,6 +14,8 @@ export default function ProfilePage() {
     var [loading, setLoading] = useState(true);
     var [saving, setSaving] = useState(false);
     var [message, setMessage] = useState("");
+    var [showEdit, setShowEdit] = useState(false);
+    var [streak, setStreak] = useState(0);
 
     useEffect(function () {
         fetchProfile();
@@ -29,6 +31,12 @@ export default function ProfilePage() {
                 setUsername(data.username || "");
             } else if (r.status === 401) {
                 router.push("/login");
+            }
+
+            var statsRes = await fetch("/api/mood/stats");
+            if (statsRes.ok) {
+                var stats = await statsRes.json();
+                if (stats) setStreak(stats.streak || 0);
             }
         } catch (e) { }
         setLoading(false);
@@ -49,7 +57,7 @@ export default function ProfilePage() {
                 var updated = await r.json();
                 setProfile(updated);
                 setMessage("Profile updated ✅");
-                setTimeout(function () { setMessage(""); }, 3000);
+                setTimeout(function () { setMessage(""); setShowEdit(false); }, 2000);
             } else {
                 var err = await r.json();
                 setMessage(err.error || "Failed to update");
@@ -59,6 +67,13 @@ export default function ProfilePage() {
         }
 
         setSaving(false);
+    };
+
+    var handleSignOut = async function () {
+        var { signOut } = await import("next-auth/react");
+        await signOut({ redirect: false });
+        router.push("/login");
+        router.refresh();
     };
 
     var formatDate = function (d: string) {
@@ -77,131 +92,185 @@ export default function ProfilePage() {
 
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
-            <div style={{ maxWidth: 600, margin: "0 auto" }}>
+            <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
 
-                {/* Header */}
-                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
-                    <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
-                        ← Back
-                    </Link>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>👤 Profile</h1>
-                    <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Manage your account</p>
-                </div>
-
-                {/* Identity */}
-                <div style={{ padding: S.xl, textAlign: "center", borderBottom: "1px solid " + C.border }}>
+                {/* Avatar */}
+                <div style={{ padding: S.xl, paddingTop: 60, textAlign: "center" }}>
                     <div style={{
-                        width: 80,
-                        height: 80,
+                        width: 96,
+                        height: 96,
                         borderRadius: R.full,
                         background: "linear-gradient(135deg, #10b981, #14b8a6)",
-                        color: C.textInverse,
+                        color: "#fff",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 32,
+                        fontSize: 38,
                         fontWeight: 700,
                         margin: "0 auto " + S.lg + "px",
                     }}>
                         {profile?.name?.charAt(0) || "U"}
                     </div>
-                    <p style={{ fontWeight: 600, fontSize: 16, color: C.textPrimary, margin: 0 }}>{profile?.name}</p>
-                    <p style={{ color: C.textSecondary, fontSize: 14, marginTop: 2, margin: "2px 0 0 0" }}>@{profile?.username || "user"}</p>
+                    <p style={{ fontWeight: 700, fontSize: 20, color: C.textPrimary, margin: 0 }}>{profile?.name}</p>
+                    <p style={{ color: C.textSecondary, fontSize: 14, marginTop: 4, margin: "4px 0 0 0" }}>
+                        @{profile?.username || "user"}
+                    </p>
                     <p style={{ color: C.textTertiary, fontSize: 12, marginTop: S.sm, margin: S.sm + "px 0 0 0" }}>
                         Joined {profile?.createdAt ? formatDate(profile.createdAt) : ""}
                     </p>
                 </div>
 
                 {/* Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid " + C.border }}>
-                    <Stat label="Check-ins" value={profile?.stats?.checkIns || 0} C={C} S={S} />
-                    <Stat label="Journal" value={profile?.stats?.journalEntries || 0} C={C} S={S} />
-                    <Stat label="Goals" value={profile?.stats?.goals || 0} C={C} S={S} last />
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: S.sm, paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.lg }}>
+                    <StatTile value={profile?.stats?.checkIns || 0} label="Check-ins" />
+                    <StatTile value={profile?.stats?.journalEntries || 0} label="Journal" />
+                    <StatTile value={profile?.stats?.goals || 0} label="Goals" />
                 </div>
 
-                {/* Quick links */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid " + C.border }}>
-                    <QuickLink href="/achievements" emoji="🏆" title="Achievements" sub="See what you've earned" C={C} S={S} />
-                    <QuickLink href="/stats" emoji="📈" title="Stats" sub="Your progress" C={C} S={S} last />
+                {/* Streak card */}
+                <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.lg, padding: S.lg, borderRadius: R.lg, background: C.surface, display: "flex", alignItems: "center", gap: S.md }}>
+                    <span style={{ fontSize: 32 }}>🔥</span>
+                    <div>
+                        <p style={{ fontSize: 16, fontWeight: 700, color: C.textPrimary, margin: 0 }}>
+                            {streak} day streak
+                        </p>
+                        <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 2, margin: "2px 0 0 0" }}>
+                            Keep showing up for yourself
+                        </p>
+                    </div>
                 </div>
 
-                {/* Edit form */}
-                <div style={{ padding: S.lg, paddingBottom: S.xxl }}>
-                    <h2 style={{ fontWeight: 600, fontSize: 14, color: C.textPrimary, marginBottom: S.lg }}>Edit Profile</h2>
+                {/* Your space */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                    <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Your space</h2>
+                </div>
+                <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.lg, borderRadius: R.lg, background: C.surface, overflow: "hidden" }}>
+                    <RowLink href="/journal" emoji="📝" title="Journal" sub={(profile?.stats?.journalEntries || 0) + " entries"} />
+                    <RowLink href="/goals" emoji="🎯" title="Goals" sub={(profile?.stats?.goals || 0) + " active"} />
+                    <RowLink href="/achievements" emoji="🏆" title="Achievements" sub="See what you've earned" last />
+                </div>
 
-                    {message && (
-                        <div style={{
-                            background: success ? C.primaryLight : C.dangerLight,
-                            color: success ? C.primary : C.danger,
-                            padding: S.md,
-                            borderRadius: R.md,
-                            fontSize: 14,
-                            marginBottom: S.md,
-                            textAlign: "center",
-                        }}>
-                            {message}
-                        </div>
-                    )}
-
-                    <label style={{ fontSize: 12, color: C.textSecondary, display: "block", marginBottom: S.xs }}>Name</label>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={function (e: any) { setName(e.target.value); }}
-                        style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, marginBottom: S.md, background: C.surface, color: C.textPrimary, boxSizing: "border-box" }}
-                    />
-
-                    <label style={{ fontSize: 12, color: C.textSecondary, display: "block", marginBottom: S.xs }}>Username</label>
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={function (e: any) { setUsername(e.target.value); }}
-                        style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, marginBottom: S.lg, background: C.surface, color: C.textPrimary, boxSizing: "border-box" }}
-                    />
-
+                {/* Account */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                    <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Account</h2>
+                </div>
+                <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.lg, borderRadius: R.lg, background: C.surface, overflow: "hidden" }}>
                     <button
-                        onClick={handleSave}
-                        disabled={saving}
-                        style={{
-                            width: "100%",
-                            padding: S.md,
-                            borderRadius: R.md,
-                            background: C.primary,
-                            color: C.textInverse,
-                            border: "none",
-                            fontSize: 14,
-                            fontWeight: 600,
-                            cursor: saving ? "not-allowed" : "pointer",
-                            opacity: saving ? 0.5 : 1,
-                        }}
+                        onClick={function () { setShowEdit(!showEdit); }}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: S.md, padding: S.lg, background: "none", border: "none", borderBottom: "1px solid " + C.border, cursor: "pointer", textAlign: "left" }}
                     >
-                        {saving ? "Saving..." : "Save Changes"}
+                        <span style={{ fontSize: 20 }}>✏️</span>
+                        <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>Edit Profile</span>
+                        <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
+                    </button>
+                    <Link
+                        href="/privacy"
+                        style={{ display: "flex", alignItems: "center", gap: S.md, padding: S.lg, borderBottom: "1px solid " + C.border, textDecoration: "none" }}
+                    >
+                        <span style={{ fontSize: 20 }}>🔒</span>
+                        <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>Privacy</span>
+                        <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
+                    </Link>
+                    <button
+                        onClick={handleSignOut}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: S.md, padding: S.lg, background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                    >
+                        <span style={{ fontSize: 20 }}>🚪</span>
+                        <span style={{ flex: 1, fontSize: 15, color: C.danger, fontWeight: 500 }}>Sign Out</span>
                     </button>
                 </div>
+
+                {/* Edit form (collapsed by default) */}
+                {showEdit && (
+                    <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.xxl, padding: S.lg, borderRadius: R.lg, background: C.surface }}>
+                        <h2 style={{ fontWeight: 600, fontSize: 14, color: C.textPrimary, marginBottom: S.lg, marginTop: 0 }}>Edit Profile</h2>
+
+                        {message && (
+                            <div style={{
+                                background: success ? C.primaryLight : C.dangerLight,
+                                color: success ? C.primary : C.danger,
+                                padding: S.md,
+                                borderRadius: R.md,
+                                fontSize: 14,
+                                marginBottom: S.md,
+                                textAlign: "center",
+                            }}>
+                                {message}
+                            </div>
+                        )}
+
+                        <label style={{ fontSize: 12, color: C.textSecondary, display: "block", marginBottom: S.xs }}>Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={function (e: any) { setName(e.target.value); }}
+                            style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, marginBottom: S.md, background: C.background, color: C.textPrimary, boxSizing: "border-box", outline: "none" }}
+                        />
+
+                        <label style={{ fontSize: 12, color: C.textSecondary, display: "block", marginBottom: S.xs }}>Username</label>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={function (e: any) { setUsername(e.target.value); }}
+                            style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, marginBottom: S.lg, background: C.background, color: C.textPrimary, boxSizing: "border-box", outline: "none" }}
+                        />
+
+                        <button
+                            onClick={handleSave}
+                            disabled={saving}
+                            style={{
+                                width: "100%",
+                                padding: S.md,
+                                borderRadius: R.md,
+                                background: C.primary,
+                                color: "#fff",
+                                border: "none",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                cursor: saving ? "not-allowed" : "pointer",
+                                opacity: saving ? 0.5 : 1,
+                            }}
+                        >
+                            {saving ? "Saving..." : "Save Changes"}
+                        </button>
+                    </div>
+                )}
 
             </div>
         </main>
     );
 }
 
-function Stat({ label, value, C, S, last }: any) {
+function StatTile({ value, label }: any) {
+    var C = useColors();
     return (
-        <div style={{ padding: S.lg, textAlign: "center", borderRight: last ? "none" : "1px solid " + C.border }}>
-            <p style={{ fontSize: 22, fontWeight: 700, color: C.primary, margin: 0 }}>{value}</p>
-            <p style={{ fontSize: 12, color: C.textSecondary, margin: S.xs + "px 0 0 0" }}>{label}</p>
+        <div style={{ padding: S.md, borderRadius: R.lg, background: C.surface, textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.primary }}>{value}</div>
+            <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 2 }}>{label}</div>
         </div>
     );
 }
 
-function QuickLink({ href, emoji, title, sub, C, S, last }: any) {
+function RowLink({ href, emoji, title, sub, last }: any) {
+    var C = useColors();
     return (
         <Link
             href={href}
-            style={{ textDecoration: "none", padding: S.lg, background: C.surface, borderRight: last ? "none" : "1px solid " + C.border, display: "block" }}
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: S.md,
+                padding: S.lg,
+                borderBottom: last ? "none" : "1px solid " + C.border,
+                textDecoration: "none",
+            }}
         >
-            <span style={{ fontSize: 24 }}>{emoji}</span>
-            <p style={{ fontWeight: 600, fontSize: 14, color: C.textPrimary, marginTop: S.sm, marginBottom: 2, margin: S.sm + "px 0 2px 0" }}>{title}</p>
-            <p style={{ fontSize: 12, color: C.textSecondary, margin: 0 }}>{sub}</p>
+            <span style={{ fontSize: 20 }}>{emoji}</span>
+            <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>{title}</div>
+                <div style={{ fontSize: 12, color: C.textSecondary, marginTop: 2 }}>{sub}</div>
+            </div>
+            <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
         </Link>
     );
 }

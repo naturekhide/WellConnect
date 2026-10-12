@@ -13,19 +13,31 @@ export default function DashboardPage() {
     var [selectedMood, setSelectedMood] = useState<any>(null);
     var [note, setNote] = useState("");
     var [submitted, setSubmitted] = useState(false);
-    var [insight, setInsight] = useState<any>(null);
     var [loading, setLoading] = useState(true);
 
+    var [streak, setStreak] = useState(0);
+    var [journalCount, setJournalCount] = useState(0);
+    var [goalCount, setGoalCount] = useState(0);
+    var [avgMood, setAvgMood] = useState<number | null>(null);
+    var [dominantMood, setDominantMood] = useState<string>("");
+
     var moodOptions = [
-        { emoji: "🟢", label: "thriving", text: "Thriving", score: 9 },
-        { emoji: "🟡", label: "managing", text: "Managing", score: 6 },
-        { emoji: "🟠", label: "struggling", text: "Struggling", score: 3 },
-        { emoji: "🔴", label: "crisis", text: "Crisis", score: 1 },
+        { emoji: "😄", label: "thriving", text: "Thriving", score: 9 },
+        { emoji: "🙂", label: "managing", text: "Managing", score: 6 },
+        { emoji: "😔", label: "struggling", text: "Struggling", score: 3 },
+        { emoji: "😢", label: "crisis", text: "Crisis", score: 1 },
     ];
 
     useEffect(function () {
         fetchDashboard();
     }, []);
+
+    var getGreeting = function () {
+        var h = new Date().getHours();
+        if (h < 12) return "Good morning";
+        if (h < 18) return "Good afternoon";
+        return "Good evening";
+    };
 
     var fetchDashboard = async function () {
         try {
@@ -41,10 +53,27 @@ export default function DashboardPage() {
                 if (data) setCheckedToday(true);
             }
 
-            var insightRes = await fetch("/api/insights");
-            if (insightRes.ok) {
-                var insights = await insightRes.json();
-                if (insights.length > 0) setInsight(insights[0]);
+            var statsRes = await fetch("/api/mood/stats");
+            if (statsRes.ok) {
+                var stats = await statsRes.json();
+                if (stats && stats.totalEntries > 0) {
+                    setAvgMood(stats.averageScore);
+                    setDominantMood(stats.dominantMood || "");
+                    setStreak(stats.streak || 0);
+                }
+            }
+
+            var journalRes = await fetch("/api/journal");
+            if (journalRes.ok) {
+                var entries = await journalRes.json();
+                setJournalCount(entries.length || 0);
+            }
+
+            var goalsRes = await fetch("/api/goals");
+            if (goalsRes.ok) {
+                var goals = await goalsRes.json();
+                var active = goals.filter(function (g: any) { return !g.completed; });
+                setGoalCount(active.length);
             }
         } catch (e) { }
         setLoading(false);
@@ -79,11 +108,9 @@ export default function DashboardPage() {
         } catch (e) { }
     };
 
-    var handleSignOut = async function () {
-        var { signOut } = await import("next-auth/react");
-        await signOut({ redirect: false });
-        router.push("/login");
-        router.refresh();
+    var getMoodEmoji = function (label: string) {
+        var map: any = { thriving: "😄", managing: "🙂", struggling: "😔", crisis: "😢" };
+        return map[label] || "🙂";
     };
 
     if (loading) {
@@ -96,140 +123,151 @@ export default function DashboardPage() {
 
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
-            <div style={{ maxWidth: 600, margin: "0 auto" }}>
+            <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: S.sm, padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
-                    <div>
-                        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>
-                            Welcome, {userName?.split(" ")[0] || "Friend"} 👋
-                        </h1>
-                        <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: 0 }}>
-                            Your digital wellbeing at a glance
-                        </p>
-                    </div>
-                    <button
-                        onClick={handleSignOut}
-                        style={{
-                            background: "none",
-                            border: "1px solid " + C.border,
-                            padding: S.sm + "px " + S.md + "px",
-                            borderRadius: R.md,
-                            color: C.textSecondary,
-                            fontSize: 12,
-                            cursor: "pointer",
-                            flexShrink: 0,
-                        }}
-                    >
-                        Sign Out
-                    </button>
+                {/* Header */}
+                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md }}>
+                    <h1 style={{ fontSize: 26, fontWeight: 700, color: C.textPrimary, margin: 0 }}>
+                        {getGreeting()}, {userName?.split(" ")[0] || "Friend"}
+                    </h1>
+                    <p style={{ color: C.textSecondary, marginTop: 4, fontSize: 14, margin: "4px 0 0 0" }}>
+                        How are you feeling today?
+                    </p>
                 </div>
 
-                {insight && (
-                    <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border, borderLeft: "4px solid " + C.primary }}>
-                        <h2 style={{ fontWeight: 600, fontSize: 14, color: C.textPrimary, marginBottom: S.sm }}>
-                            💡 {insight.title}
-                        </h2>
-                        <p style={{ color: C.textSecondary, fontSize: 14, lineHeight: 1.6, margin: 0 }}>
-                            {insight.description}
-                        </p>
-                        {insight.actionLink && (
-                            <Link href={insight.actionLink} style={{ color: C.primary, fontSize: 12, fontWeight: 600, textDecoration: "none", display: "inline-block", marginTop: S.sm }}>
-                                Take action →
-                            </Link>
-                        )}
-                    </div>
-                )}
+                {/* Check-in status / mood selector */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.lg }}>
+                    {checkedToday && !submitted ? (
+                        <div style={{ padding: S.lg, borderRadius: R.lg, background: C.surface, textAlign: "center" }}>
+                            <p style={{ fontSize: 14, color: C.textSecondary, margin: 0, lineHeight: 1.5 }}>
+                                You've already checked in today. See you tomorrow 🌙
+                            </p>
+                        </div>
+                    ) : submitted ? (
+                        <div style={{ padding: S.lg, borderRadius: R.lg, background: C.primaryLight, textAlign: "center" }}>
+                            <p style={{ fontSize: 14, color: C.primary, fontWeight: 600, margin: 0 }}>
+                                ✅ Thanks for checking in!
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: S.md }}>
+                                {moodOptions.map(function (mood: any) {
+                                    var isSelected = selectedMood?.label === mood.label;
+                                    return (
+                                        <button
+                                            key={mood.label}
+                                            onClick={function () { setSelectedMood(mood); }}
+                                            style={{
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                alignItems: "center",
+                                                justifyContent: "center",
+                                                gap: 6,
+                                                padding: S.lg + "px " + S.md + "px",
+                                                borderRadius: R.lg,
+                                                border: isSelected ? "2px solid " + C.primary : "1px solid " + C.border,
+                                                background: isSelected ? C.primaryLight : C.surface,
+                                                cursor: "pointer",
+                                                minHeight: 88,
+                                                transition: "all 0.15s ease",
+                                            }}
+                                        >
+                                            <span style={{ fontSize: 32 }}>{mood.emoji}</span>
+                                            <span style={{ fontSize: 14, color: isSelected ? C.primary : C.textPrimary, fontWeight: 600 }}>
+                                                {mood.text}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
 
-                {!checkedToday && !submitted && (
-                    <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border }}>
-                        <h2 style={{ fontWeight: 600, fontSize: 16, color: C.textPrimary, marginBottom: S.lg }}>
-                            🧠 How are you feeling today?
-                        </h2>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: S.lg }}>
-                            {moodOptions.map(function (mood: any) {
-                                var isSelected = selectedMood?.label === mood.label;
-                                return (
-                                    <button
-                                        key={mood.label}
-                                        onClick={function () { setSelectedMood(mood); }}
+                            {selectedMood && (
+                                <>
+                                    <textarea
+                                        value={note}
+                                        onChange={function (e: any) { setNote(e.target.value); }}
+                                        placeholder="Add a note (optional)..."
+                                        rows={2}
                                         style={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 6,
-                                            padding: S.lg + "px " + S.md + "px",
-                                            borderRadius: R.md,
-                                            border: isSelected ? "2px solid " + C.primary : "1px solid " + C.border,
-                                            background: isSelected ? C.primaryLight : C.surface,
+                                            width: "100%",
+                                            padding: S.md,
+                                            borderRadius: R.lg,
+                                            border: "1px solid " + C.border,
+                                            fontSize: 14,
+                                            resize: "none",
+                                            marginBottom: S.md,
+                                            fontFamily: "inherit",
+                                            background: C.surface,
+                                            color: C.textPrimary,
+                                            boxSizing: "border-box",
+                                            outline: "none",
+                                        }}
+                                    />
+
+                                    <button
+                                        onClick={handleSubmit}
+                                        style={{
+                                            width: "100%",
+                                            padding: S.md,
+                                            borderRadius: R.lg,
+                                            background: C.primary,
+                                            color: C.textInverse,
+                                            border: "none",
+                                            fontSize: 15,
+                                            fontWeight: 600,
                                             cursor: "pointer",
-                                            minHeight: 88,
-                                            transition: "all 0.15s ease",
                                         }}
                                     >
-                                        <span style={{ fontSize: 28 }}>{mood.emoji}</span>
-                                        <span style={{ fontSize: 14, color: isSelected ? C.primary : C.textPrimary, fontWeight: 600 }}>
-                                            {mood.text}
-                                        </span>
+                                        Submit
                                     </button>
-                                );
-                            })}
+                                </>
+                            )}
+                        </>
+                    )}
+                </div>
+
+                {/* Your week */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Your week</h2>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: S.sm, paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.lg }}>
+                    <WeekTile emoji="🔥" value={streak} label="day streak" />
+                    <WeekTile emoji="📝" value={journalCount} label="journal" />
+                    <WeekTile emoji="🎯" value={goalCount} label="goals" />
+                </div>
+
+                {/* Your wellbeing */}
+                {avgMood !== null && (
+                    <>
+                        <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                            <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Your wellbeing</h2>
                         </div>
-
-                        <textarea
-                            value={note}
-                            onChange={function (e: any) { setNote(e.target.value); }}
-                            placeholder="Add a note (optional)..."
-                            rows={2}
-                            style={{
-                                width: "100%",
-                                padding: S.md,
-                                borderRadius: R.md,
-                                border: "1px solid " + C.border,
-                                fontSize: 14,
-                                resize: "none",
-                                marginBottom: S.md,
-                                fontFamily: "inherit",
-                                background: C.surface,
-                                color: C.textPrimary,
-                                boxSizing: "border-box",
-                            }}
-                        />
-
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!selectedMood}
-                            style={{
-                                width: "100%",
-                                padding: S.md + "px",
-                                borderRadius: R.md,
-                                background: selectedMood ? C.primary : C.border,
-                                color: selectedMood ? C.textInverse : C.textTertiary,
-                                border: "none",
-                                fontSize: 14,
-                                fontWeight: 600,
-                                cursor: selectedMood ? "pointer" : "not-allowed",
-                            }}
-                        >
-                            Submit
-                        </button>
-                    </div>
+                        <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.lg, padding: S.lg, borderRadius: R.lg, background: C.surface }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.sm }}>
+                                <span style={{ fontSize: 14, color: C.textSecondary }}>Avg mood</span>
+                                <span style={{ fontSize: 16, fontWeight: 700, color: C.textPrimary }}>{avgMood}/10</span>
+                            </div>
+                            <div style={{ height: 6, background: C.borderLight, borderRadius: R.full, overflow: "hidden", marginBottom: S.md }}>
+                                <div style={{ width: (avgMood / 10 * 100) + "%", height: "100%", background: C.primary, borderRadius: R.full }} />
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                <span style={{ fontSize: 14, color: C.textSecondary }}>Dominant mood</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: C.textPrimary, textTransform: "capitalize" }}>
+                                    {getMoodEmoji(dominantMood)} {dominantMood}
+                                </span>
+                            </div>
+                        </div>
+                    </>
                 )}
 
-                {submitted && (
-                    <div style={{ padding: S.xl, borderBottom: "1px solid " + C.border, textAlign: "center", color: C.primary, fontWeight: 600 }}>
-                        ✅ Thanks for checking in!
-                    </div>
-                )}
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: C.border, marginTop: 0 }}>
-                    <NavTile href="/journal" emoji="📝" title="Journal" sub="Your private space" />
-                    <NavTile href="/goals" emoji="🎯" title="Goals" sub="Track what matters" />
-                    <NavTile href="/stats" emoji="📈" title="Stats" sub="Track your progress" />
-                    <NavTile href="/history" emoji="📊" title="Timeline" sub="See your journey" />
-                    <NavTile href="/calendar" emoji="📅" title="Calendar" sub="Visualize your month" />
-                    <NavTile href="/profile" emoji="👤" title="Profile" sub="Manage your account" />
+                {/* Your space */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Your space</h2>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: S.sm, paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.lg }}>
+                    <SpaceTile href="/journal" emoji="📝" title="Journal" />
+                    <SpaceTile href="/goals" emoji="🎯" title="Goals" />
                 </div>
 
             </div>
@@ -237,23 +275,33 @@ export default function DashboardPage() {
     );
 }
 
-function NavTile({ href, emoji, title, sub }: any) {
+function WeekTile({ emoji, value, label }: any) {
+    var C = useColors();
+    return (
+        <div style={{ padding: S.md, borderRadius: R.lg, background: C.surface, textAlign: "center" }}>
+            <div style={{ fontSize: 24, marginBottom: 4 }}>{emoji}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: C.primary }}>{value}</div>
+            <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>{label}</div>
+        </div>
+    );
+}
+
+function SpaceTile({ href, emoji, title }: any) {
     var C = useColors();
     return (
         <Link
             href={href}
             style={{
-                textDecoration: "none",
-                padding: S.lg,
+                padding: S.xl + "px " + S.lg + "px",
+                borderRadius: R.lg,
                 background: C.surface,
-                color: C.textPrimary,
+                textAlign: "center",
+                textDecoration: "none",
                 display: "block",
-                borderBottom: "1px solid " + C.border,
             }}
         >
-            <span style={{ fontSize: 24 }}>{emoji}</span>
-            <h2 style={{ fontWeight: 600, marginTop: S.sm, marginBottom: 2, fontSize: 14, color: C.textPrimary }}>{title}</h2>
-            <p style={{ color: C.textSecondary, fontSize: 12, margin: 0 }}>{sub}</p>
+            <div style={{ fontSize: 32, marginBottom: S.sm }}>{emoji}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary }}>{title}</div>
         </Link>
     );
 }

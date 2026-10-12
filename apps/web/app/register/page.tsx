@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
+import { useColors, S, R } from "@/lib/theme";
 
 export default function RegisterPage() {
+    var C = useColors();
     var router = useRouter();
     var [name, setName] = useState("");
     var [username, setUsername] = useState("");

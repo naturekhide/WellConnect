@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
-
+import { useColors, S, R } from "@/lib/theme";
 
 export default function HistoryPage() {
+    var C = useColors();
     var router = useRouter();
     var [entries, setEntries] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
@@ -49,7 +49,6 @@ export default function HistoryPage() {
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-                {/* Header */}
                 <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
                     <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
                         ← Back
@@ -60,7 +59,6 @@ export default function HistoryPage() {
                     </p>
                 </div>
 
-                {/* Entries */}
                 {entries.length === 0 ? (
                     <div style={{ textAlign: "center", padding: S.xxl, color: C.textTertiary, fontSize: 14 }}>
                         No entries yet. Start checking in!

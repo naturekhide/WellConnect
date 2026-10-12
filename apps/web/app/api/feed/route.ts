@@ -5,8 +5,6 @@ import { classifySentiment } from "@/lib/ai";
 
 export const dynamic = "force-dynamic";
 
-
-
 export async function GET(request: NextRequest) {
     var userId = await getCurrentUserId(request);
     if (!userId) {
@@ -18,17 +16,10 @@ export async function GET(request: NextRequest) {
     var cursor = url.searchParams.get("cursor");
     var tab = url.searchParams.get("tab") || "for-you";
 
-    // ─── Following & Circles: not implemented yet ───
-    // Return empty honestly until follow/circle schema + queries exist.
     if (tab === "following" || tab === "circles") {
-        return NextResponse.json({
-            posts: [],
-            hasMore: false,
-            nextCursor: null,
-        });
+        return NextResponse.json({ posts: [], hasMore: false, nextCursor: null });
     }
 
-    // ─── For You (default): global feed ───
     var posts = await prisma.feedPost.findMany({
         take: limit + 1,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
@@ -82,25 +73,31 @@ export async function POST(request: NextRequest) {
     var body = await request.json();
     var { content, imageUrls, anonymous } = body;
 
-    if (!content || content.trim().length === 0) {
-        return NextResponse.json({ error: "Content required" }, { status: 400 });
+    var hasContent = content && content.trim().length > 0;
+    var hasImages = Array.isArray(imageUrls) && imageUrls.length > 0;
+
+    if (!hasContent && !hasImages) {
+        return NextResponse.json({ error: "Content or image required" }, { status: 400 });
     }
 
-    if (content.length > 500) {
+    var text = (content || "").trim();
+
+    if (text.length > 500) {
         return NextResponse.json({ error: "Content too long (max 500 characters)" }, { status: 400 });
     }
 
-    if (imageUrls && imageUrls.length > 4) {
+    if (hasImages && imageUrls.length > 4) {
         return NextResponse.json({ error: "Maximum 4 images allowed" }, { status: 400 });
     }
 
-    var text = content.trim();
     var sentiment: string | null = null;
 
-    try {
-        var ai = await classifySentiment(text);
-        sentiment = ai.sentiment;
-    } catch (e) { }
+    if (text.length > 0) {
+        try {
+            var ai = await classifySentiment(text);
+            sentiment = ai.sentiment;
+        } catch (e) { }
+    }
 
     var post = await prisma.feedPost.create({
         data: {

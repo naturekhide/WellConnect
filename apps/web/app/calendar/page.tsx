@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
-
+import { useColors, S, R } from "@/lib/theme";
 
 export default function CalendarPage() {
+    var C = useColors();
     var router = useRouter();
     var [entries, setEntries] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
@@ -75,7 +75,6 @@ export default function CalendarPage() {
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-                {/* Header */}
                 <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
                     <Link href="/dashboard" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
                         ← Back
@@ -84,7 +83,6 @@ export default function CalendarPage() {
                     <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Your last 28 days</p>
                 </div>
 
-                {/* Calendar grid */}
                 <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border }}>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: S.xs }}>
                         {["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"].map(function (day: string) {
@@ -132,7 +130,6 @@ export default function CalendarPage() {
                     </div>
                 </div>
 
-                {/* Summary */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderBottom: "1px solid " + C.border }}>
                     <div style={{ padding: S.lg, textAlign: "center", borderRight: "1px solid " + C.border }}>
                         <p style={{ fontSize: 22, fontWeight: 700, color: C.primary, margin: 0 }}>{entries.length}</p>

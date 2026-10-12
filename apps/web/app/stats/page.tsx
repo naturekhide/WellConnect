@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
+import { useColors, S, R } from "@/lib/theme";
 
 export default function StatsPage() {
+    var C = useColors();
     var router = useRouter();
     var [stats, setStats] = useState<any>(null);
     var [loading, setLoading] = useState(true);
@@ -100,6 +101,7 @@ export default function StatsPage() {
 }
 
 function TopStat({ label, value, last }: any) {
+    var C = useColors();
     return (
         <div style={{ padding: S.lg, textAlign: "center", borderRight: last ? "none" : "1px solid " + C.border }}>
             <p style={{ fontSize: 22, fontWeight: 700, color: C.primary, margin: 0 }}>{value}</p>

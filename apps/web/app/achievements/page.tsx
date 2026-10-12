@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
+import { useColors, S, R } from "@/lib/theme";
 
 export default function AchievementsPage() {
+    var C = useColors();
     var router = useRouter();
     var [data, setData] = useState<any>(null);
     var [loading, setLoading] = useState(true);
@@ -39,7 +40,6 @@ export default function AchievementsPage() {
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-                {/* Header */}
                 <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
                     <Link href="/profile" style={{ display: "inline-flex", alignItems: "center", gap: S.xs, color: C.textSecondary, fontSize: 14, textDecoration: "none", marginBottom: S.sm }}>
                         ← Back
@@ -50,14 +50,12 @@ export default function AchievementsPage() {
                     </p>
                 </div>
 
-                {/* Progress bar */}
                 <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border }}>
                     <div style={{ height: 8, background: C.borderLight, borderRadius: R.full, overflow: "hidden" }}>
                         <div style={{ width: progressPct + "%", height: "100%", background: C.primary, borderRadius: R.full }} />
                     </div>
                 </div>
 
-                {/* Unlocked */}
                 {unlocked.length > 0 && (
                     <>
                         <div style={{ padding: S.lg, paddingBottom: S.sm }}>
@@ -79,7 +77,6 @@ export default function AchievementsPage() {
                     </>
                 )}
 
-                {/* Locked */}
                 <div style={{ padding: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Locked</h2>
                 </div>

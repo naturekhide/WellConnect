@@ -4,9 +4,10 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { C, S, R } from "@/lib/theme";
+import { useColors, S, R } from "@/lib/theme";
 
 export default function LoginPage() {
+    var C = useColors();
     var router = useRouter();
     var [identifier, setIdentifier] = useState("");
     var [password, setPassword] = useState("");
@@ -34,12 +35,24 @@ export default function LoginPage() {
         }
     };
 
+    var inputStyle = {
+        padding: S.md + "px",
+        borderRadius: R.md,
+        border: "1px solid " + C.border,
+        fontSize: 14,
+        background: C.surface,
+        color: C.textPrimary,
+        fontFamily: "inherit",
+        boxSizing: "border-box" as const,
+        width: "100%",
+    };
+
     return (
         <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: S.lg, background: C.background }}>
             <div style={{ width: "100%", maxWidth: 380 }}>
                 <div style={{ textAlign: "center", marginBottom: S.xxl }}>
                     <span style={{ fontSize: 48 }}>🌱</span>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, marginTop: S.sm, color: C.textPrimary, margin: S.sm + "px 0 0 0" }}>Welcome back</h1>
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: S.sm + "px 0 0 0" }}>Welcome back</h1>
                     <p style={{ color: C.textSecondary, fontSize: 13, marginTop: 2, margin: "2px 0 0 0" }}>Sign in to WellConnect</p>
                 </div>
 
@@ -56,7 +69,7 @@ export default function LoginPage() {
                         onChange={function (e: any) { setIdentifier(e.target.value); }}
                         placeholder="Email or username"
                         required
-                        style={{ padding: S.md + "px", borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, background: C.surface, color: C.textPrimary, fontFamily: "inherit", boxSizing: "border-box", width: "100%" }}
+                        style={inputStyle}
                     />
 
                     <input
@@ -65,7 +78,7 @@ export default function LoginPage() {
                         onChange={function (e: any) { setPassword(e.target.value); }}
                         placeholder="Password"
                         required
-                        style={{ padding: S.md + "px", borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, background: C.surface, color: C.textPrimary, fontFamily: "inherit", boxSizing: "border-box", width: "100%" }}
+                        style={inputStyle}
                     />
 
                     <button
