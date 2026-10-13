@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
@@ -23,7 +23,7 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-var IMAGE_BASE = "";
+var IMAGE_BASE = "https://well-connect-web.vercel.app";
 
 function timeAgo(d: string) {
     var diff = Date.now() - new Date(d).getTime();
@@ -54,6 +54,30 @@ function insertChild(tree: any[], parentId: string, child: any): any[] {
         }
         return node;
     });
+}
+
+function PostImage({ uri, borderColor }: any) {
+    var [ratio, setRatio] = React.useState(1);
+
+    React.useEffect(function () {
+        Image.getSize(uri, function (w, h) {
+            if (w && h) setRatio(w / h);
+        }, function () { });
+    }, [uri]);
+
+    return (
+        <Image
+            source={{ uri: uri }}
+            style={{
+                width: "100%",
+                aspectRatio: ratio,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: borderColor,
+            }}
+            resizeMode="contain"
+        />
+    );
 }
 
 export default function FeedPostDetail() {
@@ -183,14 +207,7 @@ export default function FeedPostDetail() {
                     {post.imageUrls && post.imageUrls.length > 0 && (
                         <View style={styles.imageWrap}>
                             {post.imageUrls.map(function (url: string, i: number) {
-                                return (
-                                    <Image
-                                        key={i}
-                                        source={{ uri: IMAGE_BASE + url }}
-                                        style={[styles.image, { borderColor: colors.border }]}
-                                        resizeMode="contain"
-                                    />
-                                );
+                                return <PostImage key={i} uri={IMAGE_BASE + url} borderColor={colors.border} />;
                             })}
                         </View>
                     )}
@@ -409,7 +426,6 @@ var styles = StyleSheet.create({
     time: { fontSize: 13, marginTop: 2 },
     postText: { fontSize: 17, lineHeight: 24, marginBottom: spacing.md },
     imageWrap: { gap: spacing.sm, marginBottom: spacing.md },
-    image: { width: "100%", height: 220, borderRadius: radius.lg, borderWidth: 1 },
     actions: { flexDirection: "row", gap: spacing.sm, paddingTop: spacing.md, borderTopWidth: 1 },
     actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.full },
     actionEmoji: { fontSize: 18 },

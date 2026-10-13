@@ -24,6 +24,30 @@ type Props = {
     onPress?: () => void;
 };
 
+function PostImage({ uri, borderColor }: any) {
+    var [ratio, setRatio] = useState(1);
+
+    React.useEffect(function () {
+        Image.getSize(uri, function (w, h) {
+            if (w && h) setRatio(w / h);
+        }, function () { });
+    }, [uri]);
+
+    return (
+        <Image
+            source={{ uri: uri }}
+            style={{
+                width: "100%",
+                aspectRatio: ratio,
+                borderRadius: radius.lg,
+                borderWidth: 1,
+                borderColor: borderColor,
+            }}
+            resizeMode="contain"
+        />
+    );
+}
+
 export default function FeedPostCard({ post, onReactionChange, onPress }: Props) {
     var colors = useColors();
     var [myReaction, setMyReaction] = useState<string | null>(post.myReaction ?? null);
@@ -124,10 +148,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: Props)
                     {post.imageUrls && post.imageUrls.length > 0 && (
                         <View style={styles.imageWrap}>
                             {post.imageUrls.length === 1 && (
-                                <Image
-                                    source={{ uri: IMAGE_BASE + post.imageUrls[0] }}
-                                    style={[styles.imageSingle, { borderColor: colors.border }]}
-                                    resizeMode="cover"
+                                <PostImage
+                                    uri={IMAGE_BASE + post.imageUrls[0]}
+                                    borderColor={colors.border}
                                 />
                             )}
                             {post.imageUrls.length === 2 && (
@@ -268,12 +291,6 @@ var styles = StyleSheet.create({
     time: { fontSize: 13 },
     text: { fontSize: 15, lineHeight: 21, marginBottom: spacing.sm },
     imageWrap: { marginTop: spacing.sm, marginBottom: spacing.sm },
-    imageSingle: {
-        width: "100%",
-        height: 240,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-    },
     imageRow: { flexDirection: "row", gap: 2 },
     imageHalf: {
         flex: 1,
