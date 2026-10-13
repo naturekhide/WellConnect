@@ -134,6 +134,8 @@ model NotificationPreference {
   insights           Boolean  @default(true)
   streakReminders    Boolean  @default(true)
   weeklySummary      Boolean  @default(false)
+  reactions          Boolean  @default(true)
+  replies            Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }

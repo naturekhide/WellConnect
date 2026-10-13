@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/get-user";
+import { notifyReply } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -26,21 +27,22 @@ export async function POST(
 
     var post = await prisma.feedPost.findUnique({
         where: { id: params.id },
-        select: { id: true },
+        select: { id: true, authorId: true },
     });
 
     if (!post) {
         return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    // Validate parentId if provided — must be a reply on the same post
+    var parentReply: any = null;
+
     if (parentId) {
-        var parent = await prisma.feedReply.findUnique({
+        parentReply = await prisma.feedReply.findUnique({
             where: { id: parentId },
-            select: { id: true, postId: true },
+            select: { id: true, postId: true, authorId: true },
         });
 
-        if (!parent || parent.postId !== params.id) {
+        if (!parentReply || parentReply.postId !== params.id) {
             return NextResponse.json({ error: "Invalid parent reply" }, { status: 400 });
         }
     }
@@ -57,6 +59,18 @@ export async function POST(
             author: { select: { id: true, name: true, username: true } },
         },
     });
+
+    // Determine notification target:
+    // - If reply has a parent → notify the parent reply's author (unless self)
+    // - Otherwise → notify the post author (unless self)
+    var replierName = anonymous ? "Someone" : (reply.author?.name || "Someone");
+    var isThreaded = !!parentId;
+
+    if (parentReply && parentReply.authorId && parentReply.authorId !== userId) {
+        await notifyReply(parentReply.authorId, replierName, params.id, anonymous, true);
+    } else if (!parentReply && post.authorId && post.authorId !== userId) {
+        await notifyReply(post.authorId, replierName, params.id, anonymous, false);
+    }
 
     return NextResponse.json({
         id: reply.id,

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/get-user";
+import { notifyReaction } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
 var VALID_TYPES = ["hug", "growth", "strength", "grateful"];
+var EMOJI: any = { hug: "🤗", growth: "🌱", strength: "💪", grateful: "🙏" };
 
 export async function POST(
     request: NextRequest,
@@ -24,7 +26,7 @@ export async function POST(
 
     var post = await prisma.feedPost.findUnique({
         where: { id: params.id },
-        select: { id: true },
+        select: { id: true, authorId: true },
     });
 
     if (!post) {
@@ -37,25 +39,46 @@ export async function POST(
         },
     });
 
+    var justAdded = false;
+
     if (existing && existing.type === type) {
-        // Same reaction → remove it (toggle off)
-        await prisma.feedReaction.delete({
-            where: { id: existing.id },
-        });
+        await prisma.feedReaction.delete({ where: { id: existing.id } });
     } else if (existing) {
-        // Different reaction → switch
         await prisma.feedReaction.update({
             where: { id: existing.id },
             data: { type: type },
         });
     } else {
-        // No reaction yet → add
         await prisma.feedReaction.create({
             data: { userId: userId, postId: params.id, type: type },
         });
+        justAdded = true;
     }
 
-    // Return fresh counts + my reaction
+    // Notify the post author (only on new reaction, not on toggle-off or switch, only if not self)
+    if (justAdded && post.authorId && post.authorId !== userId) {
+        var reactor = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { name: true },
+        });
+        var isAnonymousPost = false;
+        var fullPost = await prisma.feedPost.findUnique({
+            where: { id: params.id },
+            select: { anonymous: true },
+        });
+        if (fullPost) isAnonymousPost = fullPost.anonymous;
+
+        // Reactor's identity: check if they post anonymously — but reactions don't have an "anonymous" flag.
+        // For now, use the reactor's real name unless we later add reaction anonymity.
+        await notifyReaction(
+            post.authorId,
+            reactor?.name || "Someone",
+            params.id,
+            EMOJI[type] || "🤗",
+            false
+        );
+    }
+
     var reactions = await prisma.feedReaction.findMany({
         where: { postId: params.id },
         select: { type: true, userId: true },

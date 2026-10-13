@@ -4,30 +4,27 @@ import { notifyStreakReminder, notifyDailyCheckin } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
-
-
 export async function GET(request: NextRequest) {
-    // Protect with a secret query param
     var url = new URL(request.url);
     var secret = url.searchParams.get("secret");
+    var slot = url.searchParams.get("slot") || "evening";
 
     if (secret !== process.env.CRON_SECRET && secret !== "wellconnect-cron-2026") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    var now = new Date();
     var today = new Date();
     today.setHours(0, 0, 0, 0);
     var tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
     var results = {
+        slot: slot,
         streakReminders: 0,
         dailyCheckins: 0,
         totalUsers: 0,
     };
 
-    // Get all users with streak reminders enabled
     var users = await prisma.user.findMany({
         select: {
             id: true,
@@ -42,12 +39,10 @@ export async function GET(request: NextRequest) {
         var user = users[i];
         var prefs = user.notificationPreference;
 
-        // Skip if no preferences or disabled
         if (prefs) {
             if (!prefs.streakReminders && !prefs.dailyCheckin) continue;
         }
 
-        // Check if user has checked in today
         var todayEntry = await prisma.moodEntry.findFirst({
             where: {
                 userId: user.id,
@@ -55,9 +50,8 @@ export async function GET(request: NextRequest) {
             },
         });
 
-        if (todayEntry) continue; // Already checked in
+        if (todayEntry) continue;
 
-        // Calculate streak
         var entries = await prisma.moodEntry.findMany({
             where: { userId: user.id },
             orderBy: { createdAt: "desc" },
@@ -67,13 +61,11 @@ export async function GET(request: NextRequest) {
 
         var streak = calculateStreak(entries.map(function (e: any) { return e.createdAt; }));
 
-        // Send streak reminder if they have a streak going
         if (streak > 0 && (!prefs || prefs.streakReminders)) {
-            await notifyStreakReminder(user.id, streak);
+            await notifyStreakReminder(user.id, streak, slot);
             results.streakReminders++;
         } else if (streak === 0 && (!prefs || prefs.dailyCheckin)) {
-            // No streak — send gentle daily check-in reminder
-            await notifyDailyCheckin(user.id);
+            await notifyDailyCheckin(user.id, slot);
             results.dailyCheckins++;
         }
     }
@@ -96,7 +88,7 @@ function calculateStreak(dates: Date[]): number {
     ).sort(function (a: any, b: any) { return b - a; });
 
     var streak = 0;
-    var checkDate = today.getTime() - 86400000; // Start from yesterday (user hasn't checked in today)
+    var checkDate = today.getTime() - 86400000;
 
     for (var i = 0; i < uniqueDates.length; i++) {
         if (uniqueDates[i] === checkDate) {
