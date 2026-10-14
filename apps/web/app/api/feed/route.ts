@@ -16,11 +16,30 @@ export async function GET(request: NextRequest) {
     var cursor = url.searchParams.get("cursor");
     var tab = url.searchParams.get("tab") || "for-you";
 
-    if (tab === "following" || tab === "circles") {
+    if (tab === "circles") {
         return NextResponse.json({ posts: [], hasMore: false, nextCursor: null });
     }
 
+    var whereClause: any = {};
+
+    if (tab === "following") {
+        var followingIds = await prisma.follow.findMany({
+            where: { followerId: userId },
+            select: { followingId: true },
+        });
+
+        if (followingIds.length === 0) {
+            return NextResponse.json({ posts: [], hasMore: false, nextCursor: null });
+        }
+
+        whereClause.authorId = {
+            in: followingIds.map(function (f) { return f.followingId; }),
+        };
+        whereClause.anonymous = false;
+    }
+
     var posts = await prisma.feedPost.findMany({
+        where: whereClause,
         take: limit + 1,
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
         orderBy: { createdAt: "desc" },

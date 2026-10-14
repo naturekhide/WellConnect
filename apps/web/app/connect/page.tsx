@@ -62,6 +62,16 @@ export default function ConnectPage() {
         { id: "circles", label: "Circles" },
     ];
 
+    var emptyMessage = function () {
+        if (tab === "following") {
+            return "Follow people to see their moments here. Anonymous posts don't appear in this tab.";
+        }
+        if (tab === "circles") {
+            return "Join a circle to share with your people.";
+        }
+        return "Tap the + button to share your first moment.";
+    };
+
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
@@ -104,12 +114,8 @@ export default function ConnectPage() {
                     <div style={{ textAlign: "center", padding: S.xxl, color: C.textSecondary }}>
                         <div style={{ fontSize: 40, marginBottom: S.md }}>🌿</div>
                         <p style={{ fontSize: 16, fontWeight: 600, color: C.textPrimary, margin: 0, marginBottom: S.sm }}>Your space is quiet</p>
-                        <p style={{ fontSize: 14, color: C.textSecondary, margin: 0, maxWidth: 260, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
-                            {tab === "following"
-                                ? "Follow people to see their moments here."
-                                : tab === "circles"
-                                ? "Join a circle to share with your people."
-                                : "Tap the + button to share your first moment."}
+                        <p style={{ fontSize: 14, color: C.textSecondary, margin: 0, maxWidth: 300, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
+                            {emptyMessage()}
                         </p>
                     </div>
                 ) : (

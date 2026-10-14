@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useColors, S, R } from "@/lib/theme";
+import { useRouter } from "next/navigation";
 
 var REACTIONS = [
     { type: "hug", emoji: "🤗" },
@@ -14,6 +15,7 @@ var IMAGE_BASE = "";
 
 export default function FeedPostCard({ post, onReactionChange, onPress }: any) {
     var C = useColors();
+    var router = useRouter();
     var [myReaction, setMyReaction] = useState<string | null>(post.myReaction ?? null);
     var [reactions, setReactions] = useState<any>(
         post.reactions || { hug: 0, growth: 0, strength: 0, grateful: 0 }
@@ -47,6 +49,12 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: any) {
         } catch (e) { }
     };
 
+    var goToProfile = function (e: any) {
+        if (post.anonymous || !post.author?.id) return;
+        e.stopPropagation();
+        router.push("/users/" + post.author.id);
+    };
+
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
@@ -64,6 +72,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: any) {
             <div style={{ display: "flex", gap: S.md }}>
                 <div style={{ width: 40, flexShrink: 0 }}>
                     <div
+                        onClick={goToProfile}
                         style={{
                             width: 40,
                             height: 40,
@@ -73,6 +82,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: any) {
                             justifyContent: "center",
                             background: post.anonymous ? C.surfaceAlt : C.primary,
                             border: post.anonymous ? "1px solid " + C.border : "none",
+                            cursor: post.anonymous ? "default" : "pointer",
                         }}
                     >
                         <span style={{ fontSize: 15, fontWeight: 700, color: post.anonymous ? C.textSecondary : "#fff" }}>
@@ -83,9 +93,24 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: any) {
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
-                        <span style={{ fontSize: 15, fontWeight: 700, color: C.textPrimary }}>{displayName}</span>
+                        <span
+                            onClick={goToProfile}
+                            style={{
+                                fontSize: 15,
+                                fontWeight: 700,
+                                color: C.textPrimary,
+                                cursor: post.anonymous ? "default" : "pointer",
+                            }}
+                        >
+                            {displayName}
+                        </span>
                         {!post.anonymous && post.author?.username && (
-                            <span style={{ fontSize: 14, color: C.textSecondary }}>@{post.author.username}</span>
+                            <span
+                                onClick={goToProfile}
+                                style={{ fontSize: 14, color: C.textSecondary, cursor: "pointer" }}
+                            >
+                                @{post.author.username}
+                            </span>
                         )}
                         {post.anonymous && (
                             <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, border: "1px solid " + C.primary, color: C.primary }}>
