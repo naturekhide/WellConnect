@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     Image,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useColors, spacing, radius } from "../src/theme";
 import { reactToPost } from "../src/api/client";
 
@@ -50,6 +51,7 @@ function PostImage({ uri, borderColor }: any) {
 
 export default function FeedPostCard({ post, onReactionChange, onPress }: Props) {
     var colors = useColors();
+    var router = useRouter();
     var [myReaction, setMyReaction] = useState<string | null>(post.myReaction ?? null);
     var [reactions, setReactions] = useState<any>(
         post.reactions || { hug: 0, growth: 0, strength: 0, grateful: 0 }
@@ -75,6 +77,11 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: Props)
         } catch (e) { }
     };
 
+    var goToProfile = function () {
+        if (post.anonymous || !post.author?.id) return;
+        router.push("/users/" + post.author.id);
+    };
+
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
@@ -86,42 +93,48 @@ export default function FeedPostCard({ post, onReactionChange, onPress }: Props)
         >
             <View style={styles.row}>
                 <View style={styles.avatarColumn}>
-                    <View
-                        style={[
-                            styles.avatar,
-                            {
-                                backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary,
-                                borderColor: post.anonymous ? colors.border : "transparent",
-                                borderWidth: post.anonymous ? 1 : 0,
-                            },
-                        ]}
-                    >
-                        <Text
+                    <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
+                        <View
                             style={[
-                                styles.avatarText,
-                                { color: post.anonymous ? colors.textSecondary : "#fff" },
+                                styles.avatar,
+                                {
+                                    backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary,
+                                    borderColor: post.anonymous ? colors.border : "transparent",
+                                    borderWidth: post.anonymous ? 1 : 0,
+                                },
                             ]}
                         >
-                            {initials}
-                        </Text>
-                    </View>
+                            <Text
+                                style={[
+                                    styles.avatarText,
+                                    { color: post.anonymous ? colors.textSecondary : "#fff" },
+                                ]}
+                            >
+                                {initials}
+                            </Text>
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 <View style={styles.content}>
                     <View style={styles.header}>
-                        <Text
-                            style={[styles.name, { color: colors.textPrimary }]}
-                            numberOfLines={1}
-                        >
-                            {displayName}
-                        </Text>
-                        {!post.anonymous && post.author?.username && (
+                        <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
                             <Text
-                                style={[styles.username, { color: colors.textSecondary }]}
+                                style={[styles.name, { color: colors.textPrimary }]}
                                 numberOfLines={1}
                             >
-                                @{post.author.username}
+                                {displayName}
                             </Text>
+                        </TouchableOpacity>
+                        {!post.anonymous && post.author?.username && (
+                            <TouchableOpacity onPress={goToProfile}>
+                                <Text
+                                    style={[styles.username, { color: colors.textSecondary }]}
+                                    numberOfLines={1}
+                                >
+                                    @{post.author.username}
+                                </Text>
+                            </TouchableOpacity>
                         )}
                         {post.anonymous && (
                             <Text

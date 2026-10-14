@@ -244,3 +244,13 @@ export async function uploadImages(uris: string[]) {
 
     return res.json();
 }
+
+// ━━━━━ Users / Follow ━━━━━
+
+export async function getUserProfile(id: string) {
+    return apiFetch("/api/users/" + id);
+}
+
+export async function toggleFollow(id: string) {
+    return apiFetch("/api/users/" + id + "/follow", { method: "POST" });
+}
