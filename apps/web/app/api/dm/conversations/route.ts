@@ -5,10 +5,11 @@ import { getCurrentUserId } from "@/lib/get-user";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-    var userId = await getCurrentUserId(request);
-    if (!userId) {
+    var userIdOrNull = await getCurrentUserId(request);
+    if (!userIdOrNull) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    var userId: string = userIdOrNull;
 
     // Get every user the current user has exchanged messages with
     var sent = await prisma.directMessage.findMany({

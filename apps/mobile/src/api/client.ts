@@ -254,3 +254,67 @@ export async function getUserProfile(id: string) {
 export async function toggleFollow(id: string) {
     return apiFetch("/api/users/" + id + "/follow", { method: "POST" });
 }
+
+// ━━━━━ Circles ━━━━━
+
+export async function getCircles(q?: string) {
+    var path = "/api/circles" + (q ? "?q=" + encodeURIComponent(q) : "");
+    return apiFetch(path);
+}
+
+export async function createCircle(name: string, description: string, emoji: string, coverColor: string, isPrivate: boolean) {
+    return apiFetch("/api/circles", {
+        method: "POST",
+        body: JSON.stringify({ name, description, emoji, coverColor, isPrivate }),
+    });
+}
+
+export async function getCircle(id: string) {
+    return apiFetch("/api/circles/" + id);
+}
+
+export async function joinCircle(id: string) {
+    return apiFetch("/api/circles/" + id + "/join", { method: "POST" });
+}
+
+export async function getCirclePosts(id: string) {
+    return apiFetch("/api/circles/" + id + "/posts");
+}
+
+export async function getCircleMembers(id: string) {
+    return apiFetch("/api/circles/" + id + "/members");
+}
+
+export async function getCircleMessages(id: string, since?: string) {
+    var path = "/api/circles/" + id + "/messages" + (since ? "?since=" + encodeURIComponent(since) : "");
+    return apiFetch(path);
+}
+
+export async function sendCircleMessage(id: string, content: string) {
+    return apiFetch("/api/circles/" + id + "/messages", {
+        method: "POST",
+        body: JSON.stringify({ content }),
+    });
+}
+
+// ━━━━━ Direct Messages ━━━━━
+
+export async function getConversations() {
+    return apiFetch("/api/dm/conversations");
+}
+
+export async function getDMMessages(userId: string, since?: string) {
+    var path = "/api/dm/" + userId + (since ? "?since=" + encodeURIComponent(since) : "");
+    return apiFetch(path);
+}
+
+export async function sendDM(userId: string, content: string) {
+    return apiFetch("/api/dm/" + userId, {
+        method: "POST",
+        body: JSON.stringify({ content }),
+    });
+}
+
+export async function getDMUnreadCount() {
+    return apiFetch("/api/dm/unread-count");
+}
