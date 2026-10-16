@@ -20,6 +20,7 @@ export default function DashboardPage() {
     var [goalCount, setGoalCount] = useState(0);
     var [avgMood, setAvgMood] = useState<number | null>(null);
     var [dominantMood, setDominantMood] = useState<string>("");
+    var [unreadDMs, setUnreadDMs] = useState(0);
 
     var moodOptions = [
         { emoji: "😄", label: "thriving", text: "Thriving", score: 9 },
@@ -75,6 +76,12 @@ export default function DashboardPage() {
                 var active = goals.filter(function (g: any) { return !g.completed; });
                 setGoalCount(active.length);
             }
+
+            var dmRes = await fetch("/api/dm/unread-count");
+            if (dmRes.ok) {
+                var dmData = await dmRes.json();
+                setUnreadDMs(dmData.count || 0);
+            }
         } catch (e) { }
         setLoading(false);
     };
@@ -125,7 +132,6 @@ export default function DashboardPage() {
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
 
-                {/* Header */}
                 <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md }}>
                     <h1 style={{ fontSize: 26, fontWeight: 700, color: C.textPrimary, margin: 0 }}>
                         {getGreeting()}, {userName?.split(" ")[0] || "Friend"}
@@ -135,7 +141,6 @@ export default function DashboardPage() {
                     </p>
                 </div>
 
-                {/* Check-in status / mood selector */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.lg }}>
                     {checkedToday && !submitted ? (
                         <div style={{ padding: S.lg, borderRadius: R.lg, background: C.surface, textAlign: "center" }}>
@@ -227,7 +232,6 @@ export default function DashboardPage() {
                     )}
                 </div>
 
-                {/* Your week */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Your week</h2>
                 </div>
@@ -237,7 +241,6 @@ export default function DashboardPage() {
                     <WeekTile emoji="🎯" value={goalCount} label="goals" />
                 </div>
 
-                {/* Your wellbeing */}
                 {avgMood !== null && (
                     <>
                         <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
@@ -261,7 +264,6 @@ export default function DashboardPage() {
                     </>
                 )}
 
-                {/* Your space */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Your space</h2>
                 </div>
@@ -269,6 +271,46 @@ export default function DashboardPage() {
                     <SpaceTile href="/journal" emoji="📝" title="Journal" />
                     <SpaceTile href="/goals" emoji="🎯" title="Goals" />
                 </div>
+
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Inbox</h2>
+                </div>
+                <Link
+                    href="/messages"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: S.md,
+                        marginLeft: S.lg,
+                        marginRight: S.lg,
+                        marginBottom: S.lg,
+                        padding: S.lg,
+                        borderRadius: R.lg,
+                        background: C.surface,
+                        textDecoration: "none",
+                    }}
+                >
+                    <span style={{ fontSize: 20 }}>💬</span>
+                    <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>Messages</span>
+                    {unreadDMs > 0 && (
+                        <div style={{
+                            minWidth: 20,
+                            height: 20,
+                            borderRadius: 10,
+                            background: C.primary,
+                            color: "#fff",
+                            fontSize: 11,
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "0 6px",
+                        }}>
+                            {unreadDMs}
+                        </div>
+                    )}
+                    <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
+                </Link>
 
             </div>
         </main>

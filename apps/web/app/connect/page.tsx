@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useColors, S } from "@/lib/theme";
+import { useColors, S, R } from "@/lib/theme";
 import FeedPostCard from "@/components/FeedPostCard";
 
 export default function ConnectPage() {
@@ -62,16 +62,6 @@ export default function ConnectPage() {
         { id: "circles", label: "Circles" },
     ];
 
-    var emptyMessage = function () {
-        if (tab === "following") {
-            return "Follow people to see their moments here. Anonymous posts don't appear in this tab.";
-        }
-        if (tab === "circles") {
-            return "Join a circle to share with your people.";
-        }
-        return "Tap the + button to share your first moment.";
-    };
-
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
@@ -81,8 +71,8 @@ export default function ConnectPage() {
                     <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Share moments. Support each other.</p>
                 </div>
 
-                <div style={{ display: "flex", padding: "0 " + S.lg + "px", borderBottom: "1px solid " + C.border }}>
-                    {TABS.map(function (t) {
+                <div style={{ display: "flex", alignItems: "center", padding: "0 " + S.lg + "px", borderBottom: "1px solid " + C.border }}>
+                    {TABS.map(function (t: any) {
                         var active = tab === t.id;
                         return (
                             <button
@@ -106,6 +96,21 @@ export default function ConnectPage() {
                             </button>
                         );
                     })}
+                    <button
+                        onClick={function () { router.push("/circles"); }}
+                        style={{
+                            marginLeft: "auto",
+                            background: "none",
+                            border: "none",
+                            color: C.primary,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            padding: S.md + "px 0",
+                        }}
+                    >
+                        Browse →
+                    </button>
                 </div>
 
                 {loading ? (
@@ -115,8 +120,29 @@ export default function ConnectPage() {
                         <div style={{ fontSize: 40, marginBottom: S.md }}>🌿</div>
                         <p style={{ fontSize: 16, fontWeight: 600, color: C.textPrimary, margin: 0, marginBottom: S.sm }}>Your space is quiet</p>
                         <p style={{ fontSize: 14, color: C.textSecondary, margin: 0, maxWidth: 300, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
-                            {emptyMessage()}
+                            {tab === "following"
+                                ? "Follow people to see their moments here. Anonymous posts don't appear in this tab."
+                                : tab === "circles"
+                                    ? "Join a circle to see its posts here."
+                                    : "Tap the + button to share your first moment."}
                         </p>
+                            {tab === "circles" && (
+                                <button
+                                    onClick={function () { router.push("/circles"); }}
+                                    style={{
+                                        marginLeft: "auto",
+                                        background: "none",
+                                        border: "none",
+                                        color: C.primary,
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        cursor: "pointer",
+                                        padding: S.md + "px 0",
+                                    }}
+                                >
+                                    Browse →
+                                </button>
+                            )}
                     </div>
                 ) : (
                     posts.map(function (post: any) {

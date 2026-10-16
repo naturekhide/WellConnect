@@ -94,7 +94,6 @@ export default function ProfilePage() {
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
 
-                {/* Avatar */}
                 <div style={{ padding: S.xl, paddingTop: 60, textAlign: "center" }}>
                     <div style={{
                         width: 96,
@@ -120,14 +119,12 @@ export default function ProfilePage() {
                     </p>
                 </div>
 
-                {/* Stats */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: S.sm, paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.lg }}>
                     <StatTile value={profile?.stats?.checkIns || 0} label="Check-ins" />
                     <StatTile value={profile?.stats?.journalEntries || 0} label="Journal" />
                     <StatTile value={profile?.stats?.goals || 0} label="Goals" />
                 </div>
 
-                {/* Streak card */}
                 <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.lg, padding: S.lg, borderRadius: R.lg, background: C.surface, display: "flex", alignItems: "center", gap: S.md }}>
                     <span style={{ fontSize: 32 }}>🔥</span>
                     <div>
@@ -140,17 +137,16 @@ export default function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Your space */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Your space</h2>
                 </div>
                 <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.lg, borderRadius: R.lg, background: C.surface, overflow: "hidden" }}>
+                    <RowLink href="/messages" emoji="💬" title="Messages" sub="Your conversations" />
                     <RowLink href="/journal" emoji="📝" title="Journal" sub={(profile?.stats?.journalEntries || 0) + " entries"} />
                     <RowLink href="/goals" emoji="🎯" title="Goals" sub={(profile?.stats?.goals || 0) + " active"} />
                     <RowLink href="/achievements" emoji="🏆" title="Achievements" sub="See what you've earned" last />
                 </div>
 
-                {/* Account */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Account</h2>
                 </div>
@@ -180,7 +176,6 @@ export default function ProfilePage() {
                     </button>
                 </div>
 
-                {/* Edit form (collapsed by default) */}
                 {showEdit && (
                     <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.xxl, padding: S.lg, borderRadius: R.lg, background: C.surface }}>
                         <h2 style={{ fontWeight: 600, fontSize: 14, color: C.textPrimary, marginBottom: S.lg, marginTop: 0 }}>Edit Profile</h2>

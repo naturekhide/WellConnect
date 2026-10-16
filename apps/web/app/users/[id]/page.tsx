@@ -109,24 +109,40 @@ export default function UserProfilePage() {
                     </p>
 
                     {!profile.isMe && (
-                        <button
-                            onClick={handleFollow}
-                            disabled={toggling}
-                            style={{
-                                marginTop: S.lg,
-                                padding: "10px " + S.xl + "px",
-                                borderRadius: R.full,
-                                background: followState.isFollowing ? "transparent" : C.primary,
-                                color: followState.isFollowing ? C.textPrimary : "#fff",
-                                border: followState.isFollowing ? "1px solid " + C.border : "none",
-                                fontSize: 14,
-                                fontWeight: 600,
-                                cursor: toggling ? "not-allowed" : "pointer",
-                                opacity: toggling ? 0.6 : 1,
-                            }}
-                        >
-                            {followState.isFollowing ? "Following" : "Follow"}
-                        </button>
+                        <div style={{ display: "flex", gap: S.sm, justifyContent: "center", marginTop: S.lg }}>
+                            <button
+                                onClick={handleFollow}
+                                disabled={toggling}
+                                style={{
+                                    padding: "10px " + S.xl + "px",
+                                    borderRadius: R.full,
+                                    background: followState.isFollowing ? "transparent" : C.primary,
+                                    color: followState.isFollowing ? C.textPrimary : "#fff",
+                                    border: followState.isFollowing ? "1px solid " + C.border : "none",
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    cursor: toggling ? "not-allowed" : "pointer",
+                                    opacity: toggling ? 0.6 : 1,
+                                }}
+                            >
+                                {followState.isFollowing ? "Following" : "Follow"}
+                            </button>
+                            <button
+                                onClick={function () { router.push("/messages/" + userId); }}
+                                style={{
+                                    padding: "10px " + S.xl + "px",
+                                    borderRadius: R.full,
+                                    background: "transparent",
+                                    border: "1px solid " + C.border,
+                                    color: C.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    cursor: "pointer",
+                                }}
+                            >
+                                Message
+                            </button>
+                        </div>
                     )}
                 </div>
 

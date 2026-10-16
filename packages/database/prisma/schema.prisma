@@ -19,19 +19,24 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  moodEntries   MoodEntry[]
+  moodEntries    MoodEntry[]
   journalEntries JournalEntry[]
-  goals         Goal[]
-  insights      Insight[]
-  patterns      UserPattern[]
-  achievements  Achievement[]
-  notifications Notification[]
-  feedPosts  FeedPost[] @relation("FeedAuthor")
-  feedReactions FeedReaction[]
-  feedReplies  FeedReply[]
+  goals          Goal[]
+  insights       Insight[]
+  patterns       UserPattern[]
+  achievements   Achievement[]
+  notifications  Notification[]
+  feedPosts      FeedPost[]     @relation("FeedAuthor")
+  feedReactions  FeedReaction[]
+  feedReplies    FeedReply[]
+  following      Follow[]        @relation("Following")
+  followers      Follow[]        @relation("Followers")
 
-  following     Follow[] @relation("Following")
-  followers     Follow[] @relation("Followers")
+  circlesCreated Circle[]        @relation("CircleCreator")
+  circleMembers  CircleMember[]
+  circleMessages CircleMessage[]
+  directMessagesSent     DirectMessage[] @relation("DMSent")
+  directMessagesReceived DirectMessage[] @relation("DMReceived")
 }
 
 model MoodEntry {
@@ -115,10 +120,10 @@ model Notification {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type        String   // achievement, insight, streak, goal, system, reaction, reply
+  type        String
   title       String
   body        String
-  link        String?  // deep link e.g. /achievements, /(tabs)/journal
+  link        String?
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
 
@@ -131,13 +136,15 @@ model NotificationPreference {
   userId             String   @unique
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   dailyCheckin       Boolean  @default(true)
-  checkinTime        String   @default("09:00")  // HH:MM format
+  checkinTime        String   @default("09:00")
   achievements       Boolean  @default(true)
   insights           Boolean  @default(true)
   streakReminders    Boolean  @default(true)
   weeklySummary      Boolean  @default(false)
   reactions          Boolean  @default(true)
   replies            Boolean  @default(true)
+  circleMessages     Boolean  @default(true)
+  directMessages     Boolean  @default(true)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 }
@@ -150,6 +157,8 @@ model FeedPost {
   content    String
   imageUrls  String
   sentiment  String?
+  circleId   String?
+  circle     Circle?  @relation(fields: [circleId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -157,6 +166,7 @@ model FeedPost {
   replies    FeedReply[]
 
   @@index([createdAt])
+  @@index([circleId])
 }
 
 model FeedReaction {
@@ -199,4 +209,66 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followerId])
   @@index([followingId])
+}
+
+model Circle {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  emoji       String?
+  coverColor  String?
+  isPrivate   Boolean  @default(false)
+  creatorId   String
+  creator     User     @relation("CircleCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members     CircleMember[]
+  posts       FeedPost[]
+  messages    CircleMessage[]
+
+  @@index([createdAt])
+  @@index([isPrivate])
+}
+
+model CircleMember {
+  id        String   @id @default(cuid())
+  circleId  String
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("member")
+  status    String   @default("approved")
+  joinedAt  DateTime @default(now())
+
+  @@unique([circleId, userId])
+  @@index([userId])
+  @@index([circleId])
+}
+
+model CircleMessage {
+  id        String   @id @default(cuid())
+  circleId  String
+  circle    Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  createdAt DateTime @default(now())
+
+  @@index([circleId, createdAt])
+}
+
+model DirectMessage {
+  id         String   @id @default(cuid())
+  senderId   String
+  sender     User     @relation("DMSent", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("DMReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+  content    String
+  readAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([senderId, receiverId, createdAt])
+  @@index([receiverId, readAt])
 }
