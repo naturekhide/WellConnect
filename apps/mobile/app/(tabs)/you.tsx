@@ -106,6 +106,18 @@ export default function YouScreen() {
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                     <TouchableOpacity
                         style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
+                        onPress={function () { router.push("/messages"); }}
+                    >
+                        <Text style={styles.menuIcon}>💬</Text>
+                        <View style={styles.menuContent}>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Messages</Text>
+                            <Text style={[styles.menuSub, { color: colors.textTertiary }]}>Your conversations</Text>
+                        </View>
+                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
                         onPress={function () { router.push("/(tabs)/journal"); }}
                     >
                         <Text style={styles.menuIcon}>💭</Text>

@@ -99,23 +99,38 @@ export default function UserProfileScreen() {
                     </Text>
 
                     {!profile.isMe && (
-                        <TouchableOpacity
-                            onPress={handleFollow}
-                            disabled={toggling}
-                            style={[
-                                styles.followBtn,
-                                followState.isFollowing
-                                    ? { backgroundColor: "transparent", borderColor: colors.border, borderWidth: 1 }
-                                    : { backgroundColor: colors.primary },
-                            ]}
-                        >
-                            <Text style={[
-                                styles.followBtnText,
-                                { color: followState.isFollowing ? colors.textPrimary : "#fff" },
-                            ]}>
-                                {followState.isFollowing ? "Following" : "Follow"}
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
+                            <TouchableOpacity
+                                onPress={handleFollow}
+                                disabled={toggling}
+                                style={[
+                                    styles.followBtn,
+                                    { marginTop: 0 },
+                                    followState.isFollowing
+                                        ? { backgroundColor: "transparent", borderColor: colors.border, borderWidth: 1 }
+                                        : { backgroundColor: colors.primary },
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.followBtnText,
+                                    { color: followState.isFollowing ? colors.textPrimary : "#fff" },
+                                ]}>
+                                    {followState.isFollowing ? "Following" : "Follow"}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={function () { router.push("/messages/" + userId); }}
+                                style={[
+                                    styles.followBtn,
+                                    { marginTop: 0, backgroundColor: "transparent", borderColor: colors.border, borderWidth: 1 },
+                                ]}
+                            >
+                                <Text style={[styles.followBtnText, { color: colors.textPrimary }]}>
+                                    Message
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
                 </View>
 

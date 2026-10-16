@@ -110,36 +110,47 @@ export default function FeedScreen() {
                     },
                 ]}
             >
-                {TABS.map(function (t: any) {
-                    var active = activeTab === t.id;
-                    return (
-                        <TouchableOpacity
-                            key={t.id}
-                            style={styles.tabBtn}
-                            onPress={function () {
-                                setActiveTab(t.id);
-                            }}
-                        >
-                            <Text
-                                style={[
-                                    styles.tabLabel,
-                                    { color: active ? colors.textPrimary : colors.textSecondary },
-                                    active && { fontWeight: "700" },
-                                ]}
+                <View style={{ flex: 1, flexDirection: "row" }}>
+                    {TABS.map(function (t: any) {
+                        var active = activeTab === t.id;
+                        return (
+                            <TouchableOpacity
+                                key={t.id}
+                                style={styles.tabBtn}
+                                onPress={function () { setActiveTab(t.id); }}
                             >
-                                {t.label}
-                            </Text>
-                            {active && (
-                                <View
+                                <Text
                                     style={[
-                                        styles.tabUnderline,
-                                        { backgroundColor: colors.primary },
+                                        styles.tabLabel,
+                                        { color: active ? colors.textPrimary : colors.textSecondary },
+                                        active && { fontWeight: "700" },
                                     ]}
-                                />
-                            )}
-                        </TouchableOpacity>
-                    );
-                })}
+                                >
+                                    {t.label}
+                                </Text>
+                                {active && (
+                                    <View
+                                        style={[
+                                            styles.tabUnderline,
+                                            { backgroundColor: colors.primary },
+                                        ]}
+                                    />
+                                )}
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+
+                {activeTab === "circles" && (
+                    <TouchableOpacity
+                        onPress={function () { router.push("/circles"); }}
+                        style={{ paddingVertical: spacing.md, alignSelf: "center" }}
+                    >
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>
+                            Browse →
+                        </Text>
+                    </TouchableOpacity>
+                )}
             </View>
 
             <ScrollView
@@ -167,9 +178,9 @@ export default function FeedScreen() {
                         </Text>
                         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                             {activeTab === "following"
-                                ? "Follow people to see their moments here."
+                                ? "Follow people to see their moments here. Anonymous posts don't appear in this tab."
                                 : activeTab === "circles"
-                                    ? "Join a circle to share with your people."
+                                    ? "Join a circle to see its posts here."
                                     : "Tap the + button to share your first moment."}
                         </Text>
                     </View>
@@ -229,6 +240,7 @@ var styles = StyleSheet.create({
     headerSub: { fontSize: 13, marginTop: 2 },
     tabs: {
         flexDirection: "row",
+        alignItems: "center",
         paddingHorizontal: spacing.lg,
         borderBottomWidth: 1,
     },
