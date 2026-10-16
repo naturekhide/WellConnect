@@ -17,6 +17,7 @@
     "@types/node": "26.4.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "nextjs-monorepo-workaround-plugin": "link:@prisma\\nextjs-monorepo-workaround-plugin",
     "prisma": "5.22.0",
     "typescript": "^5.9.3"
   },

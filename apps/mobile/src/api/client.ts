@@ -159,10 +159,10 @@ export async function getFeed(tab?: string, cursor?: string) {
     return apiFetch(path);
 }
 
-export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean) {
+export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean, circleId?: string | null) {
     return apiFetch("/api/feed", {
         method: "POST",
-        body: JSON.stringify({ content, imageUrls, anonymous }),
+        body: JSON.stringify({ content, imageUrls, anonymous, circleId: circleId || null }),
     });
 }
 

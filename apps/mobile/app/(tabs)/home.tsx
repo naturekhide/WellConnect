@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../src/store/authStore";
-import { submitMood, getMoodStats, getMoodToday, getInsights, getJournal, getGoals } from "../../src/api/client";
+import { submitMood, getMoodStats, getMoodToday, getInsights, getJournal, getGoals, getDMUnreadCount } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
 import { tapSuccess } from "../../src/haptics";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
@@ -25,6 +25,7 @@ export default function HomeScreen() {
     var [insight, setInsight] = useState<any>(null);
     var [journalCount, setJournalCount] = useState(0);
     var [goalCount, setGoalCount] = useState(0);
+    var [unreadDMs, setUnreadDMs] = useState(0);
     var [loading, setLoading] = useState(true);
     var [refreshing, setRefreshing] = useState(false);
 
@@ -46,6 +47,11 @@ export default function HomeScreen() {
 
             var g = await getGoals();
             setGoalCount(g.length);
+
+            try {
+                var dm = await getDMUnreadCount();
+                setUnreadDMs(dm.count || 0);
+            } catch (e) { }
         } catch (e) { }
         setLoading(false);
     };
@@ -201,6 +207,21 @@ export default function HomeScreen() {
                         <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Goals</Text>
                     </TouchableOpacity>
                 </View>
+
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Inbox</Text>
+                <TouchableOpacity
+                    style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                    onPress={function () { router.push("/messages"); }}
+                >
+                    <Text style={styles.inboxEmoji}>💬</Text>
+                    <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>Messages</Text>
+                    {unreadDMs > 0 && (
+                        <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                            <Text style={styles.badgeText}>{unreadDMs}</Text>
+                        </View>
+                    )}
+                    <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
+                </TouchableOpacity>
             </ScrollView>
         </View>
     );
@@ -280,4 +301,25 @@ var styles = StyleSheet.create({
     },
     quickEmoji: { fontSize: 24, marginBottom: 6 },
     quickTitle: { fontSize: 13, fontWeight: "600" },
+    inboxRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: spacing.md,
+        padding: spacing.lg,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        ...shadow.sm,
+    },
+    inboxEmoji: { fontSize: 20 },
+    inboxTitle: { flex: 1, fontSize: 15, fontWeight: "500" },
+    badge: {
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 6,
+    },
+    badgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
+    inboxArrow: { fontSize: 16 },
 });
