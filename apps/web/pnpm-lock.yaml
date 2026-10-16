@@ -244,9 +244,6 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.7
         version: 18.3.7(@types/react@18.3.31)
-      nextjs-monorepo-workaround-plugin:
-        specifier: link:@prisma\nextjs-monorepo-workaround-plugin
-        version: link:@prisma/nextjs-monorepo-workaround-plugin
       prisma:
         specifier: 5.22.0
         version: 5.22.0
