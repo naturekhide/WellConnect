@@ -93,12 +93,22 @@ export default function FeedScreen() {
                     },
                 ]}
             >
-                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
-                    🌍 Connect
-                </Text>
-                <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
-                    Share moments. Support each other.
-                </Text>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
+                            🌍 Connect
+                        </Text>
+                        <Text style={[styles.headerSub, { color: colors.textSecondary }]}>
+                            Share moments. Support each other.
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        onPress={function () { router.push("/search"); }}
+                        style={{ padding: spacing.sm }}
+                    >
+                        <Text style={{ fontSize: 22 }}>🔍</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
 
             <View

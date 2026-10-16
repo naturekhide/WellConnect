@@ -318,3 +318,7 @@ export async function sendDM(userId: string, content: string) {
 export async function getDMUnreadCount() {
     return apiFetch("/api/dm/unread-count");
 }
+
+export async function searchAll(q: string) {
+    return apiFetch("/api/search?q=" + encodeURIComponent(q));
+}
