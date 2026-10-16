@@ -66,9 +66,17 @@ export default function ConnectPage() {
         <main style={{ background: C.background, minHeight: "100vh" }}>
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>🌍 Connect</h1>
-                    <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Share moments. Support each other.</p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
+                    <div>
+                        <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>🌍 Connect</h1>
+                        <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Share moments. Support each other.</p>
+                    </div>
+                    <button
+                        onClick={function () { router.push("/search"); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 22, padding: S.sm, flexShrink: 0 }}
+                    >
+                        🔍
+                    </button>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", padding: "0 " + S.lg + "px", borderBottom: "1px solid " + C.border }}>
