@@ -1,10 +1,22 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useColors, S, R } from "@/lib/theme";
 
 export default function SearchPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0a0a", color: "#a3a3a3" }}>
+                Loading...
+            </div>
+        }>
+            <SearchContent />
+        </Suspense>
+    );
+}
+
+function SearchContent() {
     var C = useColors();
     var router = useRouter();
     var searchParams = useSearchParams();
