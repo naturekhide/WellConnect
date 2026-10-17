@@ -27,7 +27,6 @@ export async function GET(request: NextRequest) {
         journals: [],
     };
 
-    // Users
     if (type === "all" || type === "users") {
         var users = await prisma.user.findMany({
             where: {
@@ -42,7 +41,6 @@ export async function GET(request: NextRequest) {
         result.users = users;
     }
 
-    // Circles
     if (type === "all" || type === "circles") {
         var circles = await prisma.circle.findMany({
             where: {
@@ -71,7 +69,6 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    // Posts — public (non-circle, non-anonymous) OR from circles you're in
     if (type === "all" || type === "posts") {
         var myCircleIds = await prisma.circleMember.findMany({
             where: { userId: userId, status: "approved" },
@@ -83,6 +80,7 @@ export async function GET(request: NextRequest) {
             where: {
                 content: { contains: query, mode: "insensitive" },
                 anonymous: false,
+                deletedAt: null,
                 OR: [
                     { circleId: null },
                     { circleId: { in: myCircleList } },
@@ -108,7 +106,6 @@ export async function GET(request: NextRequest) {
         });
     }
 
-    // Journals — only your own
     if (type === "all" || type === "journals") {
         var journals = await prisma.journalEntry.findMany({
             where: {

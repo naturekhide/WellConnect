@@ -13,6 +13,7 @@ export default function ConnectPage() {
     var [hasMore, setHasMore] = useState(false);
     var [loading, setLoading] = useState(true);
     var [tab, setTab] = useState("for-you");
+    var [toast, setToast] = useState<any>(null);
 
     useEffect(function () {
         setPosts([]);
@@ -53,6 +54,40 @@ export default function ConnectPage() {
     var handleReactionChange = function (postId: string, reactions: any, myReaction: any) {
         setPosts(posts.map(function (p) {
             return p.id === postId ? { ...p, reactions, myReaction } : p;
+        }));
+    };
+
+    var handleDelete = async function (postId: string) {
+        if (!window.confirm("Delete this post?")) return;
+
+        try {
+            var r = await fetch("/api/feed/" + postId, { method: "DELETE" });
+            if (!r.ok) return;
+        } catch (e) { return; }
+
+        setPosts(posts.filter(function (p) { return p.id !== postId; }));
+
+        setToast({ postId: postId });
+        setTimeout(function () {
+            setToast(function (current: any) {
+                return current && current.postId === postId ? null : current;
+            });
+        }, 5000);
+    };
+
+    var handleUndo = async function () {
+        if (!toast) return;
+        var postId = toast.postId;
+        setToast(null);
+        try {
+            await fetch("/api/feed/" + postId + "/restore", { method: "POST" });
+            await loadFeed();
+        } catch (e) { }
+    };
+
+    var handlePostUpdated = function (postId: string, content: string, editedAt: string) {
+        setPosts(posts.map(function (p) {
+            return p.id === postId ? { ...p, content, editedAt } : p;
         }));
     };
 
@@ -104,21 +139,14 @@ export default function ConnectPage() {
                             </button>
                         );
                     })}
-                    <button
-                        onClick={function () { router.push("/circles"); }}
-                        style={{
-                            marginLeft: "auto",
-                            background: "none",
-                            border: "none",
-                            color: C.primary,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                            padding: S.md + "px 0",
-                        }}
-                    >
-                        Browse →
-                    </button>
+                    {tab === "circles" && (
+                        <button
+                            onClick={function () { router.push("/circles"); }}
+                            style={{ marginLeft: "auto", background: "none", border: "none", color: C.primary, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: S.md + "px 0" }}
+                        >
+                            Browse →
+                        </button>
+                    )}
                 </div>
 
                 {loading ? (
@@ -134,23 +162,14 @@ export default function ConnectPage() {
                                     ? "Join a circle to see its posts here."
                                     : "Tap the + button to share your first moment."}
                         </p>
-                            {tab === "circles" && (
-                                <button
-                                    onClick={function () { router.push("/circles"); }}
-                                    style={{
-                                        marginLeft: "auto",
-                                        background: "none",
-                                        border: "none",
-                                        color: C.primary,
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        cursor: "pointer",
-                                        padding: S.md + "px 0",
-                                    }}
-                                >
-                                    Browse →
-                                </button>
-                            )}
+                        {tab === "circles" && (
+                            <button
+                                onClick={function () { router.push("/circles"); }}
+                                style={{ marginTop: S.lg, padding: S.md + "px " + S.lg + "px", borderRadius: R.full, background: C.primary, color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+                            >
+                                Browse Circles
+                            </button>
+                        )}
                     </div>
                 ) : (
                     posts.map(function (post: any) {
@@ -160,6 +179,8 @@ export default function ConnectPage() {
                                 post={post}
                                 onReactionChange={handleReactionChange}
                                 onPress={function () { router.push("/connect/" + post.id); }}
+                                onDelete={handleDelete}
+                                onUpdated={handlePostUpdated}
                             />
                         );
                     })
@@ -168,18 +189,7 @@ export default function ConnectPage() {
                 {hasMore && !loading && (
                     <button
                         onClick={loadMore}
-                        style={{
-                            display: "block",
-                            margin: S.lg + " auto",
-                            padding: S.md,
-                            borderRadius: 16,
-                            border: "1px solid " + C.border,
-                            background: "none",
-                            color: C.primary,
-                            fontSize: 14,
-                            fontWeight: 600,
-                            cursor: "pointer",
-                        }}
+                        style={{ display: "block", margin: S.lg + " auto", padding: S.md, borderRadius: 16, border: "1px solid " + C.border, background: "none", color: C.primary, fontSize: 14, fontWeight: 600, cursor: "pointer" }}
                     >
                         Load more
                     </button>
@@ -195,6 +205,31 @@ export default function ConnectPage() {
                 )}
 
             </div>
+
+            {toast && (
+                <div style={{
+                    position: "fixed", bottom: 80, left: 0, right: 0,
+                    display: "flex", justifyContent: "center", zIndex: 100,
+                    pointerEvents: "none",
+                }}>
+                    <div style={{
+                        background: "#1f2937", color: "#fff",
+                        padding: "12px 20px", borderRadius: 999,
+                        fontSize: 14, fontWeight: 500,
+                        display: "flex", alignItems: "center", gap: 16,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+                        pointerEvents: "auto",
+                    }}>
+                        <span>Post deleted</span>
+                        <button
+                            onClick={handleUndo}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#10b981", fontWeight: 700, fontSize: 14, padding: 0 }}
+                        >
+                            Undo
+                        </button>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }

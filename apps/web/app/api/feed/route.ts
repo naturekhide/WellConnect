@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     var cursor = url.searchParams.get("cursor");
     var tab = url.searchParams.get("tab") || "for-you";
 
-    var whereClause: any = {};
+    var whereClause: any = { deletedAt: null };
 
     if (tab === "for-you") {
         whereClause.circleId = null;
@@ -85,11 +85,13 @@ export async function GET(request: NextRequest) {
             anonymous: post.anonymous,
             sentiment: post.sentiment,
             circleId: post.circleId,
+            editedAt: post.editedAt,
             createdAt: post.createdAt,
             author: post.anonymous ? null : post.author,
             reactions: rc,
             myReaction: mine,
             replyCount: post._count.replies,
+            isMine: post.authorId === userId,
         };
     });
 
@@ -166,10 +168,12 @@ export async function POST(request: NextRequest) {
         anonymous: post.anonymous,
         sentiment: post.sentiment,
         circleId: post.circleId,
+        editedAt: post.editedAt,
         createdAt: post.createdAt,
         author: post.anonymous ? null : post.author,
         reactions: { hug: 0, growth: 0, strength: 0, grateful: 0 },
         myReaction: null,
         replyCount: 0,
+        isMine: true,
     }, { status: 201 });
 }
