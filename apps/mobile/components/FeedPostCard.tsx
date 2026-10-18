@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -6,12 +6,11 @@ import {
     TouchableOpacity,
     Image,
     Alert,
-    Modal,
     TextInput,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useColors, spacing, radius } from "../src/theme";
-import { reactToPost } from "../src/api/client";
+import { reactToPost, getAuthToken } from "../src/api/client";
 
 var REACTIONS = [
     { type: "hug", emoji: "🤗" },
@@ -25,7 +24,6 @@ var IMAGE_BASE = "https://well-connect-web.vercel.app";
 type Props = {
     post: any;
     onReactionChange?: (postId: string, reactions: any, myReaction: any) => void;
-    onPress?: () => void;
     onDelete?: (postId: string) => void;
     onUpdated?: (postId: string, content: string, editedAt: string) => void;
 };
@@ -33,7 +31,7 @@ type Props = {
 function PostImage({ uri, borderColor }: any) {
     var [ratio, setRatio] = useState(1);
 
-    React.useEffect(function () {
+    useEffect(function () {
         Image.getSize(uri, function (w, h) {
             if (w && h) setRatio(w / h);
         }, function () { });
@@ -42,25 +40,17 @@ function PostImage({ uri, borderColor }: any) {
     return (
         <Image
             source={{ uri: uri }}
-            style={{
-                width: "100%",
-                aspectRatio: ratio,
-                borderRadius: radius.lg,
-                borderWidth: 1,
-                borderColor: borderColor,
-            }}
+            style={{ width: "100%", aspectRatio: ratio, borderRadius: radius.lg, borderWidth: 1, borderColor: borderColor }}
             resizeMode="contain"
         />
     );
 }
 
-export default function FeedPostCard({ post, onReactionChange, onPress, onDelete, onUpdated }: Props) {
+export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdated }: Props) {
     var colors = useColors();
     var router = useRouter();
     var [myReaction, setMyReaction] = useState<string | null>(post.myReaction ?? null);
-    var [reactions, setReactions] = useState<any>(
-        post.reactions || { hug: 0, growth: 0, strength: 0, grateful: 0 }
-    );
+    var [reactions, setReactions] = useState<any>(post.reactions || { hug: 0, growth: 0, strength: 0, grateful: 0 });
     var [showMenu, setShowMenu] = useState(false);
     var [editing, setEditing] = useState(false);
     var [editContent, setEditContent] = useState(post.content || "");
@@ -92,6 +82,11 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         router.push("/users/" + post.author.id);
     };
 
+    var goToPost = function () {
+        if (editing) return;
+        router.push("/feed/" + post.id);
+    };
+
     var isEditable = post.isMine && post.createdAt && (Date.now() - new Date(post.createdAt).getTime() < 15 * 60 * 1000);
 
     var handleSaveEdit = async function () {
@@ -101,6 +96,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                 method: "PATCH",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": "Bearer " + (getAuthToken() || ""),
                 },
                 body: JSON.stringify({ content: editContent.trim() }),
             });
@@ -119,389 +115,170 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         }
     };
 
-    var handleDeletePress = function () {
-        setShowMenu(false);
-        if (onDelete) onDelete(post.id);
-    };
-
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
     return (
-        <>
-            <TouchableOpacity
-                style={[styles.post, { borderBottomColor: colors.border }]}
-                onPress={onPress}
-                activeOpacity={0.85}
-            >
-                <View style={styles.row}>
-                    <View style={styles.avatarColumn}>
-                        <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
-                            <View
-                                style={[
-                                    styles.avatar,
-                                    {
-                                        backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary,
-                                        borderColor: post.anonymous ? colors.border : "transparent",
-                                        borderWidth: post.anonymous ? 1 : 0,
-                                    },
-                                ]}
-                            >
-                                <Text
-                                    style={[
-                                        styles.avatarText,
-                                        { color: post.anonymous ? colors.textSecondary : "#fff" },
-                                    ]}
-                                >
-                                    {initials}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.content}>
-                        <View style={styles.header}>
-                            <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
-                                <Text
-                                    style={[styles.name, { color: colors.textPrimary }]}
-                                    numberOfLines={1}
-                                >
-                                    {displayName}
-                                </Text>
-                            </TouchableOpacity>
-                            {!post.anonymous && post.author?.username && (
-                                <TouchableOpacity onPress={goToProfile}>
-                                    <Text
-                                        style={[styles.username, { color: colors.textSecondary }]}
-                                        numberOfLines={1}
-                                    >
-                                        @{post.author.username}
-                                    </Text>
-                                </TouchableOpacity>
-                            )}
-                            {post.anonymous && (
-                                <Text
-                                    style={[
-                                        styles.anonBadge,
-                                        { color: colors.primary, borderColor: colors.primary },
-                                    ]}
-                                >
-                                    anonymous
-                                </Text>
-                            )}
-                            <Text style={[styles.dot, { color: colors.textTertiary }]}>·</Text>
-                            <Text style={[styles.time, { color: colors.textTertiary }]}>
-                                {timeAgo(post.createdAt)}
-                            </Text>
-                            {currentEditedAt && (
-                                <Text style={{ fontSize: 11, color: colors.textTertiary }}>· edited</Text>
-                            )}
-
-                            {post.isMine && (
-                                <TouchableOpacity
-                                    onPress={function () { setShowMenu(true); }}
-                                    style={{ marginLeft: "auto", paddingHorizontal: 4 }}
-                                >
-                                    <Text style={{ fontSize: 16, color: colors.textSecondary }}>···</Text>
-                                </TouchableOpacity>
-                            )}
+        <View style={[styles.post, { borderBottomColor: colors.border }]}>
+            <View style={styles.row}>
+                <View style={styles.avatarColumn}>
+                    <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
+                        <View style={[styles.avatar, { backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary, borderColor: post.anonymous ? colors.border : "transparent", borderWidth: post.anonymous ? 1 : 0 }]}>
+                            <Text style={[styles.avatarText, { color: post.anonymous ? colors.textSecondary : "#fff" }]}>{initials}</Text>
                         </View>
+                    </TouchableOpacity>
+                </View>
 
-                        {currentContent ? (
-                            <Text style={[styles.text, { color: colors.textPrimary }]}>
-                                {currentContent}
-                            </Text>
-                        ) : null}
+                <View style={styles.content}>
+                    {/* HEADER */}
+                    <View style={styles.header}>
+                        <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
+                            <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{displayName}</Text>
+                        </TouchableOpacity>
+                        {!post.anonymous && post.author?.username && (
+                            <TouchableOpacity onPress={goToProfile}>
+                                <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>@{post.author.username}</Text>
+                            </TouchableOpacity>
+                        )}
+                        {post.anonymous && <Text style={[styles.anonBadge, { color: colors.primary, borderColor: colors.primary }]}>anonymous</Text>}
+                        <Text style={[styles.dot, { color: colors.textTertiary }]}>·</Text>
+                        <Text style={[styles.time, { color: colors.textTertiary }]}>{timeAgo(post.createdAt)}</Text>
+                        {currentEditedAt && <Text style={{ fontSize: 11, color: colors.textTertiary }}>· edited</Text>}
 
-                        {post.imageUrls && post.imageUrls.length > 0 && (
-                            <View style={styles.imageWrap}>
-                                {post.imageUrls.length === 1 && (
-                                    <PostImage
-                                        uri={IMAGE_BASE + post.imageUrls[0]}
-                                        borderColor={colors.border}
-                                    />
-                                )}
-                                {post.imageUrls.length === 2 && (
-                                    <View style={styles.imageRow}>
-                                        {post.imageUrls.map(function (url: string, i: number) {
-                                            return (
-                                                <Image
-                                                    key={i}
-                                                    source={{ uri: IMAGE_BASE + url }}
-                                                    style={[styles.imageHalf, { borderColor: colors.border }]}
-                                                    resizeMode="cover"
-                                                />
-                                            );
-                                        })}
-                                    </View>
-                                )}
-                                {post.imageUrls.length === 3 && (
-                                    <View style={styles.imageRow}>
-                                        {post.imageUrls.map(function (url: string, i: number) {
-                                            return (
-                                                <Image
-                                                    key={i}
-                                                    source={{ uri: IMAGE_BASE + url }}
-                                                    style={[styles.imageThird, { borderColor: colors.border }]}
-                                                    resizeMode="cover"
-                                                />
-                                            );
-                                        })}
-                                    </View>
-                                )}
-                                {post.imageUrls.length >= 4 && (
-                                    <View style={styles.imageGridFour}>
-                                        {post.imageUrls.slice(0, 4).map(function (url: string, i: number) {
-                                            return (
-                                                <Image
-                                                    key={i}
-                                                    source={{ uri: IMAGE_BASE + url }}
-                                                    style={[styles.imageQuarter, { borderColor: colors.border }]}
-                                                    resizeMode="cover"
-                                                />
-                                            );
-                                        })}
+                        {post.isMine && (
+                            <View style={{ marginLeft: "auto", zIndex: 10 }}>
+                                <TouchableOpacity onPress={function () { setShowMenu(!showMenu); }} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
+                                    <Text style={{ fontSize: 18, color: colors.textSecondary, fontWeight: "bold" }}>···</Text>
+                                </TouchableOpacity>
+
+                                {showMenu && (
+                                    <View
+                                        style={[styles.menuDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                        onStartShouldSetResponder={function () { return true; }}
+                                    >
+                                        {isEditable && (
+                                            <TouchableOpacity
+                                                onPress={function () { setEditing(true); setShowMenu(false); }}
+                                                style={[styles.menuItem, { borderBottomColor: colors.border }]}
+                                            >
+                                                <Text style={[styles.menuText, { color: colors.textPrimary }]}>Edit</Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        <TouchableOpacity
+                                            onPress={function () { setShowMenu(false); if (onDelete) onDelete(post.id); }}
+                                            style={styles.menuItem}
+                                        >
+                                            <Text style={[styles.menuText, { color: colors.danger }]}>Delete</Text>
+                                        </TouchableOpacity>
                                     </View>
                                 )}
                             </View>
                         )}
+                    </View>
 
+                    {/* BODY (Navigates to Post) */}
+                    {editing ? (
+                        <View style={{ marginTop: spacing.sm }}>
+                            <TextInput
+                                style={[styles.editInput, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
+                                value={editContent}
+                                onChangeText={setEditContent}
+                                multiline
+                                maxLength={500}
+                            />
+                            <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", marginTop: spacing.sm }}>
+                                <TouchableOpacity onPress={function () { setEditing(false); setEditContent(currentContent); }} style={{ padding: spacing.sm }}>
+                                    <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={handleSaveEdit} style={{ backgroundColor: colors.primary, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md }}>
+                                    <Text style={{ fontSize: 13, color: "#fff", fontWeight: "600" }}>Save</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ) : (
+                        <TouchableOpacity activeOpacity={0.7} onPress={goToPost}>
+                            {currentContent ? <Text style={[styles.text, { color: colors.textPrimary }]}>{currentContent}</Text> : null}
+
+                            {post.imageUrls && post.imageUrls.length > 0 && (
+                                <View style={styles.imageWrap}>
+                                    {post.imageUrls.length === 1 && <PostImage uri={IMAGE_BASE + post.imageUrls[0]} borderColor={colors.border} />}
+                                    {post.imageUrls.length === 2 && (
+                                        <View style={styles.imageRow}>
+                                            {post.imageUrls.map(function (url: string, i: number) {
+                                                return <Image key={i} source={{ uri: IMAGE_BASE + url }} style={[styles.imageHalf, { borderColor: colors.border }]} resizeMode="cover" />;
+                                            })}
+                                        </View>
+                                    )}
+                                    {post.imageUrls.length === 3 && (
+                                        <View style={styles.imageRow}>
+                                            {post.imageUrls.map(function (url: string, i: number) {
+                                                return <Image key={i} source={{ uri: IMAGE_BASE + url }} style={[styles.imageThird, { borderColor: colors.border }]} resizeMode="cover" />;
+                                            })}
+                                        </View>
+                                    )}
+                                    {post.imageUrls.length >= 4 && (
+                                        <View style={styles.imageGridFour}>
+                                            {post.imageUrls.slice(0, 4).map(function (url: string, i: number) {
+                                                return <Image key={i} source={{ uri: IMAGE_BASE + url }} style={[styles.imageQuarter, { borderColor: colors.border }]} resizeMode="cover" />;
+                                            })}
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    )}
+
+                    {/* REACTIONS */}
+                    {!editing && (
                         <View style={styles.actions}>
                             {REACTIONS.map(function (r: any) {
                                 var isActive = myReaction === r.type;
                                 var count = (reactions && reactions[r.type]) || 0;
                                 return (
-                                    <TouchableOpacity
-                                        key={r.type}
-                                        style={[
-                                            styles.actionBtn,
-                                            isActive && { backgroundColor: colors.primaryLight },
-                                        ]}
-                                        onPress={function () {
-                                            handleReact(r.type);
-                                        }}
-                                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                                    >
+                                    <TouchableOpacity key={r.type} style={[styles.actionBtn, isActive && { backgroundColor: colors.primaryLight }]} onPress={function () { handleReact(r.type); }}>
                                         <Text style={styles.actionEmoji}>{r.emoji}</Text>
-                                        {count > 0 && (
-                                            <Text
-                                                style={[
-                                                    styles.actionCount,
-                                                    {
-                                                        color: isActive ? colors.primary : colors.textSecondary,
-                                                    },
-                                                ]}
-                                            >
-                                                {count}
-                                            </Text>
-                                        )}
+                                        {count > 0 && <Text style={[styles.actionCount, { color: isActive ? colors.primary : colors.textSecondary }]}>{count}</Text>}
                                     </TouchableOpacity>
                                 );
                             })}
-
-                            <TouchableOpacity
-                                style={styles.actionBtn}
-                                onPress={onPress}
-                                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                            >
+                            <TouchableOpacity style={styles.actionBtn} onPress={goToPost}>
                                 <Text style={styles.actionEmoji}>💬</Text>
-                                {post.replyCount > 0 && (
-                                    <Text
-                                        style={[styles.actionCount, { color: colors.textSecondary }]}
-                                    >
-                                        {post.replyCount}
-                                    </Text>
-                                )}
+                                {post.replyCount > 0 && <Text style={[styles.actionCount, { color: colors.textSecondary }]}>{post.replyCount}</Text>}
                             </TouchableOpacity>
                         </View>
-                    </View>
+                    )}
                 </View>
-            </TouchableOpacity>
-
-            <Modal
-                visible={showMenu}
-                transparent
-                animationType="fade"
-                onRequestClose={function () { setShowMenu(false); }}
-            >
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={function () { setShowMenu(false); }}
-                >
-                    <View style={[styles.menuBox, { backgroundColor: colors.surface }]}>
-                        {isEditable && (
-                            <TouchableOpacity
-                                onPress={function () { setEditing(true); setShowMenu(false); }}
-                                style={[styles.menuItem, { borderBottomColor: colors.border }]}
-                            >
-                                <Text style={[styles.menuText, { color: colors.textPrimary }]}>Edit</Text>
-                            </TouchableOpacity>
-                        )}
-                        <TouchableOpacity
-                            onPress={handleDeletePress}
-                            style={styles.menuItem}
-                        >
-                            <Text style={[styles.menuText, { color: colors.danger }]}>Delete</Text>
-                        </TouchableOpacity>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
-
-            <Modal
-                visible={editing}
-                transparent
-                animationType="slide"
-                onRequestClose={function () { setEditing(false); }}
-            >
-                <View style={styles.editOverlay}>
-                    <View style={[styles.editModal, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                        <Text style={[styles.editTitle, { color: colors.textPrimary }]}>Edit Post</Text>
-                        <TextInput
-                            style={[styles.editInput, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
-                            value={editContent}
-                            onChangeText={setEditContent}
-                            multiline
-                            maxLength={500}
-                        />
-                        <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", marginTop: spacing.md }}>
-                            <TouchableOpacity
-                                onPress={function () { setEditing(false); setEditContent(currentContent); }}
-                                style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}
-                            >
-                                <Text style={{ fontSize: 14, color: colors.textSecondary }}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={handleSaveEdit}
-                                style={{ paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.md }}
-                            >
-                                <Text style={{ fontSize: 14, color: "#fff", fontWeight: "600" }}>Save</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-        </>
+            </View>
+        </View>
     );
 }
 
 var styles = StyleSheet.create({
-    post: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
-        borderBottomWidth: 1,
-    },
+    post: { paddingHorizontal: spacing.lg, paddingVertical: spacing.md, borderBottomWidth: 1 },
     row: { flexDirection: "row", gap: spacing.md },
     avatarColumn: { width: 40 },
-    avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: "center",
-        alignItems: "center",
-    },
+    avatar: { width: 40, height: 40, borderRadius: 20, justifyContent: "center", alignItems: "center" },
     avatarText: { fontSize: 15, fontWeight: "700" },
     content: { flex: 1, minWidth: 0 },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        flexWrap: "wrap",
-        marginBottom: 4,
-        gap: 4,
-    },
+    header: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", marginBottom: 4, gap: 4 },
     name: { fontSize: 15, fontWeight: "700" },
     username: { fontSize: 14 },
-    anonBadge: {
-        fontSize: 10,
-        fontWeight: "600",
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 4,
-        borderWidth: 1,
-        textTransform: "lowercase",
-    },
+    anonBadge: { fontSize: 10, fontWeight: "600", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, textTransform: "lowercase" },
     dot: { fontSize: 14 },
     time: { fontSize: 13 },
     text: { fontSize: 15, lineHeight: 21, marginBottom: spacing.sm },
     imageWrap: { marginTop: spacing.sm, marginBottom: spacing.sm },
     imageRow: { flexDirection: "row", gap: 2 },
-    imageHalf: {
-        flex: 1,
-        height: 200,
-        borderRadius: radius.md,
-        borderWidth: 1,
-    },
-    imageThird: {
-        flex: 1,
-        height: 160,
-        borderRadius: radius.md,
-        borderWidth: 1,
-    },
+    imageHalf: { flex: 1, height: 200, borderRadius: radius.md, borderWidth: 1 },
+    imageThird: { flex: 1, height: 160, borderRadius: radius.md, borderWidth: 1 },
     imageGridFour: { flexDirection: "row", flexWrap: "wrap", gap: 2 },
-    imageQuarter: {
-        width: "49.5%",
-        height: 140,
-        borderRadius: radius.md,
-        borderWidth: 1,
-    },
-    actions: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: spacing.sm,
-        marginTop: spacing.sm,
-    },
-    actionBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: spacing.sm,
-        paddingVertical: 6,
-        borderRadius: radius.full,
-    },
+    imageQuarter: { width: "49.5%", height: 140, borderRadius: radius.md, borderWidth: 1 },
+    actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
+    actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.full },
     actionEmoji: { fontSize: 16 },
     actionCount: { fontSize: 13, fontWeight: "600" },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    menuBox: {
-        borderRadius: radius.lg,
-        minWidth: 180,
-        overflow: "hidden",
-    },
-    menuItem: {
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.lg,
-        borderBottomWidth: 0,
-    },
-    menuText: {
-        fontSize: 15,
-        fontWeight: "500",
-    },
-    editOverlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        justifyContent: "center",
-        padding: spacing.lg,
-    },
-    editModal: {
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        padding: spacing.lg,
-    },
-    editTitle: {
-        fontSize: 16,
-        fontWeight: "700",
-        marginBottom: spacing.md,
-    },
-    editInput: {
-        borderRadius: radius.md,
-        borderWidth: 1,
-        padding: spacing.md,
-        fontSize: 15,
-        minHeight: 100,
-        textAlignVertical: "top",
-    },
+    menuDropdown: { position: "absolute", top: 30, right: 0, width: 120, borderWidth: 1, borderRadius: radius.md, zIndex: 100, elevation: 5, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+    menuItem: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderBottomWidth: 0 },
+    menuText: { fontSize: 14, fontWeight: "500" },
+    editInput: { borderRadius: radius.md, borderWidth: 1, padding: spacing.md, fontSize: 15, minHeight: 80, textAlignVertical: "top" },
 });

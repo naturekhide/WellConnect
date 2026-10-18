@@ -1,51 +1,43 @@
+import React from "react";
 import { Tabs, useRouter } from "expo-router";
-import { Text, View, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, Platform } from "react-native";
 import { useColors } from "../../src/theme";
 
-function PlusButton() {
+export default function TabsLayout() {
+    var colors = useColors();
     var router = useRouter();
-    var colors = useColors();
-    return (
-        <TouchableOpacity
-            style={styles.plusWrapper}
-            onPress={function () { router.push("/modal/new-post"); }}
-            activeOpacity={0.8}
-        >
-            <View style={[styles.plusButton, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
-                <Text style={styles.plusText}>+</Text>
-            </View>
-        </TouchableOpacity>
-    );
-}
-
-export default function TabLayout() {
-    var colors = useColors();
 
     return (
         <Tabs
             screenOptions={{
-                headerStyle: { backgroundColor: colors.background },
-                headerTitleStyle: { fontWeight: "600", color: colors.primary },
+                headerShown: false,
+                tabBarStyle: {
+                    backgroundColor: colors.background,
+                    borderTopWidth: 1,
+                    borderTopColor: colors.border,
+                    height: Platform.OS === "ios" ? 88 : 65,
+                    paddingBottom: Platform.OS === "ios" ? 24 : 10,
+                    paddingTop: 8,
+                },
                 tabBarActiveTintColor: colors.primary,
                 tabBarInactiveTintColor: colors.textTertiary,
-                tabBarStyle: {
-                    backgroundColor: colors.surface,
-                    borderTopColor: colors.border,
-                    height: 68,
-                    paddingBottom: 8,
-                    paddingTop: 6,
+                tabBarLabelStyle: {
+                    fontSize: 11,
+                    fontWeight: "500",
+                    marginTop: 2,
                 },
-                tabBarLabelStyle: { fontSize: 11, fontWeight: "500" },
             }}
         >
+            {/* 1. HOME */}
             <Tabs.Screen
                 name="home"
                 options={{
                     title: "Home",
-                    headerShown: false,
                     tabBarIcon: function () { return <Text style={{ fontSize: 22 }}>🏠</Text>; },
                 }}
             />
+
+            {/* 2. CONNECT */}
             <Tabs.Screen
                 name="connect"
                 options={{
@@ -53,20 +45,56 @@ export default function TabLayout() {
                     tabBarIcon: function () { return <Text style={{ fontSize: 22 }}>🌍</Text>; },
                 }}
             />
+
+            {/* 3. + BUTTON */}
             <Tabs.Screen
                 name="new-post"
                 options={{
                     title: "",
-                    tabBarButton: function () { return <PlusButton />; },
+                    tabBarButton: function () {
+                        return (
+                            <TouchableOpacity
+                                style={{
+                                    flex: 1,
+                                    justifyContent: "center",
+                                    alignItems: "center",
+                                }}
+                                onPress={function () { router.push("/feed/new"); }} // <--- FIXED ROUTE HERE
+                            >
+                                <View
+                                    style={{
+                                        width: 52,
+                                        height: 52,
+                                        borderRadius: 26,
+                                        backgroundColor: colors.primary,
+                                        justifyContent: "center",
+                                        alignItems: "center",
+                                        marginTop: -20,
+                                        shadowColor: "#000",
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.3,
+                                        shadowRadius: 4,
+                                        elevation: 5,
+                                    }}
+                                >
+                                    <Text style={{ fontSize: 28, color: "#fff", marginTop: -2 }}>+</Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    },
                 }}
             />
+
+            {/* 4. JOURNAL */}
             <Tabs.Screen
                 name="journal"
                 options={{
                     title: "Journal",
-                    tabBarIcon: function () { return <Text style={{ fontSize: 22 }}>💭</Text>; },
+                    tabBarIcon: function () { return <Text style={{ fontSize: 22 }}>📝</Text>; },
                 }}
             />
+
+            {/* 5. YOU */}
             <Tabs.Screen
                 name="you"
                 options={{
@@ -74,29 +102,9 @@ export default function TabLayout() {
                     tabBarIcon: function () { return <Text style={{ fontSize: 22 }}>👤</Text>; },
                 }}
             />
-            <Tabs.Screen
-                name="goals"
-                options={{
-                    href: null,
-                }}
-            />
+
+            {/* HIDDEN SCREENS */}
+            <Tabs.Screen name="goals" options={{ href: null }} />
         </Tabs>
     );
 }
-
-var styles = StyleSheet.create({
-    plusWrapper: { flex: 1, alignItems: "center", justifyContent: "center" },
-    plusButton: {
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        alignItems: "center",
-        justifyContent: "center",
-        marginTop: -20,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
-    },
-    plusText: { color: "#fff", fontSize: 32, fontWeight: "300", marginTop: -3 },
-});

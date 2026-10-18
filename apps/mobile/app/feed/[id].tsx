@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
     View,
     Text,
@@ -13,7 +13,7 @@ import {
     Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { getFeedPost, replyToPost, reactToPost } from "../../src/api/client";
+import { getFeedPost, replyToPost, reactToPost, getAuthToken } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 
 var REACTIONS = [
@@ -56,28 +56,26 @@ function insertChild(tree: any[], parentId: string, child: any): any[] {
     });
 }
 
-function PostImage({ uri, borderColor }: any) {
-    var [ratio, setRatio] = React.useState(1);
+function removeReply(tree: any[], replyId: string): any[] {
+    return tree.map(function (node) {
+        if (node.id === replyId) return null;
+        if (node.children) {
+            return { ...node, children: removeReply(node.children, replyId).filter(Boolean) };
+        }
+        return node;
+    }).filter(Boolean);
+}
 
-    React.useEffect(function () {
-        Image.getSize(uri, function (w, h) {
-            if (w && h) setRatio(w / h);
-        }, function () { });
-    }, [uri]);
-
-    return (
-        <Image
-            source={{ uri: uri }}
-            style={{
-                width: "100%",
-                aspectRatio: ratio,
-                borderRadius: radius.lg,
-                borderWidth: 1,
-                borderColor: borderColor,
-            }}
-            resizeMode="contain"
-        />
-    );
+function updateReplyContent(tree: any[], replyId: string, content: string, editedAt: string): any[] {
+    return tree.map(function (node) {
+        if (node.id === replyId) {
+            return { ...node, content, editedAt };
+        }
+        if (node.children) {
+            return { ...node, children: updateReplyContent(node.children, replyId, content, editedAt) };
+        }
+        return node;
+    });
 }
 
 export default function FeedPostDetail() {
@@ -93,6 +91,7 @@ export default function FeedPostDetail() {
     var [myReaction, setMyReaction] = useState<string | null>(null);
     var [reactions, setReactions] = useState<any>({});
     var [openReplyBox, setOpenReplyBox] = useState<string | null>(null);
+    var [toast, setToast] = useState<any>(null);
 
     useEffect(function () { load(); }, [postId]);
 
@@ -119,6 +118,7 @@ export default function FeedPostDetail() {
         setReplying(true);
         try {
             var newReply = await replyToPost(postId, replyText.trim(), anonymousReply, parentId);
+            newReply.isMine = true;
             var updated = { ...post };
 
             if (parentId) {
@@ -134,6 +134,33 @@ export default function FeedPostDetail() {
             Alert.alert("Failed", e.message);
         }
         setReplying(false);
+    };
+
+    var handleReplyDeleted = function (replyId: string) {
+        setPost({ ...post, replies: removeReply(post.replies || [], replyId) });
+        setToast({ replyId: replyId });
+        setTimeout(function () {
+            setToast(function (current: any) {
+                return current && current.replyId === replyId ? null : current;
+            });
+        }, 5000);
+    };
+
+    var handleReplyUpdated = function (replyId: string, content: string, editedAt: string) {
+        setPost({ ...post, replies: updateReplyContent(post.replies || [], replyId, content, editedAt) });
+    };
+
+    var handleUndoDelete = async function () {
+        if (!toast) return;
+        var replyId = toast.replyId;
+        setToast(null);
+        try {
+            await fetch("https://well-connect-web.vercel.app/api/feed/" + postId + "/reply/" + replyId + "/restore", {
+                method: "POST",
+                headers: { "Authorization": "Bearer " + (getAuthToken() || "") },
+            });
+            await load();
+        } catch (e) { }
     };
 
     if (loading) {
@@ -170,16 +197,7 @@ export default function FeedPostDetail() {
             <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                 <View style={[styles.postBlock, { borderBottomColor: colors.border }]}>
                     <View style={styles.postHeader}>
-                        <View
-                            style={[
-                                styles.avatar,
-                                {
-                                    backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary,
-                                    borderColor: post.anonymous ? colors.border : "transparent",
-                                    borderWidth: post.anonymous ? 1 : 0,
-                                },
-                            ]}
-                        >
+                        <View style={[styles.avatar, { backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary, borderColor: post.anonymous ? colors.border : "transparent", borderWidth: post.anonymous ? 1 : 0 }]}>
                             <Text style={[styles.avatarText, { color: post.anonymous ? colors.textSecondary : "#fff" }]}>
                                 {post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U"}
                             </Text>
@@ -200,14 +218,19 @@ export default function FeedPostDetail() {
                         </View>
                     </View>
 
-                    {post.content ? (
-                        <Text style={[styles.postText, { color: colors.textPrimary }]}>{post.content}</Text>
-                    ) : null}
+                    {post.content ? <Text style={[styles.postText, { color: colors.textPrimary }]}>{post.content}</Text> : null}
 
                     {post.imageUrls && post.imageUrls.length > 0 && (
                         <View style={styles.imageWrap}>
                             {post.imageUrls.map(function (url: string, i: number) {
-                                return <PostImage key={i} uri={IMAGE_BASE + url} borderColor={colors.border} />;
+                                return (
+                                    <Image
+                                        key={i}
+                                        source={{ uri: IMAGE_BASE + url }}
+                                        style={[styles.image, { borderColor: colors.border }]}
+                                        resizeMode="contain"
+                                    />
+                                );
                             })}
                         </View>
                     )}
@@ -253,6 +276,9 @@ export default function FeedPostDetail() {
                             anonymousReply={anonymousReply}
                             setAnonymousReply={setAnonymousReply}
                             replying={replying}
+                            postId={postId}
+                            onDeleted={handleReplyDeleted}
+                            onUpdated={handleReplyUpdated}
                         />
                     );
                 })}
@@ -268,13 +294,7 @@ export default function FeedPostDetail() {
 
             <View style={[styles.composer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
                 <TouchableOpacity
-                    style={[
-                        styles.anonToggle,
-                        {
-                            backgroundColor: anonymousReply ? colors.primaryLight : colors.surfaceAlt,
-                            borderColor: anonymousReply ? colors.primary : colors.border,
-                        },
-                    ]}
+                    style={[styles.anonToggle, { backgroundColor: anonymousReply ? colors.primaryLight : colors.surfaceAlt, borderColor: anonymousReply ? colors.primary : colors.border }]}
                     onPress={function () { setAnonymousReply(!anonymousReply); }}
                 >
                     <Text style={styles.anonEmoji}>🎭</Text>
@@ -299,27 +319,78 @@ export default function FeedPostDetail() {
                     </Text>
                 </TouchableOpacity>
             </View>
+
+            {toast && (
+                <View style={styles.toastContainer}>
+                    <View style={styles.toast}>
+                        <Text style={{ color: "#fff", fontSize: 14 }}>Reply deleted</Text>
+                        <TouchableOpacity onPress={handleUndoDelete} style={{ marginLeft: 16 }}>
+                            <Text style={{ color: "#10b981", fontWeight: "700", fontSize: 14 }}>Undo</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
         </KeyboardAvoidingView>
     );
 }
 
-function ReplyNode({ reply, depth, colors, onReplyClick, openReplyBox, handleReply, replyText, setReplyText, anonymousReply, setAnonymousReply, replying }: any) {
+function ReplyNode({ reply, depth, colors, onReplyClick, openReplyBox, handleReply, replyText, setReplyText, anonymousReply, setAnonymousReply, replying, postId, onDeleted, onUpdated }: any) {
     var isOpen = openReplyBox === reply.id;
+    var [showMenu, setShowMenu] = useState(false);
+    var [editing, setEditing] = useState(false);
+    var [editContent, setEditContent] = useState(reply.content);
+    var [currentContent, setCurrentContent] = useState(reply.content);
+    var [currentEditedAt, setCurrentEditedAt] = useState(reply.editedAt);
+
+    var isEditable = reply.isMine && reply.createdAt && (Date.now() - new Date(reply.createdAt).getTime() < 15 * 60 * 1000);
+
+    var handleSaveEdit = async function () {
+        if (!editContent.trim()) return;
+        try {
+            var r = await fetch("https://well-connect-web.vercel.app/api/feed/" + postId + "/reply/" + reply.id, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (getAuthToken() || "") },
+                body: JSON.stringify({ content: editContent.trim() }),
+            });
+            if (r.ok) {
+                var data = await r.json();
+                setCurrentContent(data.content);
+                setCurrentEditedAt(data.editedAt);
+                setEditing(false);
+                if (onUpdated) onUpdated(reply.id, data.content, data.editedAt);
+            }
+        } catch (e) { }
+    };
+
+    var handleDelete = async function () {
+        Alert.alert(
+            "Delete reply?",
+            "This can be undone shortly.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async function () {
+                        setShowMenu(false);
+                        try {
+                            var r = await fetch("https://well-connect-web.vercel.app/api/feed/" + postId + "/reply/" + reply.id, {
+                                method: "DELETE",
+                                headers: { "Authorization": "Bearer " + (getAuthToken() || "") },
+                            });
+                            if (r.ok && onDeleted) onDeleted(reply.id);
+                        } catch (e) { }
+                    },
+                },
+            ]
+        );
+    };
 
     return (
         <View style={{ paddingLeft: depth * 20 }}>
             <View style={[styles.replyBlock, { borderBottomColor: colors.border }]}>
                 <View style={styles.replyHeader}>
-                    <View
-                        style={[
-                            styles.replyAvatar,
-                            {
-                                backgroundColor: reply.anonymous ? colors.surfaceAlt : colors.primary,
-                                borderColor: reply.anonymous ? colors.border : "transparent",
-                                borderWidth: reply.anonymous ? 1 : 0,
-                            },
-                        ]}
-                    >
+                    <View style={[styles.replyAvatar, { backgroundColor: reply.anonymous ? colors.surfaceAlt : colors.primary, borderColor: reply.anonymous ? colors.border : "transparent", borderWidth: reply.anonymous ? 1 : 0 }]}>
                         <Text style={[styles.replyAvatarText, { color: reply.anonymous ? colors.textSecondary : "#fff" }]}>
                             {reply.anonymous ? "🎭" : reply.author?.name?.charAt(0) || "U"}
                         </Text>
@@ -328,23 +399,71 @@ function ReplyNode({ reply, depth, colors, onReplyClick, openReplyBox, handleRep
                         {reply.anonymous ? "Anonymous" : reply.author?.name || "User"}
                     </Text>
                     <Text style={[styles.replyTime, { color: colors.textTertiary }]}>{timeAgo(reply.createdAt)}</Text>
-                </View>
-                <Text style={[styles.replyText, { color: colors.textPrimary }]}>{reply.content}</Text>
+                    {currentEditedAt && <Text style={{ fontSize: 11, color: colors.textTertiary, marginLeft: 4 }}>· edited</Text>}
 
-                <TouchableOpacity onPress={function () { onReplyClick(isOpen ? null : reply.id); }} style={styles.replyAction}>
-                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary }}>Reply</Text>
-                </TouchableOpacity>
+                    {reply.isMine && (
+                        <View style={{ marginLeft: "auto", zIndex: 10 }}>
+                            <TouchableOpacity onPress={function () { setShowMenu(!showMenu); }} style={{ paddingHorizontal: 8 }}>
+                                <Text style={{ fontSize: 16, color: colors.textSecondary, fontWeight: "bold" }}>···</Text>
+                            </TouchableOpacity>
+
+                            {showMenu && (
+                                <View
+                                    style={[styles.menuDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                                    onStartShouldSetResponder={function () { return true; }}
+                                >
+                                    {isEditable && (
+                                        <TouchableOpacity
+                                            onPress={function () { setEditing(true); setShowMenu(false); }}
+                                            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+                                        >
+                                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Edit</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity
+                                        onPress={handleDelete}
+                                        style={styles.menuItem}
+                                    >
+                                        <Text style={[styles.menuText, { color: colors.danger }]}>Delete</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </View>
+
+                {editing ? (
+                    <View style={{ marginTop: spacing.sm }}>
+                        <TextInput
+                            style={[styles.inlineInput, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
+                            value={editContent}
+                            onChangeText={setEditContent}
+                            multiline
+                            maxLength={300}
+                        />
+                        <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", marginTop: spacing.sm }}>
+                            <TouchableOpacity onPress={function () { setEditing(false); setEditContent(currentContent); }} style={{ padding: 4 }}>
+                                <Text style={{ fontSize: 12, color: colors.textSecondary }}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleSaveEdit} style={{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.md }}>
+                                <Text style={{ fontSize: 12, color: "#fff", fontWeight: "600" }}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    <Text style={[styles.replyText, { color: colors.textPrimary }]}>{currentContent}</Text>
+                )}
+
+                {!editing && (
+                    <TouchableOpacity onPress={function () { onReplyClick(isOpen ? null : reply.id); }} style={styles.replyAction}>
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary }}>Reply</Text>
+                    </TouchableOpacity>
+                )}
 
                 {isOpen && (
                     <View style={styles.inlineComposer}>
                         <TouchableOpacity
-                            style={[
-                                styles.anonToggleSmall,
-                                {
-                                    backgroundColor: anonymousReply ? colors.primaryLight : colors.surfaceAlt,
-                                    borderColor: anonymousReply ? colors.primary : colors.border,
-                                },
-                            ]}
+                            style={[styles.anonToggleSmall, { backgroundColor: anonymousReply ? colors.primaryLight : colors.surfaceAlt, borderColor: anonymousReply ? colors.primary : colors.border }]}
                             onPress={function () { setAnonymousReply(!anonymousReply); }}
                         >
                             <Text style={{ fontSize: 14 }}>🎭</Text>
@@ -387,6 +506,9 @@ function ReplyNode({ reply, depth, colors, onReplyClick, openReplyBox, handleRep
                         anonymousReply={anonymousReply}
                         setAnonymousReply={setAnonymousReply}
                         replying={replying}
+                        postId={postId}
+                        onDeleted={onDeleted}
+                        onUpdated={onUpdated}
                     />
                 );
             })}
@@ -398,24 +520,14 @@ var styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     topBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingHorizontal: spacing.lg,
-        paddingTop: 60,
-        paddingBottom: spacing.md,
-        borderBottomWidth: 1,
+        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+        paddingHorizontal: spacing.lg, paddingTop: 60, paddingBottom: spacing.md, borderBottomWidth: 1,
     },
     backBtn: { width: 32, height: 32, justifyContent: "center" },
     backText: { fontSize: 22 },
     topTitle: { fontSize: 16, fontWeight: "700" },
     content: { paddingBottom: spacing.xl },
-    postBlock: {
-        paddingHorizontal: spacing.lg,
-        paddingTop: spacing.lg,
-        paddingBottom: spacing.md,
-        borderBottomWidth: 1,
-    },
+    postBlock: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1 },
     postHeader: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.md },
     avatar: { width: 44, height: 44, borderRadius: 22, justifyContent: "center", alignItems: "center" },
     avatarText: { fontSize: 16, fontWeight: "700" },
@@ -426,6 +538,7 @@ var styles = StyleSheet.create({
     time: { fontSize: 13, marginTop: 2 },
     postText: { fontSize: 17, lineHeight: 24, marginBottom: spacing.md },
     imageWrap: { gap: spacing.sm, marginBottom: spacing.md },
+    image: { width: "100%", height: 220, borderRadius: radius.lg, borderWidth: 1 },
     actions: { flexDirection: "row", gap: spacing.sm, paddingTop: spacing.md, borderTopWidth: 1 },
     actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: spacing.md, paddingVertical: 8, borderRadius: radius.full },
     actionEmoji: { fontSize: 18 },
@@ -451,4 +564,9 @@ var styles = StyleSheet.create({
     replyInput: { flex: 1, borderRadius: radius.full, paddingHorizontal: spacing.md, paddingVertical: spacing.sm + 2, fontSize: 14, maxHeight: 100, borderWidth: 1 },
     sendBtn: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
     sendText: { fontSize: 18, fontWeight: "700" },
+    menuDropdown: { position: "absolute", top: 25, right: 0, width: 100, borderWidth: 1, borderRadius: radius.md, zIndex: 100, elevation: 5, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4 },
+    menuItem: { paddingVertical: 8, paddingHorizontal: 12, borderBottomWidth: 0 },
+    menuText: { fontSize: 13, fontWeight: "500" },
+    toastContainer: { position: "absolute", bottom: 100, left: 0, right: 0, alignItems: "center", zIndex: 100 },
+    toast: { flexDirection: "row", backgroundColor: "#1f2937", paddingVertical: 12, paddingHorizontal: 20, borderRadius: radius.full, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4 },
 });
