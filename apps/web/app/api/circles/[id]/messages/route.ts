@@ -8,10 +8,9 @@ export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
-    var userId = await getCurrentUserId(request);
-    if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    var userIdOrNull = await getCurrentUserId(request);
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    var userId: string = userIdOrNull;
 
     var membership = await prisma.circleMember.findUnique({
         where: { circleId_userId: { circleId: params.id, userId: userId } },
@@ -24,10 +23,8 @@ export async function GET(
     var url = new URL(request.url);
     var since = url.searchParams.get("since");
 
-    var where: any = { circleId: params.id };
-    if (since) {
-        where.createdAt = { gt: new Date(since) };
-    }
+    var where: any = { circleId: params.id, deletedAt: null };
+    if (since) where.createdAt = { gt: new Date(since) };
 
     var messages = await prisma.circleMessage.findMany({
         where: where,
@@ -35,6 +32,13 @@ export async function GET(
         take: since ? 100 : 50,
         include: {
             user: { select: { id: true, name: true, username: true } },
+            replyTo: {
+                select: {
+                    id: true,
+                    content: true,
+                    user: { select: { name: true } }
+                }
+            }
         },
     });
 
@@ -45,6 +49,12 @@ export async function GET(
                 content: m.content,
                 createdAt: m.createdAt,
                 user: m.user,
+                isMine: m.userId === userId,
+                replyTo: m.replyTo ? {
+                    id: m.replyTo.id,
+                    content: m.replyTo.content,
+                    senderName: m.replyTo.user?.name || "User"
+                } : null
             };
         }),
     });
@@ -54,10 +64,9 @@ export async function POST(
     request: NextRequest,
     { params }: { params: { id: string } }
 ) {
-    var userId = await getCurrentUserId(request);
-    if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    var userIdOrNull = await getCurrentUserId(request);
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    var userId: string = userIdOrNull;
 
     var membership = await prisma.circleMember.findUnique({
         where: { circleId_userId: { circleId: params.id, userId: userId } },
@@ -68,14 +77,10 @@ export async function POST(
     }
 
     var body = await request.json();
-    var { content } = body;
+    var { content, replyToId } = body;
 
     if (!content || content.trim().length === 0) {
         return NextResponse.json({ error: "Content required" }, { status: 400 });
-    }
-
-    if (content.length > 500) {
-        return NextResponse.json({ error: "Message too long (max 500)" }, { status: 400 });
     }
 
     var msg = await prisma.circleMessage.create({
@@ -83,9 +88,17 @@ export async function POST(
             circleId: params.id,
             userId: userId,
             content: content.trim(),
+            replyToId: replyToId || null,
         },
         include: {
             user: { select: { id: true, name: true, username: true } },
+            replyTo: {
+                select: {
+                    id: true,
+                    content: true,
+                    user: { select: { name: true } }
+                }
+            }
         },
     });
 
@@ -94,5 +107,11 @@ export async function POST(
         content: msg.content,
         createdAt: msg.createdAt,
         user: msg.user,
+        isMine: true,
+        replyTo: msg.replyTo ? {
+            id: msg.replyTo.id,
+            content: msg.replyTo.content,
+            senderName: msg.replyTo.user?.name || "User"
+        } : null
     }, { status: 201 });
 }

@@ -9,20 +9,17 @@ export async function GET(
     { params }: { params: { userId: string } }
 ) {
     var userIdOrNull = await getCurrentUserId(request);
-    if (!userIdOrNull) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     var userId: string = userIdOrNull;
-
     var otherId = params.userId;
-    if (otherId === userId) {
-        return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
-    }
+
+    if (otherId === userId) return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
 
     var url = new URL(request.url);
     var since = url.searchParams.get("since");
 
     var where: any = {
+        deletedAt: null,
         OR: [
             { senderId: userId, receiverId: otherId },
             { senderId: otherId, receiverId: userId },
@@ -39,10 +36,16 @@ export async function GET(
         take: since ? 100 : 50,
         include: {
             sender: { select: { id: true, name: true, username: true } },
+            replyTo: {
+                select: {
+                    id: true,
+                    content: true,
+                    sender: { select: { name: true } }
+                }
+            }
         },
     });
 
-    // Mark messages from the other person as read
     if (!since) {
         await prisma.directMessage.updateMany({
             where: { senderId: otherId, receiverId: userId, readAt: null },
@@ -58,6 +61,11 @@ export async function GET(
                 createdAt: m.createdAt,
                 isMine: m.senderId === userId,
                 sender: m.sender,
+                replyTo: m.replyTo ? {
+                    id: m.replyTo.id,
+                    content: m.replyTo.content,
+                    senderName: m.replyTo.sender?.name || "User"
+                } : null
             };
         }),
     });
@@ -68,34 +76,17 @@ export async function POST(
     { params }: { params: { userId: string } }
 ) {
     var userIdOrNull = await getCurrentUserId(request);
-    if (!userIdOrNull) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     var userId: string = userIdOrNull;
-
     var otherId = params.userId;
-    if (otherId === userId) {
-        return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
-    }
 
-    var other = await prisma.user.findUnique({
-        where: { id: otherId },
-        select: { id: true },
-    });
-
-    if (!other) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    if (otherId === userId) return NextResponse.json({ error: "Cannot message yourself" }, { status: 400 });
 
     var body = await request.json();
-    var { content } = body;
+    var { content, replyToId } = body;
 
     if (!content || content.trim().length === 0) {
         return NextResponse.json({ error: "Content required" }, { status: 400 });
-    }
-
-    if (content.length > 1000) {
-        return NextResponse.json({ error: "Message too long (max 1000)" }, { status: 400 });
     }
 
     var msg = await prisma.directMessage.create({
@@ -103,9 +94,17 @@ export async function POST(
             senderId: userId,
             receiverId: otherId,
             content: content.trim(),
+            replyToId: replyToId || null,
         },
         include: {
             sender: { select: { id: true, name: true, username: true } },
+            replyTo: {
+                select: {
+                    id: true,
+                    content: true,
+                    sender: { select: { name: true } }
+                }
+            }
         },
     });
 
@@ -115,5 +114,10 @@ export async function POST(
         createdAt: msg.createdAt,
         isMine: true,
         sender: msg.sender,
+        replyTo: msg.replyTo ? {
+            id: msg.replyTo.id,
+            content: msg.replyTo.content,
+            senderName: msg.replyTo.sender?.name || "User"
+        } : null
     }, { status: 201 });
 }

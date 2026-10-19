@@ -262,6 +262,11 @@ model CircleMessage {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   content   String
+  replyToId String?
+  replyTo   CircleMessage?  @relation("CircleReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies   CircleMessage[] @relation("CircleReply")
+  deletedAt DateTime?
+
   createdAt DateTime @default(now())
 
   @@index([circleId, createdAt])
@@ -275,6 +280,11 @@ model DirectMessage {
   receiver   User     @relation("DMReceived", fields: [receiverId], references: [id], onDelete: Cascade)
   content    String
   readAt     DateTime?
+  replyToId  String?
+  replyTo    DirectMessage?  @relation("DMReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies    DirectMessage[] @relation("DMReply")
+  deletedAt  DateTime?
+
   createdAt  DateTime @default(now())
 
   @@index([senderId, receiverId, createdAt])
