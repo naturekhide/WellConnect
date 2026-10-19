@@ -40,6 +40,7 @@ export async function GET(
                 select: {
                     id: true,
                     content: true,
+                    deletedAt: true,
                     sender: { select: { name: true } }
                 }
             }
@@ -63,8 +64,8 @@ export async function GET(
                 sender: m.sender,
                 replyTo: m.replyTo ? {
                     id: m.replyTo.id,
-                    content: m.replyTo.content,
-                    senderName: m.replyTo.sender?.name || "User"
+                    content: m.replyTo.deletedAt ? "This message was deleted" : m.replyTo.content,
+                    senderName: m.replyTo.deletedAt ? "Deleted Message" : (m.replyTo.sender?.name || "User")
                 } : null
             };
         }),
@@ -102,6 +103,7 @@ export async function POST(
                 select: {
                     id: true,
                     content: true,
+                    deletedAt: true,
                     sender: { select: { name: true } }
                 }
             }
@@ -116,8 +118,8 @@ export async function POST(
         sender: msg.sender,
         replyTo: msg.replyTo ? {
             id: msg.replyTo.id,
-            content: msg.replyTo.content,
-            senderName: msg.replyTo.sender?.name || "User"
+            content: msg.replyTo.deletedAt ? "This message was deleted" : msg.replyTo.content,
+            senderName: msg.replyTo.deletedAt ? "Deleted Message" : (msg.replyTo.sender?.name || "User")
         } : null
     }, { status: 201 });
 }
