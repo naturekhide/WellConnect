@@ -21,7 +21,6 @@ export default function RegisterScreen() {
         setLoading(true);
 
         try {
-            // We use the mobile register endpoint
             var r = await fetch("https://well-connect-web.vercel.app/api/mobile/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -31,7 +30,6 @@ export default function RegisterScreen() {
             var data = await r.json();
 
             if (r.ok) {
-                // Instead of logging in, send them to the verify screen
                 router.push({
                     pathname: "/auth/verify-email",
                     params: { email: email.trim(), password: password }
@@ -46,23 +44,27 @@ export default function RegisterScreen() {
         setLoading(false);
     };
 
+    // FIXED: Added height and padding to make the inputs taller
     var inputStyle = {
-        padding: spacing.md + "px",
+        height: 55,
+        paddingHorizontal: spacing.md,
         borderRadius: radius.md,
         borderWidth: 1,
-        fontSize: 15,
+        fontSize: 16,
         backgroundColor: colors.surface,
         color: colors.textPrimary,
         borderColor: colors.border,
         marginBottom: spacing.md,
     };
 
+    var isFormValid = name.trim() && username.trim() && email.trim() && password;
+
     return (
         <KeyboardAvoidingView
             style={{ flex: 1, backgroundColor: colors.background }}
             behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-            <ScrollView contentContainerStyle={styles.content}>
+            <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                 <View style={styles.header}>
                     <Text style={{ fontSize: 48, marginBottom: spacing.sm }}>🌱</Text>
                     <Text style={[styles.title, { color: colors.textPrimary }]}>Join WellConnect</Text>
@@ -116,15 +118,15 @@ export default function RegisterScreen() {
                 <TouchableOpacity
                     style={[
                         styles.button,
-                        { backgroundColor: (name && username && email && password) ? colors.primary : colors.border }
+                        { backgroundColor: isFormValid ? colors.primary : colors.border }
                     ]}
                     onPress={handleSubmit}
-                    disabled={!name || !username || !email || !password || loading}
+                    disabled={!isFormValid || loading}
                 >
                     {loading ? (
                         <ActivityIndicator color="#fff" />
                     ) : (
-                        <Text style={[styles.buttonText, { color: (name && username && email && password) ? "#fff" : colors.textTertiary }]}>
+                        <Text style={[styles.buttonText, { color: isFormValid ? "#fff" : colors.textTertiary }]}>
                             Create Account
                         </Text>
                     )}
@@ -145,8 +147,8 @@ var styles = StyleSheet.create({
     header: { alignItems: "center", marginBottom: spacing.xxl },
     title: { fontSize: 24, fontWeight: "700" },
     subtitle: { fontSize: 14, marginTop: 4 },
-    button: { padding: spacing.md, borderRadius: radius.md, alignItems: "center", marginTop: spacing.sm },
-    buttonText: { fontSize: 15, fontWeight: "600" },
+    button: { height: 55, borderRadius: radius.md, alignItems: "center", justifyContent: "center", marginTop: spacing.sm },
+    buttonText: { fontSize: 16, fontWeight: "600" },
     errorBox: { padding: spacing.md, borderRadius: radius.md, marginBottom: spacing.lg },
     linkBtn: { marginTop: spacing.xl, alignItems: "center" },
 });
