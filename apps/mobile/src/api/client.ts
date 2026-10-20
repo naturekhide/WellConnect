@@ -194,7 +194,6 @@ export async function uploadImages(uris: string[]) {
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
 
-        // Guarantee a filename with an allowed extension
         var rawName = rawUri.split("/").pop() || ("image_" + i + ".jpg");
         if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(rawName)) {
             rawName = "image_" + i + ".jpg";
@@ -207,7 +206,6 @@ export async function uploadImages(uris: string[]) {
                     ext === "webp" ? "image/webp" :
                         "image/jpeg";
 
-        // Android needs a plain absolute path or content:// — not file://
         var uploadUri = rawUri;
         if (Platform.OS === "android") {
             if (uploadUri.startsWith("file://")) {
@@ -290,10 +288,23 @@ export async function getCircleMessages(id: string, since?: string) {
     return apiFetch(path);
 }
 
-export async function sendCircleMessage(id: string, content: string) {
+export async function sendCircleMessage(id: string, content: string, replyToId?: string | null) {
     return apiFetch("/api/circles/" + id + "/messages", {
         method: "POST",
+        body: JSON.stringify({ content, replyToId: replyToId || null }),
+    });
+}
+
+export async function editCircleMessage(circleId: string, messageId: string, content: string) {
+    return apiFetch("/api/circles/" + circleId + "/messages/edit?messageId=" + messageId, {
+        method: "PATCH",
         body: JSON.stringify({ content }),
+    });
+}
+
+export async function deleteCircleMessage(circleId: string, messageId: string) {
+    return apiFetch("/api/circles/" + circleId + "/messages/" + messageId, {
+        method: "DELETE",
     });
 }
 
@@ -308,10 +319,10 @@ export async function getDMMessages(userId: string, since?: string) {
     return apiFetch(path);
 }
 
-export async function sendDM(userId: string, content: string) {
+export async function sendDM(userId: string, content: string, replyToId?: string | null) {
     return apiFetch("/api/dm/" + userId, {
         method: "POST",
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, replyToId: replyToId || null }),
     });
 }
 
@@ -319,6 +330,15 @@ export async function getDMUnreadCount() {
     return apiFetch("/api/dm/unread-count");
 }
 
-export async function searchAll(q: string) {
-    return apiFetch("/api/search?q=" + encodeURIComponent(q));
+export async function editDM(userId: string, messageId: string, content: string) {
+    return apiFetch("/api/dm/" + userId + "/edit?messageId=" + messageId, {
+        method: "PATCH",
+        body: JSON.stringify({ content }),
+    });
+}
+
+export async function deleteDM(userId: string, messageId: string) {
+    return apiFetch("/api/dm/" + userId + "/delete?messageId=" + messageId, {
+        method: "DELETE",
+    });
 }
