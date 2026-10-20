@@ -1,48 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-import { signMobileToken } from "@/lib/mobile-auth";
+import jwt from "jsonwebtoken";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-    try {
-        var body = await request.json();
-        var { identifier, password } = body;
+    var body = await request.json();
+    var { identifier, password } = body;
 
-        if (!identifier || !password) {
-            return NextResponse.json({ error: "Identifier and password required" }, { status: 400 });
-        }
-
-        var user = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email: identifier.toLowerCase() },
-                    { username: identifier },
-                ],
-            },
-        });
-
-        if (!user || !user.password) {
-            return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-        }
-
-        var valid = await bcrypt.compare(password, user.password);
-        if (!valid) {
-            return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
-        }
-
-        var token = signMobileToken(user.id);
-
-        return NextResponse.json({
-            token: token,
-            user: {
-                id: user.id,
-                name: user.name,
-                username: user.username,
-                email: user.email,
-            },
-        });
-    } catch (e) {
-        console.error("Mobile login error:", e);
-        return NextResponse.json({ error: "Something went wrong" }, { status: 500 });
+    if (!identifier || !password) {
+        return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    var user = await prisma.user.findFirst({
+        where: {
+            OR: [{ email: identifier }, { username: identifier }],
+        },
+    });
+
+    if (!user) {
+        return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+
+    var valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+        return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+    }
+
+    // Check Email Verification
+    if (!user.emailVerified) {
+        return NextResponse.json({ error: "Please verify your email address first." }, { status: 403 });
+    }
+
+    var token = jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.NEXTAUTH_SECRET || "wellconnect-secret-key-2026",
+        { expiresIn: "30d" }
+    );
+
+    return NextResponse.json({
+        token,
+        user: {
+            id: user.id,
+            name: user.name,
+            username: user.username,
+            email: user.email,
+        },
+    });
 }

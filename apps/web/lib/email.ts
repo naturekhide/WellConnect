@@ -25,3 +25,26 @@ export async function sendPasswordResetEmail(email: string, code: string) {
         return false;
     }
 }
+
+export async function sendVerificationEmail(email: string, code: string) {
+    try {
+        await resend.emails.send({
+            from: "WellConnect <onboarding@resend.dev>",
+            to: email,
+            subject: "Welcome to WellConnect - Verify your email",
+            html: `
+                <div style="font-family: sans-serif; padding: 20px;">
+                    <h2>Welcome to WellConnect!</h2>
+                    <p>Please verify your email address to activate your account.</p>
+                    <p>Your 6-digit code is:</p>
+                    <h1 style="font-size: 32px; letter-spacing: 5px; color: #059669;">${code}</h1>
+                    <p>This code expires in 15 minutes.</p>
+                </div>
+            `,
+        });
+        return true;
+    } catch (e) {
+        console.error("Failed to send verification email:", e);
+        return false;
+    }
+}

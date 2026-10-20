@@ -57,6 +57,7 @@ export default function LoginScreen() {
                     onChangeText={setPassword}
                     secureTextEntry
                 />
+
                 <TextInput
                     style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
                     placeholder="Password"

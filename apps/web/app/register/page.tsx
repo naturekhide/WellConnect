@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { useColors, S, R } from "@/lib/theme";
 
 export default function RegisterPage() {
     var C = useColors();
     var router = useRouter();
+
     var [name, setName] = useState("");
     var [username, setUsername] = useState("");
     var [email, setEmail] = useState("");
@@ -28,21 +28,12 @@ export default function RegisterPage() {
                 body: JSON.stringify({ name, username, email, password }),
             });
 
-            if (r.ok) {
-                var loginResult = await signIn("credentials", {
-                    identifier: email,
-                    password: password,
-                    redirect: false,
-                });
+            var d = await r.json();
 
-                if (!loginResult?.error) {
-                    router.push("/dashboard");
-                    router.refresh();
-                } else {
-                    router.push("/login");
-                }
+            if (r.ok) {
+                // Redirect to verify page, passing email and password for auto-login
+                router.push("/verify-email?email=" + encodeURIComponent(email) + "&password=" + encodeURIComponent(password));
             } else {
-                var d = await r.json();
                 setError(d.error || "Registration failed");
             }
         } catch (err) {
@@ -88,7 +79,7 @@ export default function RegisterPage() {
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{ padding: S.md + "px", borderRadius: R.md, background: C.primary, color: C.textInverse, border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.5 : 1 }}
+                        style={{ padding: S.md + "px", borderRadius: R.md, background: C.primary, color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.5 : 1 }}
                     >
                         {loading ? "Creating..." : "Create Account"}
                     </button>

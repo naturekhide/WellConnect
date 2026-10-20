@@ -38,6 +38,12 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
 
                 if (!isValid) return null;
 
+                // ADDED: Block login if email is not verified
+                if (!user.emailVerified) {
+                    console.log("Email not verified for:", user.email);
+                    throw new Error("Please verify your email address first.");
+                }
+
                 return {
                     id: user.id,
                     email: user.email,
