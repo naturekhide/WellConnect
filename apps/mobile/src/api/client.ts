@@ -342,3 +342,7 @@ export async function deleteDM(userId: string, messageId: string) {
         method: "DELETE",
     });
 }
+
+export async function searchAll(q: string) {
+    return apiFetch("/api/search?q=" + encodeURIComponent(q));
+}

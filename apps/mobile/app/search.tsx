@@ -17,7 +17,6 @@ var TABS = [
     { id: "users", label: "Users" },
     { id: "posts", label: "Posts" },
     { id: "circles", label: "Circles" },
-    { id: "journals", label: "Journals" },
 ];
 
 export default function SearchScreen() {
@@ -65,9 +64,8 @@ export default function SearchScreen() {
     var showUsers = (tab === "all" || tab === "users") && results.users.length > 0;
     var showPosts = (tab === "all" || tab === "posts") && results.posts.length > 0;
     var showCircles = (tab === "all" || tab === "circles") && results.circles.length > 0;
-    var showJournals = (tab === "all" || tab === "journals") && results.journals.length > 0;
 
-    var hasAny = showUsers || showPosts || showCircles || showJournals;
+    var hasAny = showUsers || showPosts || showCircles;
     var nothingFound = q.trim().length >= 2 && !loading && !hasAny;
 
     return (
@@ -147,7 +145,7 @@ export default function SearchScreen() {
                                             key={c.id}
                                             icon={c.emoji || "🌿"}
                                             title={c.name}
-                                            subtitle={c.memberCount + " members · " + c.postCount + " posts"}
+                                            subtitle={c.memberCount + " members"}
                                             onPress={function () { router.push("/circles/" + c.id); }}
                                             colors={colors}
                                         />
@@ -166,23 +164,6 @@ export default function SearchScreen() {
                                             title={p.content?.slice(0, 80) || "(no content)"}
                                             subtitle={(p.author?.name || "User") + " · " + timeAgo(p.createdAt)}
                                             onPress={function () { router.push("/feed/" + p.id); }}
-                                            colors={colors}
-                                        />
-                                    );
-                                })}
-                            </Section>
-                        )}
-
-                        {showJournals && (
-                            <Section title="Your Journals" colors={colors}>
-                                {results.journals.map(function (j: any) {
-                                    return (
-                                        <Row
-                                            key={j.id}
-                                            icon="💭"
-                                            title={j.content?.slice(0, 80) || "(no content)"}
-                                            subtitle={timeAgo(j.createdAt)}
-                                            onPress={function () { router.push("/(tabs)/journal"); }}
                                             colors={colors}
                                         />
                                     );

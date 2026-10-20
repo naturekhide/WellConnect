@@ -7,10 +7,9 @@ import {
     ActivityIndicator,
     RefreshControl,
     TouchableOpacity,
-    Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { getFeed, getAuthToken } from "../../src/api/client";
+import { getFeed } from "../../src/api/client";
 import FeedPostCard from "../../components/FeedPostCard";
 import { Skeleton } from "../../src/components";
 import { useColors, spacing, radius } from "../../src/theme";
@@ -31,7 +30,6 @@ export default function FeedScreen() {
     var [loadingMore, setLoadingMore] = useState(false);
     var [refreshing, setRefreshing] = useState(false);
     var [activeTab, setActiveTab] = useState("for-you");
-    var [toast, setToast] = useState<any>(null);
 
     useEffect(
         function () {
@@ -78,59 +76,17 @@ export default function FeedScreen() {
         }));
     };
 
-    var handleDelete = function (postId: string) {
-        Alert.alert(
-            "Delete post?",
-            "This can be undone for a few seconds.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async function () {
-                        try {
-                            var r = await fetch("https://well-connect-web.vercel.app/api/feed/" + postId, {
-                                method: "DELETE",
-                                headers: { "Authorization": "Bearer " + (getAuthToken() || "") },
-                            });
-                            if (!r.ok) return;
-                        } catch (e) { return; }
-
-                        setPosts(posts.filter(function (p) { return p.id !== postId; }));
-                        setToast({ postId: postId });
-                        setTimeout(function () {
-                            setToast(function (current: any) {
-                                return current && current.postId === postId ? null : current;
-                            });
-                        }, 5000);
-                    },
-                },
-            ]
-        );
-    };
-
-    var handleUndo = async function () {
-        if (!toast) return;
-        var postId = toast.postId;
-        setToast(null);
-        try {
-            await fetch("https://well-connect-web.vercel.app/api/feed/" + postId + "/restore", {
-                method: "POST",
-                headers: { "Authorization": "Bearer " + (getAuthToken() || "") },
-            });
-            await loadFeed();
-        } catch (e) { }
-    };
-
-    var handlePostUpdated = function (postId: string, content: string, editedAt: string) {
-        setPosts(posts.map(function (p) {
-            return p.id === postId ? { ...p, content, editedAt } : p;
-        }));
-    };
-
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <View style={[styles.header, { backgroundColor: colors.background }]}>
+            <View
+                style={[
+                    styles.header,
+                    {
+                        borderBottomColor: colors.border,
+                        backgroundColor: colors.background,
+                    },
+                ]}
+            >
                 <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <View style={{ flex: 1 }}>
                         <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>
@@ -140,29 +96,66 @@ export default function FeedScreen() {
                             Share moments. Support each other.
                         </Text>
                     </View>
-                    <TouchableOpacity onPress={function () { router.push("/search"); }} style={{ padding: spacing.sm }}>
+
+                    {/* ADDED: Search Icon */}
+                    <TouchableOpacity
+                        onPress={function () { router.push("/search"); }}
+                        style={{ padding: spacing.sm }}
+                    >
                         <Text style={{ fontSize: 22 }}>🔍</Text>
                     </TouchableOpacity>
+
                 </View>
             </View>
 
-            <View style={[styles.tabs, { backgroundColor: colors.background }]}>
+            <View
+                style={[
+                    styles.tabs,
+                    {
+                        borderBottomColor: colors.border,
+                        backgroundColor: colors.background,
+                    },
+                ]}
+            >
                 <View style={{ flex: 1, flexDirection: "row" }}>
                     {TABS.map(function (t: any) {
                         var active = activeTab === t.id;
                         return (
-                            <TouchableOpacity key={t.id} style={styles.tabBtn} onPress={function () { setActiveTab(t.id); }}>
-                                <Text style={[styles.tabLabel, { color: active ? colors.textPrimary : colors.textSecondary }, active && { fontWeight: "700" }]}>
+                            <TouchableOpacity
+                                key={t.id}
+                                style={styles.tabBtn}
+                                onPress={function () { setActiveTab(t.id); }}
+                            >
+                                <Text
+                                    style={[
+                                        styles.tabLabel,
+                                        { color: active ? colors.textPrimary : colors.textSecondary },
+                                        active && { fontWeight: "700" },
+                                    ]}
+                                >
                                     {t.label}
                                 </Text>
-                                {active && <View style={[styles.tabUnderline, { backgroundColor: colors.primary }]} />}
+                                {active && (
+                                    <View
+                                        style={[
+                                            styles.tabUnderline,
+                                            { backgroundColor: colors.primary },
+                                        ]}
+                                    />
+                                )}
                             </TouchableOpacity>
                         );
                     })}
                 </View>
+
                 {activeTab === "circles" && (
-                    <TouchableOpacity onPress={function () { router.push("/circles"); }} style={{ paddingVertical: spacing.md, alignSelf: "center" }}>
-                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Browse →</Text>
+                    <TouchableOpacity
+                        onPress={function () { router.push("/circles"); }}
+                        style={{ paddingVertical: spacing.md, alignSelf: "center" }}
+                    >
+                        <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>
+                            Browse →
+                        </Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -170,7 +163,14 @@ export default function FeedScreen() {
             <ScrollView
                 contentContainerStyle={styles.content}
                 showsVerticalScrollIndicator={false}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[colors.primary]}
+                        tintColor={colors.primary}
+                    />
+                }
             >
                 {loading ? (
                     <View style={{ gap: 12 }}>
@@ -181,7 +181,9 @@ export default function FeedScreen() {
                 ) : posts.length === 0 ? (
                     <View style={styles.emptyBox}>
                         <Text style={styles.emptyEmoji}>🌿</Text>
-                        <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Your space is quiet</Text>
+                        <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+                            Your space is quiet
+                        </Text>
                         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                             {activeTab === "following"
                                 ? "Follow people to see their moments here. Anonymous posts don't appear in this tab."
@@ -197,57 +199,93 @@ export default function FeedScreen() {
                                 key={post.id}
                                 post={post}
                                 onReactionChange={handleReactionChange}
-                                onDelete={handleDelete}
-                                onUpdated={handlePostUpdated}
                             />
                         );
                     })
                 )}
 
                 {hasMore && !loading && (
-                    <TouchableOpacity style={[styles.loadMore, { borderColor: colors.border }]} onPress={loadMore} disabled={loadingMore}>
-                        {loadingMore ? <ActivityIndicator color={colors.primary} /> : <Text style={[styles.loadMoreText, { color: colors.primary }]}>Load more</Text>}
+                    <TouchableOpacity
+                        style={[styles.loadMore, { borderColor: colors.border }]}
+                        onPress={loadMore}
+                        disabled={loadingMore}
+                    >
+                        {loadingMore ? (
+                            <ActivityIndicator color={colors.primary} />
+                        ) : (
+                            <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                                Load more
+                            </Text>
+                        )}
                     </TouchableOpacity>
                 )}
 
                 {!hasMore && posts.length > 0 && !loading && (
                     <View style={styles.caughtUp}>
                         <Text style={styles.caughtUpEmoji}>🌿</Text>
-                        <Text style={[styles.caughtUpText, { color: colors.textSecondary }]}>You're caught up. Take a breath.</Text>
+                        <Text style={[styles.caughtUpText, { color: colors.textSecondary }]}>
+                            You're caught up. Take a breath.
+                        </Text>
                     </View>
                 )}
             </ScrollView>
-
-            {toast && (
-                <View style={[styles.toast, { backgroundColor: "#1f2937" }]}>
-                    <Text style={{ color: "#fff", fontSize: 14 }}>Post deleted</Text>
-                    <TouchableOpacity onPress={handleUndo} style={{ marginLeft: spacing.lg }}>
-                        <Text style={{ color: "#10b981", fontWeight: "700", fontSize: 14 }}>Undo</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
         </View>
     );
 }
 
 var styles = StyleSheet.create({
     container: { flex: 1 },
-    header: { paddingHorizontal: spacing.lg, paddingTop: 20, paddingBottom: spacing.md },
+    header: {
+        paddingHorizontal: spacing.lg,
+        paddingTop: 20,
+        paddingBottom: spacing.md,
+        borderBottomWidth: 1,
+    },
     headerTitle: { fontSize: 22, fontWeight: "700" },
     headerSub: { fontSize: 13, marginTop: 2 },
-    tabs: { flexDirection: "row", alignItems: "center", paddingHorizontal: spacing.lg },
-    tabBtn: { paddingVertical: spacing.md, marginRight: spacing.xl, position: "relative" },
+    tabs: {
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: spacing.lg,
+        borderBottomWidth: 1,
+    },
+    tabBtn: {
+        paddingVertical: spacing.md,
+        marginRight: spacing.xl,
+        position: "relative",
+    },
     tabLabel: { fontSize: 15, fontWeight: "500" },
-    tabUnderline: { position: "absolute", bottom: 0, left: 0, right: 0, height: 2, borderRadius: 1 },
+    tabUnderline: {
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: 2,
+        borderRadius: 1,
+    },
     content: { paddingBottom: spacing.xxl },
-    emptyBox: { alignItems: "center", paddingVertical: spacing.xxl * 2, paddingHorizontal: spacing.lg },
+    emptyBox: {
+        alignItems: "center",
+        paddingVertical: spacing.xxl * 2,
+        paddingHorizontal: spacing.lg,
+    },
     emptyEmoji: { fontSize: 40, marginBottom: spacing.md },
     emptyTitle: { fontSize: 16, fontWeight: "600", marginBottom: spacing.sm },
-    emptyText: { fontSize: 14, textAlign: "center", lineHeight: 20, maxWidth: 260 },
-    loadMore: { margin: spacing.lg, padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, alignItems: "center" },
+    emptyText: {
+        fontSize: 14,
+        textAlign: "center",
+        lineHeight: 20,
+        maxWidth: 260,
+    },
+    loadMore: {
+        margin: spacing.lg,
+        padding: spacing.md,
+        borderRadius: radius.lg,
+        borderWidth: 1,
+        alignItems: "center",
+    },
     loadMoreText: { fontSize: 14, fontWeight: "600" },
     caughtUp: { alignItems: "center", paddingVertical: spacing.xxl },
     caughtUpEmoji: { fontSize: 24, marginBottom: spacing.sm },
     caughtUpText: { fontSize: 13, fontWeight: "500" },
-    toast: { position: "absolute", bottom: 20, left: spacing.lg, right: spacing.lg, flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderRadius: radius.full },
 });
