@@ -30,10 +30,12 @@ export default function RegisterScreen() {
             var data = await r.json();
 
             if (r.ok) {
+                // Success: Navigate away. Do NOT setLoading(false) here.
                 router.push({
                     pathname: "/auth/verify-email",
                     params: { email: email.trim(), password: password }
                 });
+                return; // Stop execution so we don't set state on an unmounted component
             } else {
                 setError(data.error || "Registration failed");
             }
@@ -41,10 +43,10 @@ export default function RegisterScreen() {
             setError("Connection failed. Check your internet.");
         }
 
+        // Only runs if registration failed and we are staying on this screen
         setLoading(false);
     };
 
-    // FIXED: Added height and padding to make the inputs taller
     var inputStyle = {
         height: 55,
         paddingHorizontal: spacing.md,
