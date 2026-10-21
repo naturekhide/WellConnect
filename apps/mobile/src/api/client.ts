@@ -51,6 +51,10 @@ async function apiFetch(path: string, options?: any) {
         headers["Authorization"] = "Bearer " + tokenStorage;
     }
 
+    // 🚨 DEBUG LOGS
+    console.log("🚀 API CALL:", API_URL + path);
+    console.log("🔑 TOKEN SENT:", tokenStorage ? "YES (starts with " + tokenStorage.substring(0, 10) + "...)" : "NO");
+
     var res = await fetch(API_URL + path, {
         ...options,
         headers: headers,
@@ -58,6 +62,7 @@ async function apiFetch(path: string, options?: any) {
 
     if (!res.ok) {
         var error = await res.text();
+        console.log("❌ API ERROR:", res.status, error);
         throw new Error(error || "API error: " + res.status);
     }
 
@@ -70,18 +75,12 @@ export async function registerUser(name: string, username: string, email: string
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, username, email, password }),
     });
-
     if (!res.ok) {
         var err = await res.json();
         throw new Error(err.error || "Registration failed");
     }
-
     var data = await res.json();
-    // Note: If register no longer returns a token, this won't save anything.
-    // The token will be saved in verifyEmail instead.
-    if (data.token) {
-        await setAuthToken(data.token, data.user);
-    }
+    if (data.token) await setAuthToken(data.token, data.user);
     return data;
 }
 
@@ -91,274 +90,29 @@ export async function login(identifier: string, password: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password }),
     });
-
     if (!res.ok) {
         var err = await res.json();
         throw new Error(err.error || "Login failed");
     }
-
     var data = await res.json();
     await setAuthToken(data.token, data.user);
     return data;
 }
 
-// ━━━━━ NEW VERIFY FUNCTION ━━━━━
-export async function verifyEmail(email: string, code: string) {
-    var res = await fetch(API_URL + "/api/mobile/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
-    });
+export async function getSession() { return apiFetch("/api/auth/session"); }
+export async function getMoodToday() { return apiFetch("/api/mood/today"); }
+export async function getMoodStats() { return apiFetch("/api/mood/stats"); }
+export async function getInsights() { return apiFetch("/api/insights"); }
+export async function getJournal() { return apiFetch("/api/journal"); }
+export async function getGoals() { return apiFetch("/api/goals"); }
+export async function getDMUnreadCount() { return apiFetch("/api/dm/unread-count"); }
+export async function searchAll(q: string) { return apiFetch("/api/search?q=" + encodeURIComponent(q)); }
 
-    if (!res.ok) {
-        var err = await res.json();
-        throw new Error(err.error || "Verification failed");
-    }
-
-    var data = await res.json();
-    // THIS is what saves the token after verification!
-    await setAuthToken(data.token, data.user);
-    return data;
-}
-
-export async function getSession() {
-    return apiFetch("/api/auth/session");
-}
-
-// ... (Keep all your other existing functions: submitMood, getFeed, uploadImages, etc. down to searchAll)
+// ... (keep any other functions you had here like submitMood, getFeed, uploadImages, etc.)
+// If you had submitMood, paste it here:
 export async function submitMood(score: number, label: string, note?: string) {
     return apiFetch("/api/mood", {
         method: "POST",
         body: JSON.stringify({ score, label, note }),
     });
-}
-
-export async function getMoodToday() {
-    return apiFetch("/api/mood/today");
-}
-
-export async function getMoodStats() {
-    return apiFetch("/api/mood/stats");
-}
-
-export async function getInsights() {
-    return apiFetch("/api/insights");
-}
-
-export async function getJournal() {
-    return apiFetch("/api/journal");
-}
-
-export async function saveJournal(content: string) {
-    return apiFetch("/api/journal", {
-        method: "POST",
-        body: JSON.stringify({ content }),
-    });
-}
-
-export async function getGoals() {
-    return apiFetch("/api/goals");
-}
-
-export async function createGoal(title: string, frequency: string) {
-    return apiFetch("/api/goals", {
-        method: "POST",
-        body: JSON.stringify({ title, frequency }),
-    });
-}
-
-export async function toggleGoal(id: string) {
-    return apiFetch("/api/goals/" + id + "/toggle", {
-        method: "POST",
-    });
-}
-
-export async function getFeed(tab?: string, cursor?: string) {
-    var params: string[] = [];
-    if (tab && tab !== "for-you") params.push("tab=" + tab);
-    if (cursor) params.push("cursor=" + cursor);
-    var path = "/api/feed" + (params.length ? "?" + params.join("&") : "");
-    return apiFetch(path);
-}
-
-export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean, circleId?: string | null) {
-    return apiFetch("/api/feed", {
-        method: "POST",
-        body: JSON.stringify({ content, imageUrls, anonymous, circleId: circleId || null }),
-    });
-}
-
-export async function getFeedPost(id: string) {
-    return apiFetch("/api/feed/" + id);
-}
-
-export async function deleteFeedPost(id: string) {
-    return apiFetch("/api/feed/" + id, { method: "DELETE" });
-}
-
-export async function reactToPost(id: string, type: string) {
-    return apiFetch("/api/feed/" + id + "/react", {
-        method: "POST",
-        body: JSON.stringify({ type }),
-    });
-}
-
-export async function replyToPost(id: string, content: string, anonymous: boolean, parentId?: string | null) {
-    return apiFetch("/api/feed/" + id + "/reply", {
-        method: "POST",
-        body: JSON.stringify({ content, anonymous, parentId: parentId || null }),
-    });
-}
-
-export async function uploadImages(uris: string[]) {
-    var formData = new FormData();
-
-    for (var i = 0; i < uris.length; i++) {
-        var rawUri = uris[i];
-
-        var rawName = rawUri.split("/").pop() || ("image_" + i + ".jpg");
-        if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(rawName)) {
-            rawName = "image_" + i + ".jpg";
-        }
-
-        var ext = rawName.split(".").pop()?.toLowerCase() || "jpg";
-        var mime =
-            ext === "png" ? "image/png" :
-                ext === "gif" ? "image/gif" :
-                    ext === "webp" ? "image/webp" :
-                        "image/jpeg";
-
-        var uploadUri = rawUri;
-        if (Platform.OS === "android") {
-            if (uploadUri.startsWith("file://")) {
-                uploadUri = uploadUri.replace("file://", "");
-            }
-        }
-
-        formData.append("files", {
-            uri: uploadUri,
-            name: rawName,
-            type: mime,
-        } as any);
-    }
-
-    if (!tokenStorage) {
-        await loadToken();
-    }
-
-    var headers: any = {};
-    if (tokenStorage) {
-        headers["Authorization"] = "Bearer " + tokenStorage;
-    }
-
-    var res = await fetch(API_URL + "/api/upload/multi", {
-        method: "POST",
-        headers: headers,
-        body: formData,
-    });
-
-    if (!res.ok) {
-        var error = await res.text();
-        throw new Error(error || "Upload failed");
-    }
-
-    return res.json();
-}
-
-export async function getUserProfile(id: string) {
-    return apiFetch("/api/users/" + id);
-}
-
-export async function toggleFollow(id: string) {
-    return apiFetch("/api/users/" + id + "/follow", { method: "POST" });
-}
-
-export async function getCircles(q?: string) {
-    var path = "/api/circles" + (q ? "?q=" + encodeURIComponent(q) : "");
-    return apiFetch(path);
-}
-
-export async function createCircle(name: string, description: string, emoji: string, coverColor: string, isPrivate: boolean) {
-    return apiFetch("/api/circles", {
-        method: "POST",
-        body: JSON.stringify({ name, description, emoji, coverColor, isPrivate }),
-    });
-}
-
-export async function getCircle(id: string) {
-    return apiFetch("/api/circles/" + id);
-}
-
-export async function joinCircle(id: string) {
-    return apiFetch("/api/circles/" + id + "/join", { method: "POST" });
-}
-
-export async function getCirclePosts(id: string) {
-    return apiFetch("/api/circles/" + id + "/posts");
-}
-
-export async function getCircleMembers(id: string) {
-    return apiFetch("/api/circles/" + id + "/members");
-}
-
-export async function getCircleMessages(id: string, since?: string) {
-    var path = "/api/circles/" + id + "/messages" + (since ? "?since=" + encodeURIComponent(since) : "");
-    return apiFetch(path);
-}
-
-export async function sendCircleMessage(id: string, content: string, replyToId?: string | null) {
-    return apiFetch("/api/circles/" + id + "/messages", {
-        method: "POST",
-        body: JSON.stringify({ content, replyToId: replyToId || null }),
-    });
-}
-
-export async function editCircleMessage(circleId: string, messageId: string, content: string) {
-    return apiFetch("/api/circles/" + circleId + "/messages/edit?messageId=" + messageId, {
-        method: "PATCH",
-        body: JSON.stringify({ content }),
-    });
-}
-
-export async function deleteCircleMessage(circleId: string, messageId: string) {
-    return apiFetch("/api/circles/" + circleId + "/messages/" + messageId, {
-        method: "DELETE",
-    });
-}
-
-export async function getConversations() {
-    return apiFetch("/api/dm/conversations");
-}
-
-export async function getDMMessages(userId: string, since?: string) {
-    var path = "/api/dm/" + userId + (since ? "?since=" + encodeURIComponent(since) : "");
-    return apiFetch(path);
-}
-
-export async function sendDM(userId: string, content: string, replyToId?: string | null) {
-    return apiFetch("/api/dm/" + userId, {
-        method: "POST",
-        body: JSON.stringify({ content, replyToId: replyToId || null }),
-    });
-}
-
-export async function getDMUnreadCount() {
-    return apiFetch("/api/dm/unread-count");
-}
-
-export async function editDM(userId: string, messageId: string, content: string) {
-    return apiFetch("/api/dm/" + userId + "/edit?messageId=" + messageId, {
-        method: "PATCH",
-        body: JSON.stringify({ content }),
-    });
-}
-
-export async function deleteDM(userId: string, messageId: string) {
-    return apiFetch("/api/dm/" + userId + "/delete?messageId=" + messageId, {
-        method: "DELETE",
-    });
-}
-
-export async function searchAll(q: string) {
-    return apiFetch("/api/search?q=" + encodeURIComponent(q));
 }

@@ -8,8 +8,18 @@ export function signMobileToken(userId: string): string {
 
 export function verifyMobileToken(token: string): { userId: string } | null {
     try {
-        var decoded = jwt.verify(token, SECRET) as { userId: string };
-        return decoded;
+        // Decode as any so we can check both 'userId' and 'id'
+        var decoded = jwt.verify(token, SECRET) as any;
+
+        // If the token has 'userId' (from older mobile login), return it
+        if (decoded && decoded.userId) {
+            return { userId: decoded.userId };
+        }
+        // If the token has 'id' (from our new verify-email route), return it
+        if (decoded && decoded.id) {
+            return { userId: decoded.id };
+        }
+        return null;
     } catch (e) {
         return null;
     }
