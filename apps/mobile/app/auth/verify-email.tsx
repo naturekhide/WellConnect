@@ -1,22 +1,16 @@
 import React, { useState } from "react";
 import {
-    View,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    StyleSheet,
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
+    View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { setAuthToken } from "../../src/api/client"; // Import the function that saves the token
+import { useAuthStore } from "../../src/store/authStore"; // <-- Import store
 import { useColors, spacing, radius } from "../../src/theme";
 
 export default function VerifyEmailScreen() {
     var router = useRouter();
     var params = useLocalSearchParams();
     var colors = useColors();
+    var { verifyEmail } = useAuthStore(); // <-- Get the new function
 
     var [code, setCode] = useState("");
     var [loading, setLoading] = useState(false);
@@ -29,35 +23,15 @@ export default function VerifyEmailScreen() {
         setError("");
         setLoading(true);
 
-        try {
-            // 1. Send the code to the backend to verify
-            var r = await fetch("https://well-connect-web.vercel.app/api/auth/verify-email", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email, code: code.trim() }),
-            });
+        // Call the store function
+        var result = await verifyEmail(email, code.trim());
 
-            var data = await r.json();
-
-            if (!r.ok) {
-                throw new Error(data.error || "Verification failed");
-            }
-
-            // 2. If the backend returns a token, save it!
-            if (data.token && data.user) {
-                await setAuthToken(data.token, data.user);
-            } else {
-                // Fallback if the backend doesn't return a token yet
-                throw new Error("Verification succeeded, but no token was returned by the server.");
-            }
-
-            // 3. Go straight to the dashboard
+        if (result.success) {
             router.replace("/(tabs)/home");
-
-        } catch (err: any) {
-            setError(err.message);
+        } else {
+            setError(result.error || "Verification failed");
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
@@ -113,6 +87,7 @@ export default function VerifyEmailScreen() {
 }
 
 var styles = StyleSheet.create({
+    // ... keep your existing styles here ...
     container: { flex: 1, padding: spacing.lg, paddingTop: 60 },
     backBtn: { marginBottom: spacing.xl },
     backText: { fontSize: 15, fontWeight: "500" },
