@@ -8,24 +8,21 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
-    Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useAuthStore } from "../../src/store/authStore"; // Or however you handle login
+import { setAuthToken } from "../../src/api/client"; // Import the function that saves the token
 import { useColors, spacing, radius } from "../../src/theme";
 
 export default function VerifyEmailScreen() {
     var router = useRouter();
     var params = useLocalSearchParams();
     var colors = useColors();
-    var { login } = useAuthStore(); // Make sure your store has a login action
 
     var [code, setCode] = useState("");
     var [loading, setLoading] = useState(false);
     var [error, setError] = useState("");
 
     var email = params.email as string;
-    var password = params.password as string;
 
     var handleSubmit = async function () {
         if (!code || code.length < 6) return;
@@ -33,7 +30,7 @@ export default function VerifyEmailScreen() {
         setLoading(true);
 
         try {
-            // 1. Verify the code
+            // 1. Send the code to the backend to verify
             var r = await fetch("https://well-connect-web.vercel.app/api/auth/verify-email", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -46,8 +43,15 @@ export default function VerifyEmailScreen() {
                 throw new Error(data.error || "Verification failed");
             }
 
-            // 2. Auto-login
-            await login(email, password);
+            // 2. If the backend returns a token, save it!
+            if (data.token && data.user) {
+                await setAuthToken(data.token, data.user);
+            } else {
+                // Fallback if the backend doesn't return a token yet
+                throw new Error("Verification succeeded, but no token was returned by the server.");
+            }
+
+            // 3. Go straight to the dashboard
             router.replace("/(tabs)/home");
 
         } catch (err: any) {

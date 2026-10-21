@@ -77,7 +77,11 @@ export async function registerUser(name: string, username: string, email: string
     }
 
     var data = await res.json();
-    await setAuthToken(data.token, data.user);
+    // Note: If register no longer returns a token, this won't save anything.
+    // The token will be saved in verifyEmail instead.
+    if (data.token) {
+        await setAuthToken(data.token, data.user);
+    }
     return data;
 }
 
@@ -98,10 +102,30 @@ export async function login(identifier: string, password: string) {
     return data;
 }
 
+// ━━━━━ NEW VERIFY FUNCTION ━━━━━
+export async function verifyEmail(email: string, code: string) {
+    var res = await fetch(API_URL + "/api/mobile/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+    });
+
+    if (!res.ok) {
+        var err = await res.json();
+        throw new Error(err.error || "Verification failed");
+    }
+
+    var data = await res.json();
+    // THIS is what saves the token after verification!
+    await setAuthToken(data.token, data.user);
+    return data;
+}
+
 export async function getSession() {
     return apiFetch("/api/auth/session");
 }
 
+// ... (Keep all your other existing functions: submitMood, getFeed, uploadImages, etc. down to searchAll)
 export async function submitMood(score: number, label: string, note?: string) {
     return apiFetch("/api/mood", {
         method: "POST",
@@ -148,8 +172,6 @@ export async function toggleGoal(id: string) {
         method: "POST",
     });
 }
-
-// ━━━━━ Social Feed ━━━━━
 
 export async function getFeed(tab?: string, cursor?: string) {
     var params: string[] = [];
@@ -243,8 +265,6 @@ export async function uploadImages(uris: string[]) {
     return res.json();
 }
 
-// ━━━━━ Users / Follow ━━━━━
-
 export async function getUserProfile(id: string) {
     return apiFetch("/api/users/" + id);
 }
@@ -252,8 +272,6 @@ export async function getUserProfile(id: string) {
 export async function toggleFollow(id: string) {
     return apiFetch("/api/users/" + id + "/follow", { method: "POST" });
 }
-
-// ━━━━━ Circles ━━━━━
 
 export async function getCircles(q?: string) {
     var path = "/api/circles" + (q ? "?q=" + encodeURIComponent(q) : "");
@@ -307,8 +325,6 @@ export async function deleteCircleMessage(circleId: string, messageId: string) {
         method: "DELETE",
     });
 }
-
-// ━━━━━ Direct Messages ━━━━━
 
 export async function getConversations() {
     return apiFetch("/api/dm/conversations");

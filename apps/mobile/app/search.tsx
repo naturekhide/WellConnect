@@ -46,7 +46,11 @@ export default function SearchScreen() {
         try {
             var data = await searchAll(q);
             setResults(data);
-        } catch (e) { }
+        } catch (e) {
+            console.log("SEARCH ERROR:", e);
+            // Show empty results if unauthorized
+            setResults({ users: [], posts: [], circles: [], journals: [] });
+        }
         setLoading(false);
     };
 

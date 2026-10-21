@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import jwt from "jsonwebtoken"; // Make sure you import your JWT library here
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Code expired" }, { status: 400 });
     }
 
-    await prisma.user.update({
+    // 1. Mark as verified
+    var updatedUser = await prisma.user.update({
         where: { id: user.id },
         data: {
             emailVerified: true,
@@ -30,5 +32,23 @@ export async function POST(request: NextRequest) {
         },
     });
 
-    return NextResponse.json({ success: true, message: "Email verified successfully" });
+    // 2. Generate the JWT token (Use the exact same logic as your login route!)
+    var token = jwt.sign(
+        { userId: updatedUser.id },
+        process.env.JWT_SECRET as string,
+        { expiresIn: "30d" }
+    );
+
+    // 3. Return the token and user!
+    return NextResponse.json({
+        success: true,
+        message: "Email verified successfully",
+        token: token,
+        user: {
+            id: updatedUser.id,
+            name: updatedUser.name,
+            username: updatedUser.username,
+            email: updatedUser.email
+        }
+    });
 }
