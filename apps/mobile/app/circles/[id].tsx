@@ -524,9 +524,9 @@ function CircleChat({ circleId, colors }: any) {
         setSending(true);
         try {
             if (editingMessage) {
-                await editCircleMessage(circleId, editingMessage.id, text.trim());
+                var res = await editCircleMessage(circleId, editingMessage.id, text.trim());
                 setMessages(messages.map(function (m) {
-                    return m.id === editingMessage.id ? { ...m, content: text.trim() } : m;
+                    return m.id === editingMessage.id ? { ...m, content: res.content || text.trim() } : m;
                 }));
                 setEditingMessage(null);
             } else {
@@ -536,7 +536,8 @@ function CircleChat({ circleId, colors }: any) {
             }
             setText("");
         } catch (e: any) {
-            Alert.alert("Failed", e.message);
+            console.error("Send/Edit error:", e);
+            Alert.alert("Failed to save", e.message);
         }
         setSending(false);
     };
