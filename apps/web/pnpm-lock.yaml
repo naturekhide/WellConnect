@@ -213,6 +213,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
+      blob:
+        specifier: link:@Vercel\blob
+        version: link:@Vercel/blob
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3

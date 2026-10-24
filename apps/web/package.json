@@ -24,6 +24,7 @@
   "dependencies": {
     "@prisma/client": "5.22.0",
     "bcryptjs": "^3.0.3",
+    "blob": "link:@Vercel\\blob",
     "jsonwebtoken": "^9.0.3",
     "next": "14.2.3",
     "next-auth": "5.0.0-beta.30",
