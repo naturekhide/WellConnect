@@ -1,16 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUserId } from "@/lib/get-user";
-import { classifySentiment } from "@/lib/ai";
-import { checkAchievements } from "@/lib/achievements";
+import Sentiment from "sentiment";
 
 export const dynamic = "force-dynamic";
+var sentiment = new Sentiment();
+
+export async function GET(request: NextRequest) {
+    var userIdOrNull = await getCurrentUserId(request);
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    var userId: string = userIdOrNull;
+
+    var entries = await prisma.journalEntry.findMany({
+        where: { userId: userId },
+        orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(entries);
+}
 
 export async function POST(request: NextRequest) {
-    var userId = await getCurrentUserId(request);
-    if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    var userIdOrNull = await getCurrentUserId(request);
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    var userId: string = userIdOrNull;
 
     var body = await request.json();
     var { content } = body;
@@ -19,37 +31,38 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Content required" }, { status: 400 });
     }
 
-    var trimmed = content.trim();
-
-    var entry = await prisma.journalEntry.create({
-        data: { userId, content: trimmed },
+    var journal = await prisma.journalEntry.create({
+        data: {
+            content: content.trim(),
+            userId: userId,
+        },
     });
 
-    checkAchievements(userId).catch(function () { });
+    // ─── AI REFLECTION BOT (PRIVATE WHISPER) ───
+    var analysis = sentiment.analyze(content);
 
-    try {
-        var sentiment = await classifySentiment(trimmed);
-        var updated = await prisma.journalEntry.update({
-            where: { id: entry.id },
-            data: { sentiment: sentiment.sentiment },
+    if (analysis.score <= -3) {
+        var recentNotif = await prisma.notification.findFirst({
+            where: {
+                userId: userId,
+                type: "system_support",
+                createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+            },
         });
-        return NextResponse.json(updated, { status: 201 });
-    } catch (e) {
-        return NextResponse.json(entry, { status: 201 });
+
+        if (!recentNotif) {
+            await prisma.notification.create({
+                data: {
+                    userId: userId,
+                    type: "system_support",
+                    title: "A gentle check-in 🫂",
+                    body: "We noticed your journal entry sounded a bit heavy today. Remember that it's okay to not be okay. Be gentle with yourself.",
+                    isRead: false,
+                }
+            });
+        }
     }
-}
+    // ──────────────────────────────────────────
 
-export async function GET(request: NextRequest) {
-    var userId = await getCurrentUserId(request);
-    if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    var entries = await prisma.journalEntry.findMany({
-        where: { userId },
-        orderBy: { createdAt: "desc" },
-        take: 50,
-    });
-
-    return NextResponse.json(entries);
+    return NextResponse.json(journal);
 }

@@ -17,6 +17,7 @@
     "@types/node": "26.4.0",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "@types/sentiment": "^5.0.4",
     "prisma": "5.22.0",
     "typescript": "^5.9.3"
   },
@@ -28,6 +29,7 @@
     "next-auth": "5.0.0-beta.30",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "resend": "^6.34.1"
+    "resend": "^6.34.1",
+    "sentiment": "^5.0.2"
   }
 }

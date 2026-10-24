@@ -231,6 +231,9 @@ importers:
       resend:
         specifier: ^6.34.1
         version: 6.34.1
+      sentiment:
+        specifier: ^5.0.2
+        version: 5.0.2
     devDependencies:
       '@types/bcryptjs':
         specifier: ^3.0.0
@@ -247,6 +250,9 @@ importers:
       '@types/react-dom':
         specifier: ^18.3.7
         version: 18.3.7(@types/react@18.3.31)
+      '@types/sentiment':
+        specifier: ^5.0.4
+        version: 5.0.4
       prisma:
         specifier: 5.22.0
         version: 5.22.0
@@ -390,6 +396,9 @@ packages:
 
   '@types/react@18.3.31':
     resolution: {integrity: sha512-vfEqpXTvwT91yhmwdfouStN2hSKwTvyRs8qpLfADyrq/kxDw0hZM7Wk9Ug1FELj8hIby+S/+kQCSRFF32nv2Qw==}
+
+  '@types/sentiment@5.0.4':
+    resolution: {integrity: sha512-6FL0CYijhnrR3gHbu7boAJn8zRCekJXBPfIHLkIgWbkY+hz5Dwfsq79FM7l/tLZKuEgQWktnzf6JqV2UCWKrbg==}
 
   bcryptjs@3.0.3:
     resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
@@ -564,6 +573,10 @@ packages:
     engines: {node: '>=10'}
     hasBin: true
 
+  sentiment@5.0.2:
+    resolution: {integrity: sha512-ZeC3y0JsOYTdwujt5uOd7ILJNilbgFzUtg/LEG4wUv43LayFNLZ28ec8+Su+h3saHlJmIwYxBzfDHHZuiMA15g==}
+    engines: {node: '>=8.0'}
+
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
     engines: {node: '>=0.10.0'}
@@ -699,6 +712,8 @@ snapshots:
     dependencies:
       '@types/prop-types': 15.7.15
       csstype: 3.2.3
+
+  '@types/sentiment@5.0.4': {}
 
   bcryptjs@3.0.3: {}
 
@@ -852,6 +867,8 @@ snapshots:
       loose-envify: 1.4.0
 
   semver@7.8.5: {}
+
+  sentiment@5.0.2: {}
 
   source-map-js@1.2.1: {}
 
