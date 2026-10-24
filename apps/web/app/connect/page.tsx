@@ -29,7 +29,6 @@ export default function ConnectPage() {
             var r = await fetch(url);
             if (r.ok) {
                 var data = await r.json();
-                // CRITICAL FIX: Ensure we are setting an array
                 var safePosts = Array.isArray(data.posts) ? data.posts : [];
                 setPosts(safePosts);
                 setCursor(data.nextCursor || null);

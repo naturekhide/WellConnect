@@ -62,8 +62,9 @@ export async function GET(request: NextRequest) {
     var result = posts.map(function (p) {
         return {
             id: p.id,
-            content: p.anonymous ? p.content : p.content,
-            imageUrls: p.imageUrls,
+            content: p.content,
+            // SAFETY CHECK: Ensure imageUrls is always an array
+            imageUrls: p.imageUrls || [],
             anonymous: p.anonymous,
             createdAt: p.createdAt,
             author: p.anonymous ? { id: "anonymous", name: "Anonymous", username: "anonymous" } : p.author,
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
         posts: result,
         nextCursor: hasMore ? posts[posts.length - 1].id : null,
+        hasMore: hasMore,
     });
 }
 
@@ -110,31 +112,34 @@ export async function POST(request: NextRequest) {
     });
 
     // ─── AI REFLECTION BOT (PRIVATE WHISPER) ───
+    // Wrapped in try/catch so if AI fails, the post still succeeds
     if (content && content.trim().length > 0) {
-        var analysis = sentiment.analyze(content);
+        try {
+            var analysis = sentiment.analyze(content);
 
-        // If the post is highly negative
-        if (analysis.score <= -1) {
-            // Check if we've already sent a support notification recently
-            var recentNotif = await prisma.notification.findFirst({
-                where: {
-                    userId: userId,
-                    type: "system_support",
-                    createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-                },
-            });
-
-            if (!recentNotif) {
-                await prisma.notification.create({
-                    data: {
+            if (analysis.score <= -1) {
+                var recentNotif = await prisma.notification.findFirst({
+                    where: {
                         userId: userId,
                         type: "system_support",
-                        title: "We hear you 🫂",
-                        body: "We noticed your recent post sounded a little heavy. We just want to remind you that you're not alone. Take a deep breath today.",
-                        isRead: false,
-                    }
+                        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+                    },
                 });
+
+                if (!recentNotif) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: userId,
+                            type: "system_support",
+                            title: "We hear you 🫂",
+                            body: "We noticed your recent post sounded a little heavy. We just want to remind you that you're not alone. Take a deep breath today.",
+                            isRead: false,
+                        }
+                    });
+                }
             }
+        } catch (aiError) {
+            console.error("AI Sentiment failed:", aiError);
         }
     }
     // ──────────────────────────────────────────
