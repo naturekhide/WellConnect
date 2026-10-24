@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useColors, S, R } from "@/lib/theme";
+import TopHeader from "@/components/TopHeader"; // <-- ADDED IMPORT
 
 export default function DashboardPage() {
     var C = useColors();
@@ -130,9 +131,12 @@ export default function DashboardPage() {
 
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
+            {/* ADDED HEADER HERE */}
+            <TopHeader />
+
             <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
 
-                <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md }}>
+                <div style={{ padding: S.lg, paddingTop: 30, paddingBottom: S.md }}>
                     <h1 style={{ fontSize: 26, fontWeight: 700, color: C.textPrimary, margin: 0 }}>
                         {getGreeting()}, {userName?.split(" ")[0] || "Friend"}
                     </h1>

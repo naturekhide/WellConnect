@@ -10,39 +10,56 @@ export default function TopHeader() {
     if (pathname === "/login" || pathname === "/register") return null;
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b border-[#2a2a2a] bg-[#0f0f0f]/90 backdrop-blur-md">
-            <div className="relative mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+        <header style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 50,
+            width: "100%",
+            height: "64px",
+            backgroundColor: "rgba(15, 15, 15, 0.95)",
+            borderBottom: "1px solid #2a2a2a",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center", // Centers the logo perfectly
+            backdropFilter: "blur(10px)",
+        }}>
+            {/* Logo & Text (Centered) */}
+            <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+                <Image
+                    src="/logo.png"
+                    alt="Logo"
+                    width={32}
+                    height={32}
+                    style={{ borderRadius: "50%" }}
+                />
+                <span style={{
+                    fontSize: "20px",
+                    fontWeight: "800",
+                    color: "white",
+                    letterSpacing: "0.5px"
+                }}>
+                    WellConnect
+                </span>
+            </Link>
 
-                {/* Left side: Logo + Text */}
-                <Link href="/dashboard" className="flex items-center gap-2 z-10">
-                    <Image
-                        src="/logo.png"
-                        alt="Logo"
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                    />
-                </Link>
-
-                {/* Center: Bold Text (Absolute positioning to guarantee center) */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <Link href="/dashboard" className="pointer-events-auto">
-                        <span className="text-xl font-extrabold text-white tracking-wide">
-                            WellConnect
-                        </span>
-                    </Link>
-                </div>
-
-                {/* Right side: Bell Icon */}
-                <Link
-                    href="/notifications"
-                    className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full transition-colors hover:bg-[#2a2a2a] ${pathname === "/notifications" ? "bg-[#2a2a2a] text-white" : "text-gray-400"
-                        }`}
-                >
-                    <span className="text-xl">🔔</span>
-                </Link>
-
-            </div>
+            {/* Bell Icon (Absolute Right) */}
+            <Link
+                href="/notifications"
+                style={{
+                    position: "absolute",
+                    right: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    backgroundColor: pathname === "/notifications" ? "#2a2a2a" : "transparent",
+                    textDecoration: "none",
+                }}
+            >
+                <span style={{ fontSize: "22px" }}>🔔</span>
+            </Link>
         </header>
     );
 }

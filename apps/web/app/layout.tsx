@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
-import TopHeader from "@/components/TopHeader";
+// REMOVE THIS: import TopHeader from "@/components/TopHeader";
 
 export const metadata: Metadata = {
     title: "WellConnect — Your Digital Wellbeing",
@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     return (
         <html lang="en">
             <body style={{ margin: 0, backgroundColor: "#0f0f0f" }}>
-                <TopHeader />
+                {/* REMOVE THIS: <TopHeader /> */}
                 <div style={{ paddingBottom: 72 }}>{children}</div>
                 <BottomNav />
             </body>
