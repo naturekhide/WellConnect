@@ -100,6 +100,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
+    // CRITICAL FIX: Strict Array check
+    var safeImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+
     return (
         <div
             onClick={function (e) { if (!editing) onPress && onPress(); }}
@@ -229,28 +232,29 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                         )
                     )}
 
-                    {!editing && post.imageUrls && post.imageUrls.length > 0 && (
+                    {/* BULLETPROOF IMAGE BLOCK */}
+                    {!editing && safeImages.length > 0 && (
                         <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
-                            {post.imageUrls.length === 1 && (
-                                <img src={IMAGE_BASE + post.imageUrls[0]} style={{ width: "100%", height: "auto", maxHeight: 500, objectFit: "contain", borderRadius: R.lg, border: "1px solid " + C.border, display: "block" }} />
+                            {safeImages.length === 1 && (
+                                <img src={IMAGE_BASE + safeImages[0]} style={{ width: "100%", height: "auto", maxHeight: 500, objectFit: "contain", borderRadius: R.lg, border: "1px solid " + C.border, display: "block" }} />
                             )}
-                            {post.imageUrls.length === 2 && (
+                            {safeImages.length === 2 && (
                                 <div style={{ display: "flex", gap: 2 }}>
-                                    {post.imageUrls.map(function (url: string, i: number) {
+                                    {safeImages.map(function (url: string, i: number) {
                                         return <img key={i} src={IMAGE_BASE + url} style={{ flex: 1, height: 200, objectFit: "cover", borderRadius: R.md, border: "1px solid " + C.border }} />;
                                     })}
                                 </div>
                             )}
-                            {post.imageUrls.length === 3 && (
+                            {safeImages.length === 3 && (
                                 <div style={{ display: "flex", gap: 2 }}>
-                                    {post.imageUrls.map(function (url: string, i: number) {
+                                    {safeImages.map(function (url: string, i: number) {
                                         return <img key={i} src={IMAGE_BASE + url} style={{ flex: 1, height: 160, objectFit: "cover", borderRadius: R.md, border: "1px solid " + C.border }} />;
                                     })}
                                 </div>
                             )}
-                            {post.imageUrls.length >= 4 && (
+                            {safeImages.length >= 4 && (
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2 }}>
-                                    {post.imageUrls.slice(0, 4).map(function (url: string, i: number) {
+                                    {safeImages.slice(0, 4).map(function (url: string, i: number) {
                                         return <img key={i} src={IMAGE_BASE + url} style={{ width: "100%", height: 140, objectFit: "cover", borderRadius: R.md, border: "1px solid " + C.border }} />;
                                     })}
                                 </div>
