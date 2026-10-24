@@ -99,10 +99,12 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
-    // 🚨 Fix: Filter out broken "[]" or empty strings so images don't render broken icons
+    // 🚨 ULTIMATE FIX: Only allow URLs that actually start with http or /
     var safeImages = Array.isArray(post.imageUrls)
         ? post.imageUrls.filter(function (url: string) {
-            return url && url !== "[]" && url !== "[object Object]" && url.length > 5;
+            if (!url || typeof url !== "string") return false;
+            var cleanUrl = url.trim();
+            return cleanUrl.startsWith("http") || cleanUrl.startsWith("/");
         })
         : [];
 
@@ -235,7 +237,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                         )
                     )}
 
-                    {/* Render images only if safeImages has valid URLs */}
                     {!editing && safeImages.length > 0 && (
                         <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                             {safeImages.length === 1 && (
