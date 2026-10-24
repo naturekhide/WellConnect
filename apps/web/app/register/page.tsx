@@ -3,95 +3,120 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useColors, S, R } from "@/lib/theme";
+import { signIn } from "next-auth/react";
 
-export default function RegisterPage() {
-    var C = useColors();
-    var router = useRouter();
+export default function Register() {
+    const router = useRouter();
+    const [name, setName] = useState("");
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
-    var [name, setName] = useState("");
-    var [username, setUsername] = useState("");
-    var [email, setEmail] = useState("");
-    var [password, setPassword] = useState("");
-    var [error, setError] = useState("");
-    var [loading, setLoading] = useState(false);
-
-    var handleSubmit = async function (e: any) {
+    const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setLoading(true);
 
         try {
-            var r = await fetch("/api/auth/register", {
+            // 1. Create the user in the database via the web API
+            const res = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, username, email, password }),
             });
 
-            var d = await r.json();
-
-            if (r.ok) {
-                // Redirect to verify page, passing email and password for auto-login
-                router.push("/verify-email?email=" + encodeURIComponent(email) + "&password=" + encodeURIComponent(password));
-            } else {
-                setError(d.error || "Registration failed");
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Registration failed");
             }
-        } catch (err) {
-            setError("Connection failed");
+
+            // 2. Auto-login the user using NextAuth
+            const loginRes = await signIn("credentials", {
+                identifier: email,
+                password: password,
+                redirect: false,
+            });
+
+            if (loginRes?.error) {
+                throw new Error(loginRes.error);
+            }
+
+            // 3. Redirect to verify page (or dashboard if already verified)
+            router.push("/verify-email?email=" + encodeURIComponent(email));
+
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
-    };
-
-    var inputStyle = {
-        padding: S.md + "px",
-        borderRadius: R.md,
-        border: "1px solid " + C.border,
-        fontSize: 14,
-        background: C.surface,
-        color: C.textPrimary,
-        fontFamily: "inherit",
-        boxSizing: "border-box" as const,
-        width: "100%",
     };
 
     return (
-        <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: S.lg, background: C.background }}>
-            <div style={{ width: "100%", maxWidth: 380 }}>
-                <div style={{ textAlign: "center", marginBottom: S.xxl }}>
-                    <span style={{ fontSize: 48 }}>🌱</span>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: S.sm + "px 0 0 0" }}>Join WellConnect</h1>
-                    <p style={{ color: C.textSecondary, fontSize: 13, margin: "2px 0 0 0" }}>Your digital wellbeing companion</p>
+        <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f] p-4">
+            <div className="w-full max-w-md space-y-8 rounded-2xl bg-[#1a1a1a] p-8 border border-[#2a2a2a]">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-white">Create an account</h2>
+                    <p className="mt-2 text-sm text-gray-400">Join WellConnect today</p>
                 </div>
 
-                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: S.md }}>
-                    {error && (
-                        <div style={{ background: C.dangerLight, color: C.danger, padding: S.md, borderRadius: R.md, fontSize: 14 }}>
-                            {error}
-                        </div>
-                    )}
+                {error && (
+                    <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
+                        {error}
+                    </div>
+                )}
 
-                    <input type="text" value={name} onChange={function (e: any) { setName(e.target.value); }} placeholder="Full name" required style={inputStyle} />
-                    <input type="text" value={username} onChange={function (e: any) { setUsername(e.target.value); }} placeholder="Username" required style={inputStyle} />
-                    <input type="email" value={email} onChange={function (e: any) { setEmail(e.target.value); }} placeholder="Email" required style={inputStyle} />
-                    <input type="password" value={password} onChange={function (e: any) { setPassword(e.target.value); }} placeholder="Password (min 8 characters)" required minLength={8} style={inputStyle} />
+                <form className="mt-8 space-y-4" onSubmit={handleRegister}>
+                    <input
+                        type="text"
+                        required
+                        placeholder="Full Name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                    />
+                    <input
+                        type="text"
+                        required
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                    />
+                    <input
+                        type="email"
+                        required
+                        placeholder="Email address"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                    />
+                    <input
+                        type="password"
+                        required
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
+                    />
 
                     <button
                         type="submit"
                         disabled={loading}
-                        style={{ padding: S.md + "px", borderRadius: R.md, background: C.primary, color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", opacity: loading ? 0.5 : 1 }}
+                        className="w-full rounded-lg bg-emerald-600 p-3 font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50"
                     >
-                        {loading ? "Creating..." : "Create Account"}
+                        {loading ? "Creating account..." : "Sign Up"}
                     </button>
                 </form>
 
-                <p style={{ textAlign: "center", marginTop: S.xl, fontSize: 14, color: C.textSecondary }}>
+                <p className="text-center text-sm text-gray-400">
                     Already have an account?{" "}
-                    <Link href="/login" style={{ color: C.primary, textDecoration: "none", fontWeight: 600 }}>
-                        Sign in
+                    <Link href="/login" className="text-emerald-500 hover:underline">
+                        Log in
                     </Link>
                 </p>
             </div>
-        </main>
+        </div>
     );
 }
