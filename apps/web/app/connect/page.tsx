@@ -29,11 +29,15 @@ export default function ConnectPage() {
             var r = await fetch(url);
             if (r.ok) {
                 var data = await r.json();
-                setPosts(data.posts || []);
-                setCursor(data.nextCursor);
-                setHasMore(data.hasMore);
+                // CRITICAL FIX: Ensure we are setting an array
+                var safePosts = Array.isArray(data.posts) ? data.posts : [];
+                setPosts(safePosts);
+                setCursor(data.nextCursor || null);
+                setHasMore(data.hasMore || false);
             }
-        } catch (e) { }
+        } catch (e) {
+            console.error("Feed error:", e);
+        }
         setLoading(false);
     };
 
@@ -44,9 +48,10 @@ export default function ConnectPage() {
             var r = await fetch(url);
             if (r.ok) {
                 var data = await r.json();
-                setPosts(posts.concat(data.posts || []));
-                setCursor(data.nextCursor);
-                setHasMore(data.hasMore);
+                var safePosts = Array.isArray(data.posts) ? data.posts : [];
+                setPosts(posts.concat(safePosts));
+                setCursor(data.nextCursor || null);
+                setHasMore(data.hasMore || false);
             }
         } catch (e) { }
     };

@@ -90,8 +90,16 @@ export default function ComposeMomentPage() {
             });
 
             if (!r.ok) {
-                var e = await r.json();
-                throw new Error(e.error || "Failed to post");
+                // CRITICAL FIX: Parse text first, then try JSON to avoid "Unexpected end of JSON input"
+                var errorText = await r.text();
+                var errorMessage = "Failed to post";
+                try {
+                    var parsed = JSON.parse(errorText);
+                    errorMessage = parsed.error || errorMessage;
+                } catch (e) {
+                    errorMessage = errorText || errorMessage;
+                }
+                throw new Error(errorMessage);
             }
 
             router.push("/connect");
