@@ -14,19 +14,16 @@ export async function GET(request: NextRequest) {
     var cursor = url.searchParams.get("cursor");
     var take = 20;
 
-    // 1. Get the IDs of all circles the user is a member of
     var myCircleIds = await prisma.circleMember.findMany({
         where: { userId: userId, status: "approved" },
         select: { circleId: true },
     });
     var myCircleList = myCircleIds.map(function (m) { return m.circleId; });
 
-    // 2. Build the base query
     var whereClause: any = {
         deletedAt: null,
     };
 
-    // 3. Apply Tab-Specific Logic
     if (tab === "following") {
         var following = await prisma.follow.findMany({
             where: { followerId: userId },
@@ -34,15 +31,14 @@ export async function GET(request: NextRequest) {
         });
         var followingIds = following.map(function (f) { return f.followingId; });
 
-        whereClause.circleId = null; // Only public posts
-        whereClause.anonymous = false; // No anonymous posts in following
+        whereClause.circleId = null;
+        whereClause.anonymous = false;
         whereClause.authorId = { in: followingIds };
 
     } else if (tab === "circles") {
         whereClause.circleId = { in: myCircleList };
 
     } else {
-        // "for-you": Show public posts + posts from circles I am in
         whereClause.OR = [
             { circleId: null },
             { circleId: { in: myCircleList } },
@@ -73,8 +69,8 @@ export async function GET(request: NextRequest) {
         return {
             id: p.id,
             content: p.content,
-            // Convert String back to Array for the frontend UI
-            imageUrls: p.imageUrls ? p.imageUrls.split(",") : [],
+            // 🚨 Fix: If it's "[]" or empty, return an empty array
+            imageUrls: p.imageUrls && p.imageUrls !== "[]" ? p.imageUrls.split(",") : [],
             anonymous: p.anonymous,
             createdAt: p.createdAt,
             author: p.anonymous ? { id: "anonymous", name: "Anonymous", username: "anonymous" } : p.author,
@@ -115,7 +111,7 @@ export async function POST(request: NextRequest) {
     var imageUrlsString = "";
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
         imageUrlsString = imageUrls.join(",");
-    } else if (typeof imageUrls === "string") {
+    } else if (typeof imageUrls === "string" && imageUrls !== "[]") {
         imageUrlsString = imageUrls;
     }
 

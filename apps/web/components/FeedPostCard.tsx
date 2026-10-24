@@ -93,15 +93,18 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         } catch (e) { }
     };
 
-    // Compute isEditable robustly
     var elapsedMs = post.createdAt ? Date.now() - new Date(post.createdAt).getTime() : Infinity;
     var isEditable = post.isMine && elapsedMs < 15 * 60 * 1000;
 
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
-    // CRITICAL FIX: Strict Array check
-    var safeImages = Array.isArray(post.imageUrls) ? post.imageUrls : [];
+    // 🚨 Fix: Filter out broken "[]" or empty strings so images don't render broken icons
+    var safeImages = Array.isArray(post.imageUrls)
+        ? post.imageUrls.filter(function (url: string) {
+            return url && url !== "[]" && url !== "[object Object]" && url.length > 5;
+        })
+        : [];
 
     return (
         <div
@@ -232,7 +235,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                         )
                     )}
 
-                    {/* BULLETPROOF IMAGE BLOCK */}
+                    {/* Render images only if safeImages has valid URLs */}
                     {!editing && safeImages.length > 0 && (
                         <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                             {safeImages.length === 1 && (
