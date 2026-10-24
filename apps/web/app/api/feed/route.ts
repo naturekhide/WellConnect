@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
         var analysis = sentiment.analyze(content);
 
         // If the post is highly negative
-        if (analysis.score <= -3) {
+        if (analysis.score <= -1) {
             // Check if we've already sent a support notification recently
             var recentNotif = await prisma.notification.findFirst({
                 where: {

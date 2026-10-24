@@ -198,3 +198,7 @@ export async function deleteDM(userId: string, messageId: string) {
 
 // ━━━━━ Search ━━━━━
 export async function searchAll(q: string) { return apiFetch("/api/search?q=" + encodeURIComponent(q)); }
+
+export async function getNotifications() {
+    return apiFetch("/api/notifications");
+}

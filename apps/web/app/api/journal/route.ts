@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // ─── AI REFLECTION BOT (PRIVATE WHISPER) ───
     var analysis = sentiment.analyze(content);
 
-    if (analysis.score <= -3) {
+    if (analysis.score <= -1) {
         var recentNotif = await prisma.notification.findFirst({
             where: {
                 userId: userId,
