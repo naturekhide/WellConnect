@@ -69,7 +69,6 @@ export async function GET(request: NextRequest) {
         return {
             id: p.id,
             content: p.content,
-            // 🚨 Fix: If it's "[]" or empty, return an empty array
             imageUrls: p.imageUrls && p.imageUrls !== "[]" ? p.imageUrls.split(",") : [],
             anonymous: p.anonymous,
             createdAt: p.createdAt,
@@ -78,6 +77,10 @@ export async function GET(request: NextRequest) {
             replyCount: p._count.replies,
             reactionCount: p._count.reactions,
             myReaction: p.reactions[0]?.type || null,
+
+            // 🚨 THIS IS THE FIX: Tell the frontend this post belongs to the user
+            isMine: p.authorId === userId,
+
             recentReplies: p.replies.map(function (r) {
                 return { id: r.id, content: r.content, author: r.anonymous ? { name: "Anonymous" } : r.author };
             }),
@@ -107,7 +110,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Post too long" }, { status: 400 });
     }
 
-    // Convert Array to String for Prisma Database
     var imageUrlsString = "";
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
         imageUrlsString = imageUrls.join(",");
@@ -125,7 +127,6 @@ export async function POST(request: NextRequest) {
         },
     });
 
-    // ─── AI REFLECTION BOT (PRIVATE WHISPER) ───
     if (content && content.trim().length > 0) {
         try {
             const Sentiment = (await import("sentiment")).default;
@@ -158,7 +159,6 @@ export async function POST(request: NextRequest) {
             console.error("AI Sentiment failed, but post saved:", aiError);
         }
     }
-    // ──────────────────────────────────────────
 
     return NextResponse.json(post);
 }

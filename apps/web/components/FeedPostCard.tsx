@@ -99,7 +99,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
-    // 🚨 ULTIMATE FIX: Only allow URLs that actually start with http or /
     var safeImages = Array.isArray(post.imageUrls)
         ? post.imageUrls.filter(function (url: string) {
             if (!url || typeof url !== "string") return false;
