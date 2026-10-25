@@ -115,8 +115,22 @@ export async function getFeed(tab?: string, cursor?: string) {
     if (tab && tab !== "for-you") params.push("tab=" + tab);
     if (cursor) params.push("cursor=" + cursor);
     var path = "/api/feed" + (params.length ? "?" + params.join("&") : "");
-    return apiFetch(path);
+
+    var data = await apiFetch(path);
+
+    // Safely map the images and ensure isMine is present
+    if (data && data.posts) {
+        data.posts = data.posts.map(function (p: any) {
+            return {
+                ...p,
+                imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls : [],
+                isMine: p.isMine || false
+            };
+        });
+    }
+    return data;
 }
+
 export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean, circleId?: string | null) {
     return apiFetch("/api/feed", { method: "POST", body: JSON.stringify({ content, imageUrls, anonymous, circleId: circleId || null }) });
 }

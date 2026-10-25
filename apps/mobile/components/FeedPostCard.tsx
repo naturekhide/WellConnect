@@ -19,7 +19,9 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-var IMAGE_BASE = "https://well-connect-web.vercel.app";
+// We leave this empty because Vercel Blob returns absolute URLs, 
+// but we keep it for backwards compatibility with old relative paths.
+var IMAGE_BASE = "";
 
 type Props = {
     post: any;
@@ -118,6 +120,15 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
+    // 🚨 ULTIMATE FIX: Safely filter images
+    var safeImages = Array.isArray(post.imageUrls)
+        ? post.imageUrls.filter(function (url: string) {
+            if (!url || typeof url !== "string") return false;
+            var cleanUrl = url.trim();
+            return cleanUrl.startsWith("http") || cleanUrl.startsWith("/");
+        })
+        : [];
+
     return (
         <View style={[styles.post, { borderBottomColor: colors.border }]}>
             <View style={styles.row}>
@@ -199,27 +210,36 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                         <TouchableOpacity activeOpacity={0.7} onPress={goToPost}>
                             {currentContent ? <Text style={[styles.text, { color: colors.textPrimary }]}>{currentContent}</Text> : null}
 
-                            {post.imageUrls && post.imageUrls.length > 0 && (
+                            {/* 🚨 SAFE IMAGE RENDERER */}
+                            {safeImages.length > 0 && (
                                 <View style={styles.imageWrap}>
-                                    {post.imageUrls.length === 1 && <PostImage uri={IMAGE_BASE + post.imageUrls[0]} borderColor={colors.border} />}
-                                    {post.imageUrls.length === 2 && (
+                                    {safeImages.length === 1 && (
+                                        <PostImage
+                                            uri={safeImages[0].startsWith("http") ? safeImages[0] : IMAGE_BASE + safeImages[0]}
+                                            borderColor={colors.border}
+                                        />
+                                    )}
+                                    {safeImages.length === 2 && (
                                         <View style={styles.imageRow}>
-                                            {post.imageUrls.map(function (url: string, i: number) {
-                                                return <Image key={i} source={{ uri: IMAGE_BASE + url }} style={[styles.imageHalf, { borderColor: colors.border }]} resizeMode="cover" />;
+                                            {safeImages.map(function (url: string, i: number) {
+                                                var fullUrl = url.startsWith("http") ? url : IMAGE_BASE + url;
+                                                return <Image key={i} source={{ uri: fullUrl }} style={[styles.imageHalf, { borderColor: colors.border }]} resizeMode="cover" />;
                                             })}
                                         </View>
                                     )}
-                                    {post.imageUrls.length === 3 && (
+                                    {safeImages.length === 3 && (
                                         <View style={styles.imageRow}>
-                                            {post.imageUrls.map(function (url: string, i: number) {
-                                                return <Image key={i} source={{ uri: IMAGE_BASE + url }} style={[styles.imageThird, { borderColor: colors.border }]} resizeMode="cover" />;
+                                            {safeImages.map(function (url: string, i: number) {
+                                                var fullUrl = url.startsWith("http") ? url : IMAGE_BASE + url;
+                                                return <Image key={i} source={{ uri: fullUrl }} style={[styles.imageThird, { borderColor: colors.border }]} resizeMode="cover" />;
                                             })}
                                         </View>
                                     )}
-                                    {post.imageUrls.length >= 4 && (
+                                    {safeImages.length >= 4 && (
                                         <View style={styles.imageGridFour}>
-                                            {post.imageUrls.slice(0, 4).map(function (url: string, i: number) {
-                                                return <Image key={i} source={{ uri: IMAGE_BASE + url }} style={[styles.imageQuarter, { borderColor: colors.border }]} resizeMode="cover" />;
+                                            {safeImages.slice(0, 4).map(function (url: string, i: number) {
+                                                var fullUrl = url.startsWith("http") ? url : IMAGE_BASE + url;
+                                                return <Image key={i} source={{ uri: fullUrl }} style={[styles.imageQuarter, { borderColor: colors.border }]} resizeMode="cover" />;
                                             })}
                                         </View>
                                     )}

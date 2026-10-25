@@ -97,7 +97,6 @@ export default function FeedScreen() {
                         </Text>
                     </View>
 
-                    {/* ADDED: Search Icon */}
                     <TouchableOpacity
                         onPress={function () { router.push("/search"); }}
                         style={{ padding: spacing.sm }}
