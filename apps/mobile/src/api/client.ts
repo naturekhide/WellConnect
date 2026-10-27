@@ -1,4 +1,6 @@
 import { Platform } from "react-native";
+import { File } from "expo-file-system";
+import { fetch as expoFetch } from "expo/fetch"; // Expo's native fetch
 import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -51,7 +53,8 @@ async function apiFetch(path: string, options?: any) {
         headers["Authorization"] = "Bearer " + tokenStorage;
     }
 
-    var res = await fetch(API_URL + path, {
+    // Use expoFetch for everything to ensure consistency on Android/iOS
+    var res = await expoFetch(API_URL + path, {
         ...options,
         headers: headers,
     });
@@ -65,7 +68,7 @@ async function apiFetch(path: string, options?: any) {
 }
 
 export async function registerUser(name: string, username: string, email: string, password: string) {
-    var res = await fetch(API_URL + "/api/mobile/register", {
+    var res = await expoFetch(API_URL + "/api/mobile/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, username, email, password }),
@@ -80,7 +83,7 @@ export async function registerUser(name: string, username: string, email: string
 }
 
 export async function login(identifier: string, password: string) {
-    var res = await fetch(API_URL + "/api/mobile/login", {
+    var res = await expoFetch(API_URL + "/api/mobile/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier, password }),
@@ -115,16 +118,16 @@ export async function getFeed(tab?: string, cursor?: string) {
     if (tab && tab !== "for-you") params.push("tab=" + tab);
     if (cursor) params.push("cursor=" + cursor);
     var path = "/api/feed" + (params.length ? "?" + params.join("&") : "");
-
+    
     var data = await apiFetch(path);
-
+    
     // Safely map the images and ensure isMine is present
     if (data && data.posts) {
-        data.posts = data.posts.map(function (p: any) {
+        data.posts = data.posts.map(function(p: any) {
             return {
                 ...p,
                 imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls : [],
-                isMine: p.isMine || false
+                isMine: p.isMine || false 
             };
         });
     }
@@ -145,21 +148,34 @@ export async function replyToPost(id: string, content: string, anonymous: boolea
 
 export async function uploadImages(uris: string[]) {
     var formData = new FormData();
+
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
         var rawName = rawUri.split("/").pop() || ("image_" + i + ".jpg");
-        if (!/\.(jpg|jpeg|png|gif|webp)$/i.test(rawName)) rawName = "image_" + i + ".jpg";
-        var ext = rawName.split(".").pop()?.toLowerCase() || "jpg";
-        var mime = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
-        var uploadUri = rawUri;
-        if (Platform.OS === "android" && uploadUri.startsWith("file://")) uploadUri = uploadUri.replace("file://", "");
-        formData.append("files", { uri: uploadUri, name: rawName, type: mime } as any);
+        
+        // 🚨 THE FIX: Create a File object directly from the local URI
+        const file = new File(rawUri);
+        
+        // Append the File object directly
+        formData.append("files", file, rawName);
     }
+
     if (!tokenStorage) await loadToken();
     var headers: any = {};
     if (tokenStorage) headers["Authorization"] = "Bearer " + tokenStorage;
-    var res = await fetch(API_URL + "/api/upload/multi", { method: "POST", headers: headers, body: formData });
-    if (!res.ok) { var error = await res.text(); throw new Error(error || "Upload failed"); }
+
+    // 🚨 IMPORTANT: Use expoFetch instead of the standard fetch for File uploads
+    var res = await expoFetch(API_URL + "/api/upload/multi", {
+        method: "POST",
+        headers: headers,
+        body: formData,
+    });
+
+    if (!res.ok) {
+        var error = await res.text();
+        throw new Error(error || "Upload failed");
+    }
+
     return res.json();
 }
 

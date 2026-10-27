@@ -19,8 +19,6 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-// We leave this empty because Vercel Blob returns absolute URLs, 
-// but we keep it for backwards compatibility with old relative paths.
 var IMAGE_BASE = "";
 
 type Props = {
@@ -79,11 +77,13 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
         } catch (e) { }
     };
 
-    var goToProfile = function () {
+    var goToProfile = function (e: any) {
+        e?.stopPropagation();
         if (post.anonymous || !post.author?.id) return;
         router.push("/users/" + post.author.id);
     };
 
+    // 🚨 RESTORED: Navigates to the post details screen
     var goToPost = function () {
         if (editing) return;
         router.push("/feed/" + post.id);
@@ -120,7 +120,7 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
-    // 🚨 ULTIMATE FIX: Safely filter images
+    // 🚨 Safe filter for Vercel Blob images
     var safeImages = Array.isArray(post.imageUrls)
         ? post.imageUrls.filter(function (url: string) {
             if (!url || typeof url !== "string") return false;
