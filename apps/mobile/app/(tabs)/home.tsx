@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../src/store/authStore";
@@ -209,6 +209,18 @@ export default function HomeScreen() {
                 </View>
 
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Inbox</Text>
+
+                {/* 🚨 NEW: MY CIRCLES BUTTON */}
+                <TouchableOpacity
+                    style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: spacing.sm }]}
+                    onPress={function () { router.push("/my-circles"); }}
+                >
+                    <Text style={styles.inboxEmoji}>🌿</Text>
+                    <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>My Circles</Text>
+                    <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
+                </TouchableOpacity>
+
+                {/* EXISTING MESSAGES BUTTON */}
                 <TouchableOpacity
                     style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
                     onPress={function () { router.push("/messages"); }}

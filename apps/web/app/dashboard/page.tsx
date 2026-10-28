@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useColors, S, R } from "@/lib/theme";
-import TopHeader from "@/components/TopHeader"; // <-- ADDED IMPORT
+import TopHeader from "@/components/TopHeader";
 
 export default function DashboardPage() {
     var C = useColors();
@@ -131,7 +131,6 @@ export default function DashboardPage() {
 
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
-            {/* ADDED HEADER HERE */}
             <TopHeader />
 
             <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
@@ -279,6 +278,29 @@ export default function DashboardPage() {
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, margin: 0 }}>Inbox</h2>
                 </div>
+
+                {/* 🚨 NEW: MY CIRCLES BUTTON */}
+                <Link
+                    href="/my-circles"
+                    style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: S.md,
+                        marginLeft: S.lg,
+                        marginRight: S.lg,
+                        marginBottom: S.sm,
+                        padding: S.lg,
+                        borderRadius: R.lg,
+                        background: C.surface,
+                        textDecoration: "none",
+                    }}
+                >
+                    <span style={{ fontSize: 20 }}>🌿</span>
+                    <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>My Circles</span>
+                    <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
+                </Link>
+
+                {/* EXISTING MESSAGES BUTTON */}
                 <Link
                     href="/messages"
                     style={{
