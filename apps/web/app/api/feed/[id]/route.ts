@@ -68,10 +68,18 @@ export async function GET(
         }
     });
 
+    // 🚨 FIX: Safely split the comma-separated string instead of JSON.parse
+    var safeImages: string[] = [];
+    if (post.imageUrls && post.imageUrls !== "[]") {
+        safeImages = post.imageUrls.split(",").filter(function (url) {
+            return url.trim().length > 0;
+        });
+    }
+
     return NextResponse.json({
         id: post.id,
         content: post.content,
-        imageUrls: post.imageUrls ? JSON.parse(post.imageUrls) : [],
+        imageUrls: safeImages, // 🚨 Returns an array
         anonymous: post.anonymous,
         sentiment: post.sentiment,
         circleId: post.circleId,

@@ -171,6 +171,11 @@ model FeedPost {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // 🚨 NEW REPOST FIELDS
+  originalPostId String?
+  originalPost   FeedPost? @relation("Reposts", fields: [originalPostId], references: [id], onDelete: Cascade)
+  reposts        FeedPost[] @relation("Reposts")
+
   reactions  FeedReaction[]
   replies    FeedReply[]
 

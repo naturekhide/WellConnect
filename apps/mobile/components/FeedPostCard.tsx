@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
-    Image,
-    Alert,
-    TextInput,
+    View, Text, StyleSheet, TouchableOpacity, Image, Alert, TextInput, Share, Modal, ScrollView
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useColors, spacing, radius } from "../src/theme";
-import { reactToPost, getAuthToken } from "../src/api/client";
+import { reactToPost, getAuthToken, sendDM, getConversations, createFeedPost } from "../src/api/client";
 
 var REACTIONS = [
     { type: "hug", emoji: "🤗" },
@@ -30,19 +24,11 @@ type Props = {
 
 function PostImage({ uri, borderColor }: any) {
     var [ratio, setRatio] = useState(1);
-
     useEffect(function () {
-        Image.getSize(uri, function (w, h) {
-            if (w && h) setRatio(w / h);
-        }, function () { });
+        Image.getSize(uri, function (w, h) { if (w && h) setRatio(w / h); }, function () { });
     }, [uri]);
-
     return (
-        <Image
-            source={{ uri: uri }}
-            style={{ width: "100%", aspectRatio: ratio, borderRadius: radius.lg, borderWidth: 1, borderColor: borderColor }}
-            resizeMode="contain"
-        />
+        <Image source={{ uri: uri }} style={{ width: "100%", aspectRatio: ratio, borderRadius: radius.lg, borderWidth: 1, borderColor: borderColor }} resizeMode="contain" />
     );
 }
 
@@ -56,6 +42,11 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
     var [editContent, setEditContent] = useState(post.content || "");
     var [currentContent, setCurrentContent] = useState(post.content || "");
     var [currentEditedAt, setCurrentEditedAt] = useState(post.editedAt || null);
+
+    // Share & DM Modals State
+    var [showShareMenu, setShowShareMenu] = useState(false);
+    var [showDMModal, setShowDMModal] = useState(false);
+    var [conversations, setConversations] = useState<any[]>([]);
 
     var timeAgo = function (d: string) {
         var diff = Date.now() - new Date(d).getTime();
@@ -83,7 +74,6 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
         router.push("/users/" + post.author.id);
     };
 
-    // 🚨 RESTORED: Navigates to the post details screen
     var goToPost = function () {
         if (editing) return;
         router.push("/feed/" + post.id);
@@ -96,10 +86,7 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
         try {
             var res = await fetch("https://well-connect-web.vercel.app/api/feed/" + post.id, {
                 method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + (getAuthToken() || ""),
-                },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (getAuthToken() || "") },
                 body: JSON.stringify({ content: editContent.trim() }),
             });
             if (res.ok) {
@@ -112,22 +99,38 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                 var err = await res.json();
                 Alert.alert("Edit failed", err.error || "Try again");
             }
-        } catch (e: any) {
-            Alert.alert("Edit failed", e.message);
-        }
+        } catch (e: any) { Alert.alert("Edit failed", e.message); }
+    };
+
+    // Share Functions
+    var handleRepost = async function () {
+        try {
+            await createFeedPost("", [], false, null, post.id);
+            setShowShareMenu(false);
+            Alert.alert("Reposted!", "This moment is now on your profile.");
+        } catch (e) { Alert.alert("Failed to repost"); }
+    };
+
+    var loadDMsAndOpen = async function () {
+        setShowShareMenu(false);
+        setShowDMModal(true);
+        try {
+            var data = await getConversations();
+            setConversations(data.conversations || []);
+        } catch (e) { }
+    };
+
+    var handleSendToDM = async function (userId: string) {
+        try {
+            await sendDM(userId, "Check out this moment: https://well-connect-web.vercel.app/feed/" + post.id);
+            setShowDMModal(false);
+            Alert.alert("Sent!", "Message sent to your friend.");
+        } catch (e) { Alert.alert("Failed to send"); }
     };
 
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
-
-    // 🚨 Safe filter for Vercel Blob images
-    var safeImages = Array.isArray(post.imageUrls)
-        ? post.imageUrls.filter(function (url: string) {
-            if (!url || typeof url !== "string") return false;
-            var cleanUrl = url.trim();
-            return cleanUrl.startsWith("http") || cleanUrl.startsWith("/");
-        })
-        : [];
+    var safeImages = Array.isArray(post.imageUrls) ? post.imageUrls.filter(function (url: string) { return url && url.startsWith("http") || url.startsWith("/"); }) : [];
 
     return (
         <View style={[styles.post, { borderBottomColor: colors.border }]}>
@@ -141,7 +144,6 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                 </View>
 
                 <View style={styles.content}>
-                    {/* HEADER */}
                     <View style={styles.header}>
                         <TouchableOpacity onPress={goToProfile} disabled={post.anonymous}>
                             <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>{displayName}</Text>
@@ -161,24 +163,14 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                                 <TouchableOpacity onPress={function () { setShowMenu(!showMenu); }} style={{ paddingHorizontal: 8, paddingVertical: 4 }}>
                                     <Text style={{ fontSize: 18, color: colors.textSecondary, fontWeight: "bold" }}>···</Text>
                                 </TouchableOpacity>
-
                                 {showMenu && (
-                                    <View
-                                        style={[styles.menuDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                        onStartShouldSetResponder={function () { return true; }}
-                                    >
+                                    <View style={[styles.menuDropdown, { backgroundColor: colors.surface, borderColor: colors.border }]} onStartShouldSetResponder={function () { return true; }}>
                                         {isEditable && (
-                                            <TouchableOpacity
-                                                onPress={function () { setEditing(true); setShowMenu(false); }}
-                                                style={[styles.menuItem, { borderBottomColor: colors.border }]}
-                                            >
+                                            <TouchableOpacity onPress={function () { setEditing(true); setShowMenu(false); }} style={[styles.menuItem, { borderBottomColor: colors.border }]}>
                                                 <Text style={[styles.menuText, { color: colors.textPrimary }]}>Edit</Text>
                                             </TouchableOpacity>
                                         )}
-                                        <TouchableOpacity
-                                            onPress={function () { setShowMenu(false); if (onDelete) onDelete(post.id); }}
-                                            style={styles.menuItem}
-                                        >
+                                        <TouchableOpacity onPress={function () { setShowMenu(false); if (onDelete) onDelete(post.id); }} style={styles.menuItem}>
                                             <Text style={[styles.menuText, { color: colors.danger }]}>Delete</Text>
                                         </TouchableOpacity>
                                     </View>
@@ -187,16 +179,9 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                         )}
                     </View>
 
-                    {/* BODY (Navigates to Post) */}
                     {editing ? (
                         <View style={{ marginTop: spacing.sm }}>
-                            <TextInput
-                                style={[styles.editInput, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
-                                value={editContent}
-                                onChangeText={setEditContent}
-                                multiline
-                                maxLength={500}
-                            />
+                            <TextInput style={[styles.editInput, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]} value={editContent} onChangeText={setEditContent} multiline maxLength={500} />
                             <View style={{ flexDirection: "row", gap: spacing.sm, justifyContent: "flex-end", marginTop: spacing.sm }}>
                                 <TouchableOpacity onPress={function () { setEditing(false); setEditContent(currentContent); }} style={{ padding: spacing.sm }}>
                                     <Text style={{ fontSize: 13, color: colors.textSecondary }}>Cancel</Text>
@@ -210,45 +195,31 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                         <TouchableOpacity activeOpacity={0.7} onPress={goToPost}>
                             {currentContent ? <Text style={[styles.text, { color: colors.textPrimary }]}>{currentContent}</Text> : null}
 
-                            {/* 🚨 SAFE IMAGE RENDERER */}
                             {safeImages.length > 0 && (
                                 <View style={styles.imageWrap}>
-                                    {safeImages.length === 1 && (
-                                        <PostImage
-                                            uri={safeImages[0].startsWith("http") ? safeImages[0] : IMAGE_BASE + safeImages[0]}
-                                            borderColor={colors.border}
-                                        />
-                                    )}
-                                    {safeImages.length === 2 && (
+                                    {safeImages.length === 1 && <PostImage uri={safeImages[0]} borderColor={colors.border} />}
+                                    {safeImages.length > 1 && (
                                         <View style={styles.imageRow}>
                                             {safeImages.map(function (url: string, i: number) {
-                                                var fullUrl = url.startsWith("http") ? url : IMAGE_BASE + url;
-                                                return <Image key={i} source={{ uri: fullUrl }} style={[styles.imageHalf, { borderColor: colors.border }]} resizeMode="cover" />;
-                                            })}
-                                        </View>
-                                    )}
-                                    {safeImages.length === 3 && (
-                                        <View style={styles.imageRow}>
-                                            {safeImages.map(function (url: string, i: number) {
-                                                var fullUrl = url.startsWith("http") ? url : IMAGE_BASE + url;
-                                                return <Image key={i} source={{ uri: fullUrl }} style={[styles.imageThird, { borderColor: colors.border }]} resizeMode="cover" />;
-                                            })}
-                                        </View>
-                                    )}
-                                    {safeImages.length >= 4 && (
-                                        <View style={styles.imageGridFour}>
-                                            {safeImages.slice(0, 4).map(function (url: string, i: number) {
-                                                var fullUrl = url.startsWith("http") ? url : IMAGE_BASE + url;
-                                                return <Image key={i} source={{ uri: fullUrl }} style={[styles.imageQuarter, { borderColor: colors.border }]} resizeMode="cover" />;
+                                                return <Image key={i} source={{ uri: url }} style={[styles.imageHalf, { borderColor: colors.border }]} resizeMode="cover" />;
                                             })}
                                         </View>
                                     )}
                                 </View>
                             )}
+
+                            {/* 🚨 REPOST UI */}
+                            {post.originalPost && (
+                                <View style={[styles.repostBox, { borderColor: colors.border }]}>
+                                    <Text style={{ fontSize: 12, fontWeight: "600", color: colors.textSecondary, marginBottom: 4 }}>
+                                        Reposted from @{post.originalPost.author?.username}
+                                    </Text>
+                                    <Text style={{ fontSize: 14, color: colors.textPrimary }}>{post.originalPost.content}</Text>
+                                </View>
+                            )}
                         </TouchableOpacity>
                     )}
 
-                    {/* REACTIONS */}
                     {!editing && (
                         <View style={styles.actions}>
                             {REACTIONS.map(function (r: any) {
@@ -265,10 +236,61 @@ export default function FeedPostCard({ post, onReactionChange, onDelete, onUpdat
                                 <Text style={styles.actionEmoji}>💬</Text>
                                 {post.replyCount > 0 && <Text style={[styles.actionCount, { color: colors.textSecondary }]}>{post.replyCount}</Text>}
                             </TouchableOpacity>
+                            <TouchableOpacity style={styles.actionBtn} onPress={function () { setShowShareMenu(true); }}>
+                                <Text style={styles.actionEmoji}>🔗</Text>
+                            </TouchableOpacity>
                         </View>
                     )}
                 </View>
             </View>
+
+            {/* 🚨 SHARE MENU MODAL */}
+            <Modal visible={showShareMenu} transparent animationType="fade">
+                <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={function () { setShowShareMenu(false); }}>
+                    <View style={[styles.shareMenu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <TouchableOpacity style={styles.shareOption} onPress={handleRepost}>
+                            <Text style={{ fontSize: 20 }}>🔄</Text>
+                            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "600" }}>Repost to Feed</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.shareOption} onPress={loadDMsAndOpen}>
+                            <Text style={{ fontSize: 20 }}>💬</Text>
+                            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "600" }}>Send in a DM</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.shareOption} onPress={function () { setShowShareMenu(false); Share.share({ message: "https://well-connect-web.vercel.app/feed/" + post.id }); }}>
+                            <Text style={{ fontSize: 20 }}>🔗</Text>
+                            <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: "600" }}>Copy Link / Share via...</Text>
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
+            {/* 🚨 DM PICKER MODAL */}
+            <Modal visible={showDMModal} transparent animationType="slide">
+                <View style={styles.modalBackdrop}>
+                    <View style={[styles.dmPicker, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                        <Text style={{ fontSize: 18, fontWeight: "700", color: colors.textPrimary, marginBottom: 16 }}>Send to...</Text>
+                        <ScrollView style={{ maxHeight: 300 }}>
+                            {conversations.length === 0 ? (
+                                <Text style={{ color: colors.textSecondary }}>No conversations yet.</Text>
+                            ) : (
+                                conversations.map(function (c: any) {
+                                    return (
+                                        <TouchableOpacity key={c.user.id} style={styles.dmRow} onPress={function () { handleSendToDM(c.user.id); }}>
+                                            <View style={[styles.avatar, { backgroundColor: colors.primary, width: 32, height: 32, borderRadius: 16, marginRight: 12 }]}>
+                                                <Text style={{ color: "#fff", fontWeight: "bold" }}>{c.user.name.charAt(0)}</Text>
+                                            </View>
+                                            <Text style={{ color: colors.textPrimary, fontSize: 16 }}>{c.user.name}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
+                        </ScrollView>
+                        <TouchableOpacity onPress={function () { setShowDMModal(false); }} style={{ marginTop: 16, alignItems: "center" }}>
+                            <Text style={{ color: colors.textSecondary }}>Cancel</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -290,9 +312,6 @@ var styles = StyleSheet.create({
     imageWrap: { marginTop: spacing.sm, marginBottom: spacing.sm },
     imageRow: { flexDirection: "row", gap: 2 },
     imageHalf: { flex: 1, height: 200, borderRadius: radius.md, borderWidth: 1 },
-    imageThird: { flex: 1, height: 160, borderRadius: radius.md, borderWidth: 1 },
-    imageGridFour: { flexDirection: "row", flexWrap: "wrap", gap: 2 },
-    imageQuarter: { width: "49.5%", height: 140, borderRadius: radius.md, borderWidth: 1 },
     actions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.sm },
     actionBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: spacing.sm, paddingVertical: 6, borderRadius: radius.full },
     actionEmoji: { fontSize: 16 },
@@ -301,4 +320,12 @@ var styles = StyleSheet.create({
     menuItem: { paddingVertical: spacing.md, paddingHorizontal: spacing.lg, borderBottomWidth: 0 },
     menuText: { fontSize: 14, fontWeight: "500" },
     editInput: { borderRadius: radius.md, borderWidth: 1, padding: spacing.md, fontSize: 15, minHeight: 80, textAlignVertical: "top" },
+
+    // Modals & Share Styles
+    modalBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end", padding: spacing.lg },
+    shareMenu: { borderRadius: radius.xl, padding: spacing.lg, gap: spacing.lg, marginBottom: 40, borderWidth: 1 },
+    shareOption: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    dmPicker: { borderRadius: radius.xl, padding: spacing.lg, marginBottom: 40, borderWidth: 1, maxHeight: 400 },
+    dmRow: { flexDirection: "row", alignItems: "center", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.1)" },
+    repostBox: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, marginTop: spacing.sm, backgroundColor: "rgba(255,255,255,0.02)" }
 });

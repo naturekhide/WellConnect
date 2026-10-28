@@ -20,9 +20,7 @@ export async function GET(request: NextRequest) {
     });
     var myCircleList = myCircleIds.map(function (m) { return m.circleId; });
 
-    var whereClause: any = {
-        deletedAt: null,
-    };
+    var whereClause: any = { deletedAt: null };
 
     if (tab === "following") {
         var following = await prisma.follow.findMany({
@@ -30,14 +28,11 @@ export async function GET(request: NextRequest) {
             select: { followingId: true },
         });
         var followingIds = following.map(function (f) { return f.followingId; });
-
         whereClause.circleId = null;
         whereClause.anonymous = false;
         whereClause.authorId = { in: followingIds };
-
     } else if (tab === "circles") {
         whereClause.circleId = { in: myCircleList };
-
     } else {
         whereClause.OR = [
             { circleId: null },
@@ -52,6 +47,10 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         include: {
             author: { select: { id: true, name: true, username: true } },
+            // 🚨 INCLUDE ORIGINAL POST FOR REPOSTS
+            originalPost: {
+                include: { author: { select: { id: true, name: true, username: true } } }
+            },
             _count: { select: { replies: true, reactions: true } },
             replies: {
                 take: 2,
@@ -77,10 +76,15 @@ export async function GET(request: NextRequest) {
             replyCount: p._count.replies,
             reactionCount: p._count.reactions,
             myReaction: p.reactions[0]?.type || null,
-
-            // 🚨 THIS IS THE FIX: Tell the frontend this post belongs to the user
             isMine: p.authorId === userId,
-
+            // 🚨 MAP ORIGINAL POST
+            originalPost: p.originalPost ? {
+                id: p.originalPost.id,
+                content: p.originalPost.content,
+                imageUrls: p.originalPost.imageUrls ? p.originalPost.imageUrls.split(",") : [],
+                createdAt: p.originalPost.createdAt,
+                author: p.originalPost.author,
+            } : null,
             recentReplies: p.replies.map(function (r) {
                 return { id: r.id, content: r.content, author: r.anonymous ? { name: "Anonymous" } : r.author };
             }),
@@ -100,10 +104,11 @@ export async function POST(request: NextRequest) {
     var userId: string = userIdOrNull;
 
     var body = await request.json();
-    var { content, imageUrls, anonymous, circleId } = body;
+    // 🚨 ADD originalPostId
+    var { content, imageUrls, anonymous, circleId, originalPostId } = body;
 
-    if ((!content || content.trim().length === 0) && (!imageUrls || imageUrls.length === 0)) {
-        return NextResponse.json({ error: "Content or image required" }, { status: 400 });
+    if ((!content || content.trim().length === 0) && (!imageUrls || imageUrls.length === 0) && !originalPostId) {
+        return NextResponse.json({ error: "Content, image, or original post required" }, { status: 400 });
     }
 
     if (content && content.length > 1000) {
@@ -124,6 +129,7 @@ export async function POST(request: NextRequest) {
             anonymous: anonymous || false,
             circleId: circleId || null,
             authorId: userId,
+            originalPostId: originalPostId || null, // 🚨 SAVE originalPostId
         },
     });
 
@@ -131,7 +137,6 @@ export async function POST(request: NextRequest) {
         try {
             const Sentiment = (await import("sentiment")).default;
             const sentiment = new Sentiment();
-
             var analysis = sentiment.analyze(content);
 
             if (analysis.score <= -1) {

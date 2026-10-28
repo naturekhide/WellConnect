@@ -181,8 +181,9 @@ export default function ConnectPage() {
                             <FeedPostCard
                                 key={post.id}
                                 post={post}
+                                // 🚨 UPDATED ROUTE HERE
+                                onPress={function () { router.push("/feed/" + post.id); }}
                                 onReactionChange={handleReactionChange}
-                                onPress={function () { router.push("/connect/" + post.id); }}
                                 onDelete={handleDelete}
                                 onUpdated={handlePostUpdated}
                             />

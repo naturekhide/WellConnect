@@ -118,24 +118,27 @@ export async function getFeed(tab?: string, cursor?: string) {
     if (tab && tab !== "for-you") params.push("tab=" + tab);
     if (cursor) params.push("cursor=" + cursor);
     var path = "/api/feed" + (params.length ? "?" + params.join("&") : "");
-    
+
     var data = await apiFetch(path);
-    
+
     // Safely map the images and ensure isMine is present
     if (data && data.posts) {
-        data.posts = data.posts.map(function(p: any) {
+        data.posts = data.posts.map(function (p: any) {
             return {
                 ...p,
                 imageUrls: Array.isArray(p.imageUrls) ? p.imageUrls : [],
-                isMine: p.isMine || false 
+                isMine: p.isMine || false
             };
         });
     }
     return data;
 }
 
-export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean, circleId?: string | null) {
-    return apiFetch("/api/feed", { method: "POST", body: JSON.stringify({ content, imageUrls, anonymous, circleId: circleId || null }) });
+export async function createFeedPost(content: string, imageUrls: string[], anonymous: boolean, circleId?: string | null, originalPostId?: string | null) {
+    return apiFetch("/api/feed", {
+        method: "POST",
+        body: JSON.stringify({ content, imageUrls, anonymous, circleId: circleId || null, originalPostId: originalPostId || null })
+    });
 }
 export async function getFeedPost(id: string) { return apiFetch("/api/feed/" + id); }
 export async function deleteFeedPost(id: string) { return apiFetch("/api/feed/" + id, { method: "DELETE" }); }
@@ -152,10 +155,10 @@ export async function uploadImages(uris: string[]) {
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
         var rawName = rawUri.split("/").pop() || ("image_" + i + ".jpg");
-        
+
         // 🚨 THE FIX: Create a File object directly from the local URI
         const file = new File(rawUri);
-        
+
         // Append the File object directly
         formData.append("files", file, rawName);
     }
