@@ -30,7 +30,18 @@ export async function POST(request: NextRequest) {
 
     // Check Email Verification
     if (!user.emailVerified) {
-        return NextResponse.json({ error: "Please verify your email address first." }, { status: 403 });
+        // 🚨 Auto-verify accounts older than 3 days
+        var accountAge = Date.now() - new Date(user.createdAt).getTime();
+        var threeDays = 3 * 24 * 60 * 60 * 1000;
+
+        if (accountAge > threeDays) {
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { emailVerified: true }
+            });
+        } else {
+            return NextResponse.json({ error: "Please verify your email address first." }, { status: 403 });
+        }
     }
 
     var token = jwt.sign(

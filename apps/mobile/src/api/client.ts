@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import { fetch as expoFetch } from "expo/fetch"; 
+import { fetch as expoFetch } from "expo/fetch";
 import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -88,6 +88,7 @@ export async function login(identifier: string, password: string) {
     });
     if (!res.ok) {
         var err = await res.json();
+        // 🚨 THIS FIX: Throws the exact error message from the backend
         throw new Error(err.error || "Login failed");
     }
     var data = await res.json();
@@ -152,13 +153,11 @@ export async function uploadImages(uris: string[]) {
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
         var rawName = rawUri.split("/").pop() || ("file_" + i);
-        
+
         try {
-            // 🚨 THE FIX: Use expoFetch to get a Blob directly from the URI
-            // This handles content:// and file:// URIs without native permission errors
             const response = await expoFetch(rawUri);
             const blob = await response.blob();
-            
+
             formData.append("files", blob, rawName);
         } catch (err) {
             console.error("File read error:", err);
