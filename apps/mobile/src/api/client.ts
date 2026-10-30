@@ -1,6 +1,5 @@
 import { Platform } from "react-native";
-import { File } from "expo-file-system";
-import { fetch as expoFetch } from "expo/fetch"; // Expo's native fetch
+import { fetch as expoFetch } from "expo/fetch"; 
 import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -53,7 +52,6 @@ async function apiFetch(path: string, options?: any) {
         headers["Authorization"] = "Bearer " + tokenStorage;
     }
 
-    // Use expoFetch for everything to ensure consistency on Android/iOS
     var res = await expoFetch(API_URL + path, {
         ...options,
         headers: headers,
@@ -121,7 +119,6 @@ export async function getFeed(tab?: string, cursor?: string) {
 
     var data = await apiFetch(path);
 
-    // Safely map the images and ensure isMine is present
     if (data && data.posts) {
         data.posts = data.posts.map(function (p: any) {
             return {
@@ -154,20 +151,25 @@ export async function uploadImages(uris: string[]) {
 
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
-        var rawName = rawUri.split("/").pop() || ("image_" + i + ".jpg");
-
-        // 🚨 THE FIX: Create a File object directly from the local URI
-        const file = new File(rawUri);
-
-        // Append the File object directly
-        formData.append("files", file, rawName);
+        var rawName = rawUri.split("/").pop() || ("file_" + i);
+        
+        try {
+            // 🚨 THE FIX: Use expoFetch to get a Blob directly from the URI
+            // This handles content:// and file:// URIs without native permission errors
+            const response = await expoFetch(rawUri);
+            const blob = await response.blob();
+            
+            formData.append("files", blob, rawName);
+        } catch (err) {
+            console.error("File read error:", err);
+            throw new Error("Failed to process file");
+        }
     }
 
     if (!tokenStorage) await loadToken();
     var headers: any = {};
     if (tokenStorage) headers["Authorization"] = "Bearer " + tokenStorage;
 
-    // 🚨 IMPORTANT: Use expoFetch instead of the standard fetch for File uploads
     var res = await expoFetch(API_URL + "/api/upload/multi", {
         method: "POST",
         headers: headers,
