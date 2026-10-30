@@ -14,7 +14,10 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
                 password: { label: "Password", type: "password" },
             },
             async authorize(credentials) {
-                if (!credentials?.identifier || !credentials?.password) return null;
+                if (!credentials?.identifier || !credentials?.password) {
+                    console.log("AUTH DEBUG: Missing identifier or password");
+                    return null;
+                }
 
                 var user = await prisma.user.findFirst({
                     where: {
@@ -25,15 +28,39 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
                     },
                 });
 
-                if (!user || !user.password) return null;
+                if (!user || !user.password) {
+                    console.log("AUTH DEBUG: User not found for", credentials.identifier);
+                    return null;
+                }
 
                 var isValid = await bcrypt.compare(
                     credentials.password as string,
                     user.password
                 );
 
-                if (!isValid) return null;
+                if (!isValid) {
+                    console.log("AUTH DEBUG: Invalid password for", credentials.identifier);
+                    return null;
+                }
 
+                // 🚨 EMAIL VERIFICATION CHECK WITH AUTO-VERIFY
+                if (!user.emailVerified) {
+                    var accountAge = Date.now() - new Date(user.createdAt).getTime();
+                    var threeDays = 3 * 24 * 60 * 60 * 1000;
+
+                    if (accountAge > threeDays) {
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: { emailVerified: true }
+                        });
+                        console.log("AUTH DEBUG: Auto-verified old account", user.email);
+                    } else {
+                        console.log("AUTH DEBUG: Unverified new account", user.email);
+                        throw new Error("Please verify your email address first.");
+                    }
+                }
+
+                console.log("AUTH DEBUG: Login successful for", user.email);
                 return {
                     id: user.id,
                     email: user.email,
