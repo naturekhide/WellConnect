@@ -18,6 +18,8 @@ import { useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
+import VoiceNoteButton from "../../components/VoiceNoteButton";
+import AudioMessage from "../../components/AudioMessage"; // 🚨 Import Audio Player
 
 function SwipeableMessage({ m, colors, onReply, onLongPress }: any) {
     var translateX = useRef(new Animated.Value(0)).current;
@@ -67,7 +69,12 @@ function SwipeableMessage({ m, colors, onReply, onLongPress }: any) {
                             </View>
                         )}
 
-                        <Text style={{ fontSize: 15, lineHeight: 21, color: isMine ? "#fff" : colors.textPrimary }}>{m.content}</Text>
+                        {/* 🚨 THE FIX: Check if it's a voice note, otherwise render text */}
+                        {m.content.startsWith("🎤 ") ? (
+                            <AudioMessage url={m.content.replace("🎤 ", "")} isMine={isMine} />
+                        ) : (
+                            <Text style={{ fontSize: 15, lineHeight: 21, color: isMine ? "#fff" : colors.textPrimary }}>{m.content}</Text>
+                        )}
 
                         <Text style={[styles.time, { color: isMine ? "rgba(255,255,255,0.7)" : colors.textTertiary, textAlign: isMine ? "right" : "left" }]}>
                             {new Date(m.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
@@ -251,15 +258,20 @@ export default function ChatScreen() {
                         placeholderTextColor={colors.textTertiary}
                         multiline
                     />
-                    <TouchableOpacity
-                        onPress={handleSend}
-                        disabled={!text.trim() || sending}
-                        style={[styles.sendBtn, { backgroundColor: text.trim() ? colors.primary : colors.border }]}
-                    >
-                        <Text style={{ color: text.trim() ? "#fff" : colors.textTertiary, fontSize: 18, fontWeight: "700" }}>
-                            {sending ? "..." : (editingMessage ? "✓" : "→")}
-                        </Text>
-                    </TouchableOpacity>
+
+                    {text.trim().length === 0 && !editingMessage ? (
+                        <VoiceNoteButton userId={otherId} onSent={loadInitial} />
+                    ) : (
+                        <TouchableOpacity
+                            onPress={handleSend}
+                            disabled={!text.trim() || sending}
+                            style={[styles.sendBtn, { backgroundColor: text.trim() ? colors.primary : colors.border }]}
+                        >
+                            <Text style={{ color: text.trim() ? "#fff" : colors.textTertiary, fontSize: 18, fontWeight: "700" }}>
+                                {sending ? "..." : (editingMessage ? "✓" : "→")}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
 

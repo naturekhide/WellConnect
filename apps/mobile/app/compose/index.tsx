@@ -8,40 +8,40 @@ export default function ComposeMenuScreen() {
     var colors = useColors();
 
     var menuItems = [
-        { 
-            title: "Share a Moment", 
-            subtitle: "Post to the community feed", 
-            emoji: "✨", 
-            route: "/compose/moment" 
+        {
+            title: "Share a Moment",
+            subtitle: "Post to the community feed",
+            emoji: "✨",
+            route: "/compose/moment"
         },
-        { 
-            title: "Mood Check-in", 
-            subtitle: "How are you feeling?", 
-            emoji: "🧠", 
+        {
+            title: "Mood Check-in",
+            subtitle: "How are you feeling?",
+            emoji: "🧠",
             route: "/(tabs)/home" // Assuming mood check-in is on the home screen
         },
-        { 
-            title: "Write Journal", 
-            subtitle: "Reflect on your day", 
-            emoji: "📝", 
-            route: "/(tabs)/journal" 
+        {
+            title: "Write Journal",
+            subtitle: "Reflect on your day",
+            emoji: "📝",
+            route: "/(tabs)/journal"
         },
-        { 
-            title: "Add Goal", 
-            subtitle: "Track something new", 
-            emoji: "🎯", 
-            route: "/(tabs)/goals" 
+        {
+            title: "Add Goal",
+            subtitle: "Track something new",
+            emoji: "🎯",
+            route: "/(tabs)/goals"
         }
     ];
 
     return (
         <View style={[styles.container, { backgroundColor: "rgba(0,0,0,0.6)" }]}>
-            <TouchableOpacity 
-                style={styles.backdrop} 
-                activeOpacity={1} 
-                onPress={function () { router.back(); }} 
+            <TouchableOpacity
+                style={styles.backdrop}
+                activeOpacity={1}
+                onPress={function () { router.back(); }}
             />
-            
+
             <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: colors.textPrimary }]}>What's on your mind?</Text>
@@ -53,12 +53,12 @@ export default function ComposeMenuScreen() {
                 <View style={{ gap: spacing.sm }}>
                     {menuItems.map(function (item, index) {
                         return (
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 key={index}
                                 style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                                onPress={function () { 
+                                onPress={function () {
                                     router.back(); // Close the menu
-                                    setTimeout(function() { router.push(item.route as any); }, 100); 
+                                    setTimeout(function () { router.push(item.route as any); }, 100);
                                 }}
                             >
                                 <View style={styles.iconContainer}>
@@ -81,10 +81,10 @@ export default function ComposeMenuScreen() {
 var styles = StyleSheet.create({
     container: { flex: 1, justifyContent: "flex-end" },
     backdrop: { ...StyleSheet.absoluteFillObject },
-    sheet: { 
-        borderTopLeftRadius: radius.xl, 
-        borderTopRightRadius: radius.xl, 
-        padding: spacing.lg, 
+    sheet: {
+        borderTopLeftRadius: radius.xl,
+        borderTopRightRadius: radius.xl,
+        padding: spacing.lg,
         paddingBottom: 40,
         borderWidth: 1,
         borderBottomWidth: 0

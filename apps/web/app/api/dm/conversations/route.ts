@@ -58,12 +58,18 @@ export async function GET(request: NextRequest) {
                 select: { id: true, name: true, username: true },
             });
 
+            // 🚨 THE FIX: Clean up the preview text if it's a voice note
+            var previewContent = lastMessage?.content || "";
+            if (previewContent.startsWith("🎤 ")) {
+                previewContent = "🎤 Voice Note";
+            }
+
             return {
                 user: other,
                 lastMessage: lastMessage
                     ? {
                         id: lastMessage.id,
-                        content: lastMessage.content,
+                        content: previewContent, // 🚨 Return the clean text
                         createdAt: lastMessage.createdAt,
                         isMine: lastMessage.senderId === userId,
                     }
