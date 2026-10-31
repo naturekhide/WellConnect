@@ -4,47 +4,47 @@ import { getCurrentUserId } from "@/lib/get-user";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(
-    request: NextRequest,
-    { params }: { params: { id: string } }
-) {
-    var userId = await getCurrentUserId(request);
-    if (!userId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+    var userIdOrNull = await getCurrentUserId(request);
+    if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    var userId: string = userIdOrNull;
+    var targetId = params.id;
 
     var user = await prisma.user.findUnique({
-        where: { id: params.id },
+        where: { id: targetId },
         select: {
             id: true,
             name: true,
             username: true,
             createdAt: true,
+            _count: { select: { feedPosts: true, followers: true, following: true } },
         },
     });
 
-    if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    var [postCount, followerCount, followingCount, isFollowing, isMe] = await Promise.all([
-        prisma.feedPost.count({ where: { authorId: params.id } }),
-        prisma.follow.count({ where: { followingId: params.id } }),
-        prisma.follow.count({ where: { followerId: params.id } }),
-        prisma.follow.findUnique({
-            where: { followerId_followingId: { followerId: userId, followingId: params.id } },
-        }),
-        Promise.resolve(userId === params.id),
-    ]);
+    // Check if following
+    var follow = await prisma.follow.findUnique({
+        where: { followerId_followingId: { followerId: userId, followingId: targetId } },
+    });
+
+    // 🚨 Check if blocked
+    var block = await prisma.block.findUnique({
+        where: { blockerId_blockedId: { blockerId: userId, blockedId: targetId } },
+    });
 
     return NextResponse.json({
-        ...user,
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        createdAt: user.createdAt,
+        isMe: userId === targetId,
+        isFollowing: !!follow,
+        isBlocked: !!block, // 🚨 Return block status
         stats: {
-            posts: postCount,
-            followers: followerCount,
-            following: followingCount,
+            posts: user._count.feedPosts,
+            followers: user._count.followers,
+            following: user._count.following,
         },
-        isFollowing: !!isFollowing,
-        isMe: isMe,
     });
 }

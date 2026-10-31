@@ -300,3 +300,12 @@ model DirectMessage {
   @@index([senderId, receiverId, createdAt])
   @@index([receiverId, readAt])
 }
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}

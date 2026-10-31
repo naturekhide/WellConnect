@@ -13,6 +13,7 @@ export default function UserProfilePage() {
     var [profile, setProfile] = useState<any>(null);
     var [loading, setLoading] = useState(true);
     var [followState, setFollowState] = useState({ isFollowing: false, followerCount: 0, followingCount: 0 });
+    var [isBlocked, setIsBlocked] = useState(false);
     var [toggling, setToggling] = useState(false);
 
     useEffect(function () { load(); }, [userId]);
@@ -23,6 +24,7 @@ export default function UserProfilePage() {
             if (r.ok) {
                 var data = await r.json();
                 setProfile(data);
+                setIsBlocked(data.isBlocked || false);
                 setFollowState({
                     isFollowing: data.isFollowing,
                     followerCount: data.stats?.followers || 0,
@@ -48,6 +50,18 @@ export default function UserProfilePage() {
             }
         } catch (e) { }
         setToggling(false);
+    };
+
+    // 🚨 Block Handler
+    var handleBlock = async function () {
+        try {
+            var r = await fetch("/api/users/" + userId + "/block", { method: "POST" });
+            if (r.ok) {
+                var data = await r.json();
+                setIsBlocked(data.blocked);
+                if (data.blocked) alert("User blocked. They can no longer message you.");
+            }
+        } catch (e) { }
     };
 
     var formatDate = function (d: string) {
@@ -86,17 +100,10 @@ export default function UserProfilePage() {
 
                 <div style={{ padding: S.xl, textAlign: "center" }}>
                     <div style={{
-                        width: 96,
-                        height: 96,
-                        borderRadius: R.full,
+                        width: 96, height: 96, borderRadius: R.full,
                         background: "linear-gradient(135deg, #10b981, #14b8a6)",
-                        color: "#fff",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 38,
-                        fontWeight: 700,
-                        margin: "0 auto " + S.lg + "px",
+                        color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 38, fontWeight: 700, margin: "0 auto " + S.lg + "px",
                     }}>
                         {profile?.name?.charAt(0) || "U"}
                     </div>
@@ -119,8 +126,7 @@ export default function UserProfilePage() {
                                     background: followState.isFollowing ? "transparent" : C.primary,
                                     color: followState.isFollowing ? C.textPrimary : "#fff",
                                     border: followState.isFollowing ? "1px solid " + C.border : "none",
-                                    fontSize: 14,
-                                    fontWeight: 600,
+                                    fontSize: 14, fontWeight: 600,
                                     cursor: toggling ? "not-allowed" : "pointer",
                                     opacity: toggling ? 0.6 : 1,
                                 }}
@@ -135,12 +141,23 @@ export default function UserProfilePage() {
                                     background: "transparent",
                                     border: "1px solid " + C.border,
                                     color: C.textPrimary,
-                                    fontSize: 14,
-                                    fontWeight: 600,
-                                    cursor: "pointer",
+                                    fontSize: 14, fontWeight: 600, cursor: "pointer",
                                 }}
                             >
                                 Message
+                            </button>
+                            <button
+                                onClick={handleBlock}
+                                style={{
+                                    padding: "10px " + S.xl + "px",
+                                    borderRadius: R.full,
+                                    background: isBlocked ? "#ef4444" : "transparent",
+                                    border: isBlocked ? "none" : "1px solid #ef4444",
+                                    color: isBlocked ? "#fff" : "#ef4444",
+                                    fontSize: 14, fontWeight: 600, cursor: "pointer",
+                                }}
+                            >
+                                {isBlocked ? "Unblock" : "Block"}
                             </button>
                         </div>
                     )}

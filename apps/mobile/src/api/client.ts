@@ -38,7 +38,8 @@ export async function clearAuthToken() {
     await removeItem("wellconnect_user");
 }
 
-async function apiFetch(path: string, options?: any) {
+// 🚨 EXPORTED apiFetch
+export async function apiFetch(path: string, options?: any) {
     if (!tokenStorage) {
         await loadToken();
     }
@@ -88,7 +89,6 @@ export async function login(identifier: string, password: string) {
     });
     if (!res.ok) {
         var err = await res.json();
-        // 🚨 THIS FIX: Throws the exact error message from the backend
         throw new Error(err.error || "Login failed");
     }
     var data = await res.json();

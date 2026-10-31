@@ -1,15 +1,9 @@
 import React, { useEffect, useState } from "react";
 import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    ActivityIndicator,
-    Alert,
+    View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { getUserProfile, toggleFollow } from "../../src/api/client";
+import { getUserProfile, toggleFollow, apiFetch } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 
 export default function UserProfileScreen() {
@@ -20,6 +14,7 @@ export default function UserProfileScreen() {
     var [profile, setProfile] = useState<any>(null);
     var [loading, setLoading] = useState(true);
     var [followState, setFollowState] = useState({ isFollowing: false, followerCount: 0, followingCount: 0 });
+    var [isBlocked, setIsBlocked] = useState(false);
     var [toggling, setToggling] = useState(false);
 
     useEffect(function () { load(); }, [userId]);
@@ -28,6 +23,7 @@ export default function UserProfileScreen() {
         try {
             var data = await getUserProfile(userId);
             setProfile(data);
+            setIsBlocked(data.isBlocked || false);
             setFollowState({
                 isFollowing: data.isFollowing,
                 followerCount: data.stats?.followers || 0,
@@ -51,6 +47,16 @@ export default function UserProfileScreen() {
             Alert.alert("Failed", e.message);
         }
         setToggling(false);
+    };
+
+    var handleBlock = async function () {
+        try {
+            var res = await apiFetch("/api/users/" + userId + "/block", { method: "POST" });
+            setIsBlocked(res.blocked);
+            if (res.blocked) Alert.alert("Blocked", "You have blocked this user.");
+        } catch (e: any) {
+            Alert.alert("Error", "Could not block user.");
+        }
     };
 
     var formatDate = function (d: string) {
@@ -99,7 +105,7 @@ export default function UserProfileScreen() {
                     </Text>
 
                     {!profile.isMe && (
-                        <View style={{ flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg }}>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.lg, justifyContent: "center" }}>
                             <TouchableOpacity
                                 onPress={handleFollow}
                                 disabled={toggling}
@@ -128,6 +134,18 @@ export default function UserProfileScreen() {
                             >
                                 <Text style={[styles.followBtnText, { color: colors.textPrimary }]}>
                                     Message
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                onPress={handleBlock}
+                                style={[
+                                    styles.followBtn,
+                                    { marginTop: 0, backgroundColor: isBlocked ? "#ef4444" : "transparent", borderColor: "#ef4444", borderWidth: 1 },
+                                ]}
+                            >
+                                <Text style={[styles.followBtnText, { color: isBlocked ? "#fff" : "#ef4444" }]}>
+                                    {isBlocked ? "Unblock" : "Block"}
                                 </Text>
                             </TouchableOpacity>
                         </View>
