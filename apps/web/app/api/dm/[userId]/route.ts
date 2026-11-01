@@ -10,13 +10,20 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     var userId: string = userIdOrNull;
     var otherId = params.userId;
 
-    // 🚨 Mark messages from the OTHER person as READ
-    await prisma.directMessage.updateMany({
+    // 🚨 Check if blocked
+    var block = await prisma.block.findFirst({
         where: {
-            senderId: otherId,
-            receiverId: userId,
-            readAt: null
-        },
+            OR: [
+                { blockerId: userId, blockedId: otherId },
+                { blockerId: otherId, blockedId: userId }
+            ]
+        }
+    });
+
+    if (block) return NextResponse.json({ error: "You cannot interact with this user." }, { status: 403 });
+
+    await prisma.directMessage.updateMany({
+        where: { senderId: otherId, receiverId: userId, readAt: null },
         data: { readAt: new Date() },
     });
 
@@ -36,10 +43,25 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
         include: {
             sender: { select: { id: true, name: true, username: true } },
             replyTo: { include: { sender: { select: { name: true } } } },
+            reactions: true,
         },
     });
 
     var formatted = messages.map(function (m) {
+        var reactionCounts: any = {};
+
+        // 🚨 FIX: Explicitly cast to any[] to fix the 'never' error
+        var msgReactions = (m.reactions || []) as any[];
+
+        msgReactions.forEach((r: any) => {
+            reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
+        });
+
+        var groupedReactions = Object.keys(reactionCounts).map(emoji => ({
+            emoji,
+            count: reactionCounts[emoji]
+        }));
+
         return {
             id: m.id,
             content: m.content,
@@ -52,17 +74,30 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
                 content: m.replyTo.content,
                 senderName: m.replyTo.sender.name,
             } : null,
+            reactions: groupedReactions,
         };
     });
 
     return NextResponse.json({ messages: formatted });
 }
 
+// ... (Keep your POST, PATCH, and DELETE functions exactly as they are) ...
 export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
     var userIdOrNull = await getCurrentUserId(request);
     if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     var userId: string = userIdOrNull;
     var otherId = params.userId;
+
+    var block = await prisma.block.findFirst({
+        where: {
+            OR: [
+                { blockerId: userId, blockedId: otherId },
+                { blockerId: otherId, blockedId: userId }
+            ]
+        }
+    });
+
+    if (block) return NextResponse.json({ error: "You cannot message this user." }, { status: 403 });
 
     var body = await request.json();
     var { content, replyToId } = body;
@@ -91,10 +126,10 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
         isMine: true,
         sender: msg.sender,
         replyTo: null,
+        reactions: [],
     });
 }
 
-// 🚨 RESTORED: PATCH function for editing
 export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
     var userIdOrNull = await getCurrentUserId(request);
     if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -102,25 +137,18 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
 
     var url = new URL(request.url);
     var messageId = url.searchParams.get("messageId");
-
     if (!messageId) return NextResponse.json({ error: "Message ID required" }, { status: 400 });
 
     var body = await request.json();
     var { content } = body;
 
-    if (!content || content.trim().length === 0) {
-        return NextResponse.json({ error: "Content required" }, { status: 400 });
-    }
+    if (!content || content.trim().length === 0) return NextResponse.json({ error: "Content required" }, { status: 400 });
 
     var msg = await prisma.directMessage.findUnique({ where: { id: messageId } });
-    if (!msg || msg.senderId !== userId) {
-        return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-    }
+    if (!msg || msg.senderId !== userId) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
     var elapsed = Date.now() - new Date(msg.createdAt).getTime();
-    if (elapsed > 15 * 60 * 1000) {
-        return NextResponse.json({ error: "Edit window expired (15 minutes)" }, { status: 400 });
-    }
+    if (elapsed > 15 * 60 * 1000) return NextResponse.json({ error: "Edit window expired (15 minutes)" }, { status: 400 });
 
     var updated = await prisma.directMessage.update({
         where: { id: messageId },
@@ -130,7 +158,6 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
     return NextResponse.json({ id: updated.id, content: updated.content });
 }
 
-// 🚨 RESTORED: DELETE function for soft-deleting
 export async function DELETE(request: NextRequest, { params }: { params: { userId: string } }) {
     var userIdOrNull = await getCurrentUserId(request);
     if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -138,13 +165,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { userI
 
     var url = new URL(request.url);
     var messageId = url.searchParams.get("messageId");
-
     if (!messageId) return NextResponse.json({ error: "Message ID required" }, { status: 400 });
 
     var msg = await prisma.directMessage.findUnique({ where: { id: messageId } });
-    if (!msg || msg.senderId !== userId) {
-        return NextResponse.json({ error: "Not authorized" }, { status: 403 });
-    }
+    if (!msg || msg.senderId !== userId) return NextResponse.json({ error: "Not authorized" }, { status: 403 });
 
     await prisma.directMessage.update({
         where: { id: messageId },

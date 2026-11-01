@@ -1,13 +1,25 @@
 import React, { useEffect, useState, useRef } from "react";
 import {
-    View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
-    ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
-    PanResponder, Animated, Modal, Image, Linking,
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TextInput,
+    TouchableOpacity,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    PanResponder,
+    Animated,
+    Modal,
+    Image,
+    Linking,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import EmojiPicker from "rn-emoji-keyboard";
-import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM, uploadImages } from "../../src/api/client";
+import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM, uploadImages, reactToMessage } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 import VoiceNoteButton from "../../components/VoiceNoteButton";
 import AudioMessage from "../../components/AudioMessage";
@@ -84,17 +96,30 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
                                 {new Date(m.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                             </Text>
 
-                            {/* 🚨 REAL READ RECEIPTS */}
                             {isMine && (
                                 m.readAt ? (
-                                    <Ionicons name="checkmark-done" size={14} color="#34d399" /> // Read
+                                    <Ionicons name="checkmark-done" size={14} color="#34d399" />
                                 ) : (
-                                    <Ionicons name="checkmark" size={14} color="rgba(255,255,255,0.7)" /> // Delivered
+                                    <Ionicons name="checkmark" size={14} color="rgba(255,255,255,0.7)" />
                                 )
                             )}
                         </View>
                     </View>
                 </TouchableOpacity>
+
+                {/* 🚨 RENDER REACTIONS */}
+                {m.reactions && m.reactions.length > 0 && (
+                    <View style={{ flexDirection: "row", gap: 4, marginTop: 4, alignSelf: isMine ? "flex-end" : "flex-start", paddingRight: isMine ? 8 : 0, paddingLeft: isMine ? 0 : 8 }}>
+                        {m.reactions.map(function (r: any, i: number) {
+                            return (
+                                <View key={i} style={{ backgroundColor: "#1e293b", borderRadius: 12, paddingHorizontal: 6, paddingVertical: 2, flexDirection: "row", alignItems: "center", gap: 2 }}>
+                                    <Text style={{ fontSize: 12 }}>{r.emoji}</Text>
+                                    <Text style={{ fontSize: 10, color: "#94a3b8" }}>{r.count}</Text>
+                                </View>
+                            );
+                        })}
+                    </View>
+                )}
             </Animated.View>
         </View>
     );
@@ -175,6 +200,15 @@ export default function ChatScreen() {
         setSending(false);
     };
 
+    // 🚨 Reaction Handler
+    var handleReaction = async function (msgId: string, emoji: string) {
+        setMenuMessage(null);
+        try {
+            await reactToMessage(otherId, msgId, emoji);
+            loadInitial();
+        } catch (e) { }
+    };
+
     var confirmDelete = function (messageId: string) {
         Alert.alert("Delete message?", "This cannot be undone.", [
             { text: "Cancel", style: "cancel" },
@@ -200,7 +234,6 @@ export default function ChatScreen() {
     return (
         <KeyboardAvoidingView style={[styles.container, { backgroundColor: BG_COLOR }]} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
 
-            {/* Header */}
             <View style={[styles.header, { backgroundColor: BG_COLOR }]}>
                 <TouchableOpacity onPress={function () { router.back(); }} style={{ padding: spacing.sm }}>
                     <Ionicons name="chevron-back" size={28} color="#fff" />
@@ -213,7 +246,6 @@ export default function ChatScreen() {
                         </View>
                         <View>
                             <Text style={[styles.headerName, { color: "#fff" }]}>{other.name}</Text>
-                            {/* 🚨 REMOVED HARDCODED ONLINE STATUS */}
                             <Text style={[styles.headerStatus, { color: "#64748b" }]}>@{other.username || "user"}</Text>
                         </View>
                     </View>
@@ -341,6 +373,18 @@ export default function ChatScreen() {
                     <View style={{ backgroundColor: "#132a25", borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 40 }}>
                         {menuMessage && (
                             <View style={{ paddingTop: spacing.md }}>
+
+                                {/* 🚨 QUICK REACTIONS ROW */}
+                                <View style={{ flexDirection: "row", justifyContent: "space-around", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: "#1e293b" }}>
+                                    {["❤️", "😂", "👍", "😮", "😢"].map(function (emoji) {
+                                        return (
+                                            <TouchableOpacity key={emoji} onPress={function () { handleReaction(menuMessage.id, emoji); }}>
+                                                <Text style={{ fontSize: 28 }}>{emoji}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+
                                 <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: "#1e293b" }} onPress={function () { setReplyingTo(menuMessage); setEditingMessage(null); setText(""); setMenuMessage(null); }}>
                                     <Ionicons name="arrow-undo-outline" size={22} color="#fff" style={{ marginRight: spacing.md }} />
                                     <Text style={{ fontSize: 16, color: "#fff" }}>Reply</Text>

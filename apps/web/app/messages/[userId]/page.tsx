@@ -19,7 +19,6 @@ function formatDate(dateString: string) {
     return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }
 
-// 🚨 Helper to clean up the reply preview text
 function getMessagePreview(content: string) {
     if (content.startsWith("🎤 ")) return "🎤 Voice Note";
     if (content.startsWith("🖼️ ")) return "🖼️ Photo";
@@ -42,18 +41,19 @@ export default function WebChatPage() {
     const [other, setOther] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [showEmoji, setShowEmoji] = useState(false);
-    
-    // Recording & Upload
+
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
     const [pendingFile, setPendingFile] = useState<File | null>(null);
 
-    // Edit, Delete, Reply States
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editText, setEditText] = useState("");
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<any>(null);
+
+    // 🚨 Attachment Menu State
+    const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -64,6 +64,16 @@ export default function WebChatPage() {
         const interval = setInterval(loadChat, 3000);
         return () => clearInterval(interval);
     }, [otherId]);
+
+    // 🚨 CLOSE MENUS ON CLICK OUTSIDE
+    useEffect(() => {
+        const handleClickOutside = () => {
+            if (menuOpenId) setMenuOpenId(null);
+            if (showAttachmentMenu) setShowAttachmentMenu(false);
+        };
+        document.addEventListener("click", handleClickOutside);
+        return () => document.removeEventListener("click", handleClickOutside);
+    }, [menuOpenId, showAttachmentMenu]);
 
     const scrollToBottom = (force: boolean = false) => {
         if (!scrollContainerRef.current) return;
@@ -101,7 +111,7 @@ export default function WebChatPage() {
         e?.preventDefault();
         if (!text.trim() && !pendingFile) return;
         let content = text.trim();
-        
+
         if (pendingFile) {
             const formData = new FormData();
             formData.append("files", pendingFile);
@@ -119,7 +129,7 @@ export default function WebChatPage() {
         setText("");
         setPendingFile(null);
         setReplyingTo(null);
-        
+
         try {
             await fetch(`/api/dm/${otherId}`, {
                 method: "POST",
@@ -128,7 +138,19 @@ export default function WebChatPage() {
             });
             loadChat();
             setTimeout(() => scrollToBottom(true), 100);
-        } catch (error) {}
+        } catch (error) { }
+    };
+
+    const handleReaction = async (messageId: string, emoji: string) => {
+        setMenuOpenId(null);
+        try {
+            await fetch(`/api/dm/${otherId}/react`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ messageId, emoji })
+            });
+            loadChat();
+        } catch (e) { }
     };
 
     const handleEditSave = async (msgId: string) => {
@@ -199,22 +221,20 @@ export default function WebChatPage() {
 
     return (
         <div style={{ display: "flex", flexDirection: "column", height: "100%", background: BG_COLOR, color: "#fff", fontFamily: "sans-serif" }}>
-            
+
             <div style={{ padding: "20px 24px", borderBottom: "1px solid #1e293b", display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
-                <div style={{ width: "40px", height: "40px", borderRadius: "20px", background: MY_BUBBLE, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
-                    {other?.name?.charAt(0) || "U"}
-                </div>
-                <div>
-                    <div style={{ fontWeight: "bold", fontSize: "16px" }}>{other?.name}</div>
-                    <div style={{ fontSize: "12px", color: "#64748b" }}>@{other?.username}</div>
+                <div onClick={() => router.push(`/users/${otherId}`)} style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}>
+                    <div style={{ width: "40px", height: "40px", borderRadius: "20px", background: MY_BUBBLE, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold" }}>
+                        {other?.name?.charAt(0) || "U"}
+                    </div>
+                    <div>
+                        <div style={{ fontWeight: "bold", fontSize: "16px" }}>{other?.name}</div>
+                        <div style={{ fontSize: "12px", color: "#64748b" }}>@{other?.username}</div>
+                    </div>
                 </div>
             </div>
 
-            <div 
-                ref={scrollContainerRef}
-                className="no-scrollbar"
-                style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column" }}
-            >
+            <div ref={scrollContainerRef} className="no-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column" }}>
                 {messages.map((m: any, index: number) => {
                     const isMine = m.isMine;
                     const showDate = index === 0 || new Date(messages[index - 1].createdAt).toDateString() !== new Date(m.createdAt).toDateString();
@@ -228,19 +248,34 @@ export default function WebChatPage() {
                                     <span style={{ fontSize: "12px", fontWeight: "600", color: "#64748b", background: "#132a25", padding: "4px 12px", borderRadius: "12px" }}>{formatDate(m.createdAt)}</span>
                                 </div>
                             )}
-                            
-                            <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: "12px" }}>
-                                
+
+                            <div style={{ display: "flex", justifyContent: isMine ? "flex-end" : "flex-start", marginBottom: "4px" }}>
+
                                 {!isEditing && (
                                     <div style={{ position: "relative", display: "flex", alignItems: "center", marginRight: isMine ? "8px" : "0", marginLeft: isMine ? "0" : "8px", order: isMine ? 1 : 2 }}>
-                                        <button 
-                                            onClick={() => setMenuOpenId(menuOpenId === m.id ? null : m.id)}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setMenuOpenId(menuOpenId === m.id ? null : m.id);
+                                            }}
                                             style={{ background: "none", border: "none", color: "#64748b", cursor: "pointer", fontSize: "20px" }}
                                         >
                                             ···
                                         </button>
+
                                         {menuOpenId === m.id && (
-                                            <div style={{ position: "absolute", bottom: "100%", left: isMine ? "auto" : 0, right: isMine ? 0 : "auto", background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "4px", display: "flex", flexDirection: "column", zIndex: 10 }}>
+                                            <div
+                                                onClick={(e) => e.stopPropagation()}
+                                                style={{ position: "absolute", bottom: "100%", left: isMine ? "auto" : 0, right: isMine ? 0 : "auto", background: "#1e293b", border: "1px solid #334155", borderRadius: "8px", padding: "8px", display: "flex", flexDirection: "column", zIndex: 10, minWidth: "160px" }}
+                                            >
+                                                <div style={{ display: "flex", gap: "4px", borderBottom: "1px solid #334155", paddingBottom: "8px", marginBottom: "8px", justifyContent: "space-between" }}>
+                                                    {["❤️", "😂", "👍", "😮", "😢"].map(emoji => (
+                                                        <button key={emoji} onClick={() => handleReaction(m.id, emoji)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", padding: "2px" }}>
+                                                            {emoji}
+                                                        </button>
+                                                    ))}
+                                                </div>
+
                                                 <button onClick={() => { setReplyingTo(m); setMenuOpenId(null); }} style={{ background: "none", border: "none", color: "#fff", padding: "8px 16px", textAlign: "left", cursor: "pointer", borderRadius: "4px" }}>Reply</button>
                                                 {isMine && isEditable && (
                                                     <button onClick={() => { setEditingId(m.id); setEditText(m.content); setMenuOpenId(null); }} style={{ background: "none", border: "none", color: "#fff", padding: "8px 16px", textAlign: "left", cursor: "pointer", borderRadius: "4px" }}>Edit</button>
@@ -254,23 +289,17 @@ export default function WebChatPage() {
                                 )}
 
                                 <div style={{ maxWidth: "70%", background: isMine ? MY_BUBBLE : THEIR_BUBBLE, padding: "12px 16px", borderRadius: "20px", order: isMine ? 0 : 1 }}>
-                                    
+
                                     {m.replyTo && (
                                         <div style={{ background: "rgba(0,0,0,0.2)", padding: "8px", borderRadius: "8px", marginBottom: "8px", borderLeft: "3px solid #34d399" }}>
                                             <div style={{ fontSize: "11px", fontWeight: "bold", color: "#34d399" }}>{m.replyTo.senderName}</div>
-                                            <div style={{ fontSize: "12px", color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                                {getMessagePreview(m.replyTo.content)}
-                                            </div>
+                                            <div style={{ fontSize: "12px", color: "#94a3b8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{getMessagePreview(m.replyTo.content)}</div>
                                         </div>
                                     )}
 
                                     {isEditing ? (
                                         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                                            <textarea 
-                                                value={editText} 
-                                                onChange={(e) => setEditText(e.target.value)}
-                                                style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #059669", borderRadius: "8px", padding: "8px", color: "#fff", outline: "none", resize: "none" }}
-                                            />
+                                            <textarea value={editText} onChange={(e) => setEditText(e.target.value)} style={{ width: "100%", background: "rgba(0,0,0,0.2)", border: "1px solid #059669", borderRadius: "8px", padding: "8px", color: "#fff", outline: "none", resize: "none" }} />
                                             <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px" }}>
                                                 <button onClick={() => setEditingId(null)} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}>Cancel</button>
                                                 <button onClick={() => handleEditSave(m.id)} style={{ background: "#059669", border: "none", color: "#fff", padding: "4px 12px", borderRadius: "4px", cursor: "pointer" }}>Save</button>
@@ -285,9 +314,9 @@ export default function WebChatPage() {
                                             ) : m.content.startsWith("📎 ") ? (
                                                 (() => {
                                                     var rawText = m.content.replace("📎 ", "").trim();
-                                                    var url = rawText.split("\n")[0].trim(); 
+                                                    var url = rawText.split("\n")[0].trim();
                                                     var lowerUrl = url.toLowerCase();
-                                                    
+
                                                     if (lowerUrl.includes(".webm") || lowerUrl.includes(".mp3") || lowerUrl.includes(".m4a") || lowerUrl.includes(".wav")) {
                                                         return <WebAudioPlayer url={url} isMine={isMine} />;
                                                     }
@@ -320,6 +349,16 @@ export default function WebChatPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            {m.reactions && m.reactions.length > 0 && (
+                                <div style={{ display: "flex", gap: "4px", marginTop: "-8px", marginBottom: "12px", zIndex: 5, justifyContent: isMine ? "flex-end" : "flex-start", paddingRight: isMine ? "16px" : "0", paddingLeft: isMine ? "0" : "16px" }}>
+                                    {m.reactions.map((r: any, i: number) => (
+                                        <div key={i} style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "2px 6px", fontSize: "12px", display: "flex", alignItems: "center", gap: "2px" }}>
+                                            {r.emoji} <span style={{ color: "#94a3b8", fontSize: "10px" }}>{r.count}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     );
                 })}
@@ -327,7 +366,7 @@ export default function WebChatPage() {
             </div>
 
             <div style={{ padding: "20px 24px", borderTop: "1px solid #1e293b", position: "relative", flexShrink: 0 }}>
-                
+
                 {replyingTo && (
                     <div style={{ background: "#132a25", padding: "12px", borderRadius: "12px", marginBottom: "12px", display: "flex", justifyContent: "space-between", borderLeft: "4px solid #34d399" }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -347,13 +386,48 @@ export default function WebChatPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleSend} style={{ display: "flex", gap: "12px", background: "#132a25", padding: "8px 16px", borderRadius: "30px", alignItems: "center" }}>
-                    <button type="button" onClick={() => fileInputRef.current?.click()} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "24px", cursor: "pointer" }}>+</button>
+                <form onSubmit={handleSend} style={{ display: "flex", gap: "12px", background: "#132a25", padding: "8px 16px", borderRadius: "30px", alignItems: "center", position: "relative" }}>
+
+                    {/* 🚨 PAPERCLIP BUTTON */}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            setShowAttachmentMenu(!showAttachmentMenu);
+                        }}
+                        style={{ background: "none", border: "none", color: showAttachmentMenu ? "#059669" : "#94a3b8", fontSize: "20px", cursor: "pointer" }}
+                    >
+                        📎
+                    </button>
+
+                    {/* 🚨 FLOATING ATTACHMENT MENU */}
+                    {showAttachmentMenu && (
+                        <div
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ position: "absolute", bottom: "60px", left: 0, background: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "8px", display: "flex", flexDirection: "column", gap: "4px", zIndex: 50, minWidth: "150px", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => { fileInputRef.current?.setAttribute('accept', 'image/*'); fileInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#fff", padding: "10px", cursor: "pointer", borderRadius: "8px", textAlign: "left" }}
+                            >
+                                🖼️ Photo
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { fileInputRef.current?.setAttribute('accept', '*/*'); fileInputRef.current?.click(); setShowAttachmentMenu(false); }}
+                                style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#fff", padding: "10px", cursor: "pointer", borderRadius: "8px", textAlign: "left" }}
+                            >
+                                📄 Document
+                            </button>
+                        </div>
+                    )}
+
                     <input type="file" ref={fileInputRef} style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files[0]) setPendingFile(e.target.files[0]); e.target.value = ""; }} />
-                    
-                    <button type="button" onClick={() => setShowEmoji(!showEmoji)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}>😊</button>
+
+                    <button type="button" onClick={(e) => { e.preventDefault(); setShowEmoji(!showEmoji); }} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}>😊</button>
                     {showEmoji && (
-                        <div style={{ position: "absolute", bottom: "80px", right: "20px", zIndex: 10 }}>
+                        <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", bottom: "80px", right: "20px", zIndex: 10 }}>
                             <EmojiPicker onEmojiClick={(e) => setText(prev => prev + e.emoji)} theme="dark" />
                         </div>
                     )}
@@ -366,7 +440,7 @@ export default function WebChatPage() {
                         disabled={isRecording}
                         style={{ flex: 1, background: "none", border: "none", color: "#fff", fontSize: "15px", outline: "none" }}
                     />
-                    
+
                     <button type="button" onClick={isRecording ? stopRecording : startRecording} style={{ background: "none", border: "none", color: isRecording ? "#ef4444" : "#94a3b8", fontSize: "20px", cursor: "pointer" }}>
                         {isRecording ? "⏹" : "🎤"}
                     </button>

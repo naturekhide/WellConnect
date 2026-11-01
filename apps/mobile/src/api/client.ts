@@ -38,7 +38,6 @@ export async function clearAuthToken() {
     await removeItem("wellconnect_user");
 }
 
-// 🚨 EXPORTED apiFetch
 export async function apiFetch(path: string, options?: any) {
     if (!tokenStorage) {
         await loadToken();
@@ -228,6 +227,14 @@ export async function editDM(userId: string, messageId: string, content: string)
 }
 export async function deleteDM(userId: string, messageId: string) {
     return apiFetch("/api/dm/" + userId + "/delete?messageId=" + messageId, { method: "DELETE" });
+}
+
+// 🚨 NEW: React to DM Message
+export async function reactToMessage(userId: string, messageId: string, emoji: string) {
+    return apiFetch("/api/dm/" + userId + "/react", {
+        method: "POST",
+        body: JSON.stringify({ messageId, emoji })
+    });
 }
 
 // ━━━━━ Search ━━━━━

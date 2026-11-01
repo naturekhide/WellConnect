@@ -4,7 +4,7 @@
     "slug": "wellconnect",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/wellconnect.png",
     "userInterfaceStyle": "automatic",
     "scheme": "wellconnect",
     "ios": {
@@ -15,21 +15,18 @@
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png",
-        "backgroundColor": "#f8faf9"
+        "foregroundImage": "./assets/wellconnect.png",
+        "backgroundColor": "#059669"
       },
       "userInterfaceStyle": "automatic",
       "package": "app.wellconnect",
       "permissions": [
-        "NOTIFICATIONS",
         "NOTIFICATIONS"
       ],
       "allowBackup": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/wellconnect.png"
     },
     "plugins": [
       "expo-router",

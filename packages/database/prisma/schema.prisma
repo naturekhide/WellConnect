@@ -277,6 +277,8 @@ model CircleMessage {
   replies   CircleMessage[] @relation("CircleReply")
   deletedAt DateTime?
 
+  reactions MessageReaction[]
+
   createdAt DateTime @default(now())
 
   @@index([circleId, createdAt])
@@ -295,6 +297,8 @@ model DirectMessage {
   replies    DirectMessage[] @relation("DMReply")
   deletedAt  DateTime?
 
+  reactions MessageReaction[]
+
   createdAt  DateTime @default(now())
 
   @@index([senderId, receiverId, createdAt])
@@ -308,4 +312,22 @@ model Block {
   createdAt DateTime @default(now())
 
   @@unique([blockerId, blockedId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  // For DMs
+  directMessageId String?
+  directMessage   DirectMessage? @relation(fields: [directMessageId], references: [id], onDelete: Cascade)
+
+  // For Circles
+  circleMessageId String?
+  circleMessage   CircleMessage? @relation(fields: [circleMessageId], references: [id], onDelete: Cascade)
+
+  @@unique([directMessageId, userId])
+  @@unique([circleMessageId, userId])
 }
