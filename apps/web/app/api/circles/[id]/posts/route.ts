@@ -34,6 +34,11 @@ export async function GET(
             author: { select: { id: true, name: true, username: true } },
             reactions: { select: { type: true, userId: true } },
             _count: { select: { replies: true } },
+            originalPost: { // 👈 Include original post for Reposts
+                include: {
+                    author: { select: { id: true, name: true, username: true } }
+                }
+            }
         },
     });
 
@@ -47,15 +52,28 @@ export async function GET(
             if (r.type in rc) rc[r.type]++;
             if (r.userId === userId) mine = r.type;
         });
+
+        var parsedImages = [];
+        if (post.imageUrls) {
+            try {
+                var parsed = JSON.parse(post.imageUrls);
+                parsedImages = Array.isArray(parsed) ? parsed : [parsed];
+            } catch (e) {
+                parsedImages = [post.imageUrls];
+            }
+        }
+
         return {
             id: post.id,
             content: post.content,
-            imageUrls: post.imageUrls ? JSON.parse(post.imageUrls) : [],
+            imageUrls: parsedImages,
             anonymous: post.anonymous,
             sentiment: post.sentiment,
             circleId: post.circleId,
             createdAt: post.createdAt,
-            author: post.anonymous ? null : post.author,
+            editedAt: post.editedAt,
+            author: post.anonymous ? null : post.author, // Keep this so frontend knows to hide the name
+            originalPost: post.originalPost, // 👈 Pass the original post for reposts
             reactions: rc,
             myReaction: mine,
             replyCount: post._count.replies,

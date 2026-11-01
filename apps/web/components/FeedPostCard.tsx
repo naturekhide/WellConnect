@@ -12,8 +12,6 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-var IMAGE_BASE = "";
-
 export default function FeedPostCard({ post, onReactionChange, onPress, onDelete, onUpdated }: any) {
     var C = useColors();
     var router = useRouter();
@@ -30,7 +28,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var menuRef = useRef<any>(null);
     var shareRef = useRef<any>(null);
 
-    // Close menus when clicking outside
     useEffect(function () {
         var handler = function (e: any) {
             if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
@@ -105,7 +102,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
             });
             alert("Reposted to your feed!");
             setShowShareMenu(false);
-            if (onPress) onPress(); // Trigger a refresh
+            if (onPress) onPress();
         } catch (e) { }
     };
 
@@ -120,9 +117,11 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var elapsedMs = post.createdAt ? Date.now() - new Date(post.createdAt).getTime() : Infinity;
     var isEditable = post.isMine && elapsedMs < 15 * 60 * 1000;
 
+    // Since authorId is now required, we can safely assume author exists, 
+    // but we keep the optional chaining for safety.
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
-    var safeImages = Array.isArray(post.imageUrls) ? post.imageUrls.filter(function (url: string) { return url && url.startsWith("http") || url.startsWith("/"); }) : [];
+    var safeImages = Array.isArray(post.imageUrls) ? post.imageUrls.filter(function (url: string) { return url && (url.startsWith("http") || url.startsWith("/")); }) : [];
 
     return (
         <div
@@ -204,7 +203,14 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                             {post.originalPost && (
                                 <div style={{ padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, marginTop: S.sm, backgroundColor: "rgba(255,255,255,0.02)" }}>
                                     <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 4 }}>
-                                        Reposted from <Link href={"/users/" + post.originalPost.author?.id} style={{ color: C.primary }}>@{post.originalPost.author?.username}</Link>
+                                        Reposted from{" "}
+                                        {post.originalPost.author ? (
+                                            <Link href={"/users/" + post.originalPost.author.id} style={{ color: C.primary }}>
+                                                @{post.originalPost.author.username}
+                                            </Link>
+                                        ) : (
+                                            <span>Deleted User</span>
+                                        )}
                                     </div>
                                     <div style={{ fontSize: 14, color: C.textPrimary }}>{post.originalPost.content}</div>
                                 </div>

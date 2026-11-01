@@ -3,120 +3,130 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { useColors, S, R } from "@/lib/theme";
 
-export default function Register() {
-    const router = useRouter();
-    const [name, setName] = useState("");
-    const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [loading, setLoading] = useState(false);
+export default function RegisterPage() {
+    var C = useColors();
+    var router = useRouter();
 
-    const handleRegister = async (e: React.FormEvent) => {
+    var [name, setName] = useState("");
+    var [username, setUsername] = useState("");
+    var [email, setEmail] = useState("");
+    var [password, setPassword] = useState("");
+    var [loading, setLoading] = useState(false);
+    var [error, setError] = useState("");
+
+    var handleSubmit = async function (e: any) {
         e.preventDefault();
+        if (loading) return;
         setError("");
         setLoading(true);
 
         try {
-            // 1. Create the user in the database via the web API
-            const res = await fetch("/api/auth/register", {
+            var r = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, username, email, password }),
             });
 
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Registration failed");
+            if (r.ok) {
+                // Redirect to login or directly to feed if auto-logged in
+                router.push("/login?registered=true");
+            } else {
+                var data = await r.json();
+                setError(data.error || "Registration failed");
             }
-
-            // 2. Auto-login the user using NextAuth
-            const loginRes = await signIn("credentials", {
-                identifier: email,
-                password: password,
-                redirect: false,
-            });
-
-            if (loginRes?.error) {
-                throw new Error(loginRes.error);
-            }
-
-            // 3. Redirect to verify page (or dashboard if already verified)
-            router.push("/verify-email?email=" + encodeURIComponent(email));
-
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
+        } catch (err) {
+            setError("Something went wrong. Please try again.");
         }
+        setLoading(false);
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-[#0f0f0f] p-4">
-            <div className="w-full max-w-md space-y-8 rounded-2xl bg-[#1a1a1a] p-8 border border-[#2a2a2a]">
-                <div className="text-center">
-                    <h2 className="text-2xl font-bold text-white">Create an account</h2>
-                    <p className="mt-2 text-sm text-gray-400">Join WellConnect today</p>
+        <main style={{ background: C.background, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: S.lg }}>
+            <div style={{ width: "100%", maxWidth: 400 }}>
+                
+                {/* Header */}
+                <div style={{ textAlign: "center", marginBottom: S.xl }}>
+                    <h1 style={{ fontSize: 24, fontWeight: 700, color: C.textPrimary, margin: "0 0 " + S.xs + "px 0" }}>
+                        Create an account
+                    </h1>
+                    <p style={{ fontSize: 14, color: C.textSecondary, margin: 0 }}>
+                        Join WellConnect today
+                    </p>
                 </div>
 
+                {/* Error Message */}
                 {error && (
-                    <div className="rounded-lg bg-red-500/10 p-3 text-sm text-red-400 border border-red-500/20">
+                    <div style={{ background: C.danger + "15", color: C.danger, padding: S.md, borderRadius: R.md, marginBottom: S.md, fontSize: 13, textAlign: "center" }}>
                         {error}
                     </div>
                 )}
 
-                <form className="mt-8 space-y-4" onSubmit={handleRegister}>
-                    <input
-                        type="text"
-                        required
-                        placeholder="Full Name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
-                    />
-                    <input
-                        type="text"
-                        required
-                        placeholder="Username"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
-                    />
-                    <input
-                        type="email"
-                        required
-                        placeholder="Email address"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
-                    />
-                    <input
-                        type="password"
-                        required
-                        placeholder="Password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded-lg bg-[#0f0f0f] border border-[#2a2a2a] p-3 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none"
-                    />
+                {/* Form */}
+                <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: S.md }}>
+                    <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: S.xs }}>Full Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={function (e) { setName(e.target.value); }}
+                            required
+                            style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, background: C.surface, color: C.textPrimary, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: S.xs }}>Username</label>
+                        <input
+                            type="text"
+                            value={username}
+                            onChange={function (e) { setUsername(e.target.value); }}
+                            required
+                            style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, background: C.surface, color: C.textPrimary, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: S.xs }}>Email address</label>
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={function (e) { setEmail(e.target.value); }}
+                            required
+                            style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, background: C.surface, color: C.textPrimary, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: S.xs }}>Password</label>
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={function (e) { setPassword(e.target.value); }}
+                            required
+                            minLength={8}
+                            style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, fontSize: 14, background: C.surface, color: C.textPrimary, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                        />
+                    </div>
 
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full rounded-lg bg-emerald-600 p-3 font-semibold text-white hover:bg-emerald-500 transition disabled:opacity-50"
+                        style={{ padding: S.md, borderRadius: R.full, background: C.primary, color: "#fff", border: "none", fontSize: 15, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", marginTop: S.sm }}
                     >
                         {loading ? "Creating account..." : "Sign Up"}
                     </button>
                 </form>
 
-                <p className="text-center text-sm text-gray-400">
+                {/* Footer */}
+                <p style={{ textAlign: "center", fontSize: 14, color: C.textSecondary, marginTop: S.xl }}>
                     Already have an account?{" "}
-                    <Link href="/login" className="text-emerald-500 hover:underline">
+                    <Link href="/login" style={{ color: C.primary, fontWeight: 600, textDecoration: "none" }}>
                         Log in
                     </Link>
                 </p>
             </div>
-        </div>
+        </main>
     );
 }

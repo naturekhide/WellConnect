@@ -158,8 +158,8 @@ model NotificationPreference {
 
 model FeedPost {
   id         String   @id @default(cuid())
-  authorId   String?
-  author     User?    @relation("FeedAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId   String   // 👈 Changed to required
+  author     User     @relation("FeedAuthor", fields: [authorId], references: [id], onDelete: Cascade) // 👈 Changed to Cascade
   anonymous  Boolean  @default(false)
   content    String
   imageUrls  String
@@ -171,7 +171,7 @@ model FeedPost {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  // 🚨 NEW REPOST FIELDS
+  // Repost fields
   originalPostId String?
   originalPost   FeedPost? @relation("Reposts", fields: [originalPostId], references: [id], onDelete: Cascade)
   reposts        FeedPost[] @relation("Reposts")
@@ -184,23 +184,11 @@ model FeedPost {
   @@index([deletedAt])
 }
 
-model FeedReaction {
-  id        String   @id @default(cuid())
-  type      String
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  postId    String
-  post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
-
-  @@unique([userId, postId])
-}
-
 model FeedReply {
   id        String   @id @default(cuid())
   content   String
-  authorId  String?
-  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  authorId  String   // 👈 Changed to required
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade) // 👈 Changed to Cascade
   anonymous Boolean  @default(false)
   postId    String
   post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
@@ -330,4 +318,16 @@ model MessageReaction {
 
   @@unique([directMessageId, userId])
   @@unique([circleMessageId, userId])
+}
+
+model FeedReaction {
+  id        String   @id @default(cuid())
+  type      String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
 }

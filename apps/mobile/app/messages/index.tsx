@@ -14,6 +14,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { getConversations } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 
+// 👇 1. Add this helper function to translate raw URLs into friendly text
+const formatMessagePreview = (content: string) => {
+    if (!content) return "";
+    if (content.startsWith("🎤 ")) return "🎤 Voice message";
+    if (content.match(/\.(jpeg|jpg|gif|png|webp)/i)) return "📷 Photo";
+    if (content.match(/\.(webm|mp4|m4a|mp3)/i)) return "🎤 Audio";
+    if (content.match(/\.(pdf|doc|docx)/i)) return "📄 Document";
+    if (content.startsWith("http")) return "📎 Attachment"; // Fallback for any URL
+    return content;
+};
+
 export default function MessagesInbox() {
     var router = useRouter();
     var colors = useColors();
@@ -43,7 +54,6 @@ export default function MessagesInbox() {
         loadConversations();
     };
 
-    // Filtering logic (Only All and Unread now)
     var filtered = conversations.filter(function (c) {
         var matchesSearch = c.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
             c.user?.username?.toLowerCase().includes(search.toLowerCase());
@@ -72,7 +82,9 @@ export default function MessagesInbox() {
                         <Text style={[styles.time, { color: colors.textTertiary }]}>{time}</Text>
                     </View>
                     <Text style={[styles.message, { color: item.unreadCount > 0 ? colors.textPrimary : colors.textSecondary, fontWeight: item.unreadCount > 0 ? "600" : "400" }]} numberOfLines={1}>
-                        {lastMsg?.isMine ? "You: " : ""}{lastMsg?.content || "Start a conversation"}
+                        {lastMsg?.isMine ? "You: " : ""}
+                        {/* 👇 2. Use the helper function here! */}
+                        {formatMessagePreview(lastMsg?.content) || "Start a conversation"}
                     </Text>
                 </View>
                 {item.unreadCount > 0 && (
@@ -104,7 +116,7 @@ export default function MessagesInbox() {
                 />
             </View>
 
-            {/* Tabs (Removed Groups) */}
+            {/* Tabs */}
             <View style={styles.tabs}>
                 {["All", "Unread"].map(function (tab) {
                     var active = activeTab === tab;
@@ -141,7 +153,7 @@ export default function MessagesInbox() {
                 />
             )}
 
-            {/* Floating Action Button (New Message) */}
+            {/* Floating Action Button */}
             <TouchableOpacity style={[styles.fab, { backgroundColor: colors.primary }]}>
                 <Ionicons name="pencil" size={24} color="#fff" />
             </TouchableOpacity>

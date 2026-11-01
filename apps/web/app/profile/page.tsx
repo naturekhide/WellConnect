@@ -16,6 +16,9 @@ export default function ProfilePage() {
     var [message, setMessage] = useState("");
     var [showEdit, setShowEdit] = useState(false);
     var [streak, setStreak] = useState(0);
+    var [deleting, setDeleting] = useState(false);
+    var [downloading, setDownloading] = useState(false);
+    var [downloadingPdf, setDownloadingPdf] = useState(false);
 
     useEffect(function () {
         fetchProfile();
@@ -74,6 +77,77 @@ export default function ProfilePage() {
         await signOut({ redirect: false });
         router.push("/login");
         router.refresh();
+    };
+
+    var handleDeleteAccount = async function () {
+        if (!window.confirm("Are you absolutely sure? This will delete your account, posts, messages, and all data permanently. This cannot be undone.")) {
+            return;
+        }
+
+        setDeleting(true);
+        try {
+            var r = await fetch("/api/users/delete", { method: "DELETE" });
+            if (r.ok) {
+                var { signOut } = await import("next-auth/react");
+                await signOut({ redirect: false });
+                router.push("/login");
+                router.refresh();
+            } else {
+                alert("Failed to delete account. Please try again.");
+                setDeleting(false);
+            }
+        } catch (e) {
+            alert("An error occurred.");
+            setDeleting(false);
+        }
+    };
+
+    var handleDownloadData = async function () {
+        setDownloading(true);
+        try {
+            var r = await fetch("/api/users/export");
+            if (r.ok) {
+                var blob = await r.blob();
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url;
+                a.download = "wellconnect-data-" + (profile?.username || "export") + ".json";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("Failed to download data. Please try again.");
+            }
+        } catch (e) {
+            alert("An error occurred while downloading.");
+        }
+        setDownloading(false);
+    };
+
+    // ✅ FIXED: PDF Download Function
+    var handleDownloadPdf = async function () {
+        setDownloadingPdf(true);
+        try {
+            var r = await fetch("/api/users/export-pdf");
+            if (r.ok) {
+                var blob = await r.blob();
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = url;
+                // Saves as a PDF file with the user's username
+                a.download = "wellconnect-report-" + (profile?.username || "export") + ".pdf";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } else {
+                alert("Failed to generate PDF. Please try again.");
+            }
+        } catch (e) {
+            alert("An error occurred.");
+        }
+        setDownloadingPdf(false);
     };
 
     var formatDate = function (d: string) {
@@ -167,6 +241,33 @@ export default function ProfilePage() {
                         <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>Privacy</span>
                         <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
                     </Link>
+
+                    {/* JSON Download */}
+                    <button
+                        onClick={handleDownloadData}
+                        disabled={downloading}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: S.md, padding: S.lg, background: "none", border: "none", borderBottom: "1px solid " + C.border, cursor: downloading ? "not-allowed" : "pointer", textAlign: "left", opacity: downloading ? 0.6 : 1 }}
+                    >
+                        <span style={{ fontSize: 20 }}>📥</span>
+                        <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>
+                            {downloading ? "Preparing Data..." : "Download Data (JSON)"}
+                        </span>
+                        <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
+                    </button>
+
+                    {/* PDF Download */}
+                    <button
+                        onClick={handleDownloadPdf}
+                        disabled={downloadingPdf}
+                        style={{ width: "100%", display: "flex", alignItems: "center", gap: S.md, padding: S.lg, background: "none", border: "none", borderBottom: "1px solid " + C.border, cursor: downloadingPdf ? "not-allowed" : "pointer", textAlign: "left", opacity: downloadingPdf ? 0.6 : 1 }}
+                    >
+                        <span style={{ fontSize: 20 }}>📄</span>
+                        <span style={{ flex: 1, fontSize: 15, color: C.textPrimary, fontWeight: 500 }}>
+                            {downloadingPdf ? "Generating PDF..." : "Download Report (PDF)"}
+                        </span>
+                        <span style={{ fontSize: 16, color: C.textTertiary }}>›</span>
+                    </button>
+
                     <button
                         onClick={handleSignOut}
                         style={{ width: "100%", display: "flex", alignItems: "center", gap: S.md, padding: S.lg, background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
@@ -230,6 +331,36 @@ export default function ProfilePage() {
                         </button>
                     </div>
                 )}
+
+                {/* DANGER ZONE */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm, marginTop: S.lg }}>
+                    <h2 style={{ fontSize: 13, fontWeight: 600, color: C.danger, margin: 0 }}>Danger Zone</h2>
+                </div>
+                <div style={{ marginLeft: S.lg, marginRight: S.lg, marginBottom: S.xxl, borderRadius: R.lg, background: C.danger + "10", border: "1px solid " + C.danger + "40", padding: S.lg }}>
+                    <p style={{ fontSize: 14, color: C.textPrimary, fontWeight: 600, margin: "0 0 " + S.xs + "px 0" }}>
+                        Delete Account
+                    </p>
+                    <p style={{ fontSize: 13, color: C.textSecondary, margin: "0 0 " + S.md + "px 0" }}>
+                        Once you delete your account, there is no going back. All your posts, messages, and data will be permanently wiped.
+                    </p>
+                    <button
+                        onClick={handleDeleteAccount}
+                        disabled={deleting}
+                        style={{
+                            padding: "10px 16px",
+                            borderRadius: R.md,
+                            background: C.danger,
+                            color: "#fff",
+                            border: "none",
+                            fontSize: 14,
+                            fontWeight: 600,
+                            cursor: deleting ? "not-allowed" : "pointer",
+                            opacity: deleting ? 0.7 : 1,
+                        }}
+                    >
+                        {deleting ? "Deleting..." : "Delete My Account"}
+                    </button>
+                </div>
 
             </div>
         </main>

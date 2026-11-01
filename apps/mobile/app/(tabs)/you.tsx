@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
+import * as FileSystem from "expo-file-system";
+import { Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { useAuthStore } from "../../src/store/authStore";
 import { getMoodStats, getJournal, getGoals } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
+
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.X:3000"; // Ensure this is your actual IP
 
 export default function YouScreen() {
     var router = useRouter();
@@ -15,6 +20,11 @@ export default function YouScreen() {
     var [goalCount, setGoalCount] = useState(0);
     var [loading, setLoading] = useState(true);
     var [refreshing, setRefreshing] = useState(false);
+
+    // 👇 New States for Account Actions
+    var [downloadingPdf, setDownloadingPdf] = useState(false);
+    var [downloadingJson, setDownloadingJson] = useState(false);
+    var [deleting, setDeleting] = useState(false);
 
     useEffect(function () { loadAll(); }, []);
 
@@ -39,6 +49,77 @@ export default function YouScreen() {
     var handleLogout = async function () {
         await logout();
         router.replace("/auth/login");
+    };
+
+    // 👇 New Functions for Download & Delete
+    var handleDownloadPdf = async function () {
+        setDownloadingPdf(true);
+        try {
+            var fileUri = Paths.document.uri + "wellconnect-report.pdf";
+            // 👇 Removed the headers object entirely
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri);
+
+            if (res.status === 200) {
+                await Sharing.shareAsync(res.uri);
+            } else {
+                Alert.alert("Error", "Failed to download PDF.");
+            }
+        } catch (e) {
+            Alert.alert("Error", "An error occurred while downloading.");
+        }
+        setDownloadingPdf(false);
+    };
+
+    var handleDownloadJson = async function () {
+        setDownloadingJson(true);
+        try {
+            var fileUri = Paths.document.uri + "wellconnect-data.json";
+            // 👇 Removed the headers object entirely
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri);
+
+            if (res.status === 200) {
+                await Sharing.shareAsync(res.uri);
+            } else {
+                Alert.alert("Error", "Failed to download data.");
+            }
+        } catch (e) {
+            Alert.alert("Error", "An error occurred while downloading.");
+        }
+        setDownloadingJson(false);
+    };
+
+    var handleDeleteAccount = function () {
+        Alert.alert(
+            "Delete Account",
+            "Are you absolutely sure? This will permanently delete all your data.",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async function () {
+                        setDeleting(true);
+                        try {
+                            // Inside the "Delete" onPress function:
+                            var res = await fetch(`${API_URL}/api/users/delete`, {
+                                method: "DELETE"
+                                // 👇 Removed the headers object entirely
+                            });
+                            if (res.ok) {
+                                await logout();
+                                router.replace("/auth/login");
+                            } else {
+                                Alert.alert("Error", "Failed to delete account.");
+                                setDeleting(false);
+                            }
+                        } catch (e) {
+                            Alert.alert("Error", "An error occurred.");
+                            setDeleting(false);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     if (loading) {
@@ -104,10 +185,7 @@ export default function YouScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
 
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <TouchableOpacity
-                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
-                        onPress={function () { router.push("/messages"); }}
-                    >
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/messages"); }}>
                         <Text style={styles.menuIcon}>💬</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Messages</Text>
@@ -116,10 +194,7 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
-                        onPress={function () { router.push("/(tabs)/journal"); }}
-                    >
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/(tabs)/journal"); }}>
                         <Text style={styles.menuIcon}>💭</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Journal</Text>
@@ -128,10 +203,7 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
-                        onPress={function () { router.push("/(tabs)/goals"); }}
-                    >
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/(tabs)/goals"); }}>
                         <Text style={styles.menuIcon}>🎯</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Goals</Text>
@@ -140,10 +212,7 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.menuItem, styles.lastMenuItem]}
-                        onPress={function () { router.push("/achievements"); }}
-                    >
+                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/achievements"); }}>
                         <Text style={styles.menuIcon}>🏆</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Achievements</Text>
@@ -156,10 +225,7 @@ export default function YouScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
 
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <TouchableOpacity
-                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
-                        onPress={function () { router.push("/notifications"); }}
-                    >
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/notifications"); }}>
                         <Text style={styles.menuIcon}>🔔</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Notifications</Text>
@@ -167,10 +233,7 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}
-                        onPress={function () { router.push("/privacy"); }}
-                    >
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/privacy"); }}>
                         <Text style={styles.menuIcon}>🔒</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Privacy</Text>
@@ -178,20 +241,48 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}>
+                    {/* 👇 NEW: Download JSON */}
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={handleDownloadJson} disabled={downloadingJson}>
+                        <Text style={styles.menuIcon}>📥</Text>
+                        <View style={styles.menuContent}>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>
+                                {downloadingJson ? "Preparing Data..." : "Download Data (JSON)"}
+                            </Text>
+                        </View>
+                        {downloadingJson ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
+                    </TouchableOpacity>
+
+                    {/* 👇 NEW: Download PDF */}
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={handleDownloadPdf} disabled={downloadingPdf}>
+                        <Text style={styles.menuIcon}>📄</Text>
+                        <View style={styles.menuContent}>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>
+                                {downloadingPdf ? "Generating PDF..." : "Download Report (PDF)"}
+                            </Text>
+                        </View>
+                        {downloadingPdf ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/settings"); }}>
                         <Text style={styles.menuIcon}>⚙️</Text>
                         <View style={styles.menuContent}>
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>Settings</Text>
                         </View>
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
+                </View>
 
-                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]}>
-                        <Text style={styles.menuIcon}>❓</Text>
+                {/* 👇 NEW: Danger Zone */}
+                <Text style={[styles.sectionTitle, { color: colors.danger, marginTop: spacing.md }]}>Danger Zone</Text>
+                <View style={[styles.menu, { backgroundColor: colors.danger + "10", borderColor: colors.danger + "40" }]}>
+                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={handleDeleteAccount} disabled={deleting}>
+                        <Text style={styles.menuIcon}>🗑️</Text>
                         <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Help & Support</Text>
+                            <Text style={[styles.menuText, { color: colors.danger, fontWeight: "600" }]}>
+                                {deleting ? "Deleting..." : "Delete Account"}
+                            </Text>
                         </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
+                        {deleting && <ActivityIndicator size="small" color={colors.danger} />}
                     </TouchableOpacity>
                 </View>
 
@@ -209,70 +300,33 @@ export default function YouScreen() {
 }
 
 var styles = StyleSheet.create({
+    // ... keep all your existing styles exactly as they were
     container: { flex: 1 },
     content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
     profileHeader: { alignItems: "center", marginTop: spacing.sm, marginBottom: spacing.sm },
-    avatar: {
-        width: 88,
-        height: 88,
-        borderRadius: 44,
-        justifyContent: "center",
-        alignItems: "center",
-        marginBottom: spacing.md,
-    },
+    avatar: { width: 88, height: 88, borderRadius: 44, justifyContent: "center", alignItems: "center", marginBottom: spacing.md },
     avatarText: { fontSize: 36, fontWeight: "700", color: "#fff" },
     name: { fontSize: 22, fontWeight: "700" },
     username: { fontSize: 14, marginTop: 2 },
     statsRow: { flexDirection: "row", gap: spacing.sm },
-    statCard: {
-        flex: 1,
-        borderRadius: radius.lg,
-        padding: spacing.md,
-        alignItems: "center",
-        borderWidth: 1,
-        ...shadow.sm,
-    },
+    statCard: { flex: 1, borderRadius: radius.lg, padding: spacing.md, alignItems: "center", borderWidth: 1, ...shadow.sm },
     statNumber: { fontSize: 22, fontWeight: "700" },
     statLabel: { fontSize: 10, marginTop: 3, fontWeight: "500" },
-    streakCard: {
-        flexDirection: "row",
-        alignItems: "center",
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        borderWidth: 1,
-        gap: spacing.md,
-    },
+    streakCard: { flexDirection: "row", alignItems: "center", borderRadius: radius.lg, padding: spacing.lg, borderWidth: 1, gap: spacing.md },
     streakEmoji: { fontSize: 26 },
     streakContent: { flex: 1 },
     streakNumber: { fontSize: 15, fontWeight: "700" },
     streakText: { fontSize: 12, marginTop: 2 },
     sectionTitle: { fontSize: 13, fontWeight: "600", marginTop: spacing.sm },
-    menu: {
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        overflow: "hidden",
-        ...shadow.sm,
-    },
-    menuItem: {
-        flexDirection: "row",
-        alignItems: "center",
-        padding: spacing.lg,
-        borderBottomWidth: 1,
-        gap: spacing.md,
-    },
+    menu: { borderRadius: radius.lg, borderWidth: 1, overflow: "hidden", ...shadow.sm },
+    menuItem: { flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, gap: spacing.md },
     lastMenuItem: { borderBottomWidth: 0 },
     menuIcon: { fontSize: 20 },
     menuContent: { flex: 1 },
     menuText: { fontSize: 15, fontWeight: "500" },
     menuSub: { fontSize: 11, marginTop: 2 },
     menuArrow: { fontSize: 22 },
-    logoutButton: {
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        alignItems: "center",
-        borderWidth: 1,
-        marginTop: spacing.sm,
-    },
+    logoutButton: { borderRadius: radius.lg, padding: spacing.lg, alignItems: "center", borderWidth: 1, marginTop: spacing.sm },
     logoutText: { fontWeight: "600", fontSize: 15 },
     footer: { fontSize: 11, textAlign: "center", marginTop: spacing.md },
 });

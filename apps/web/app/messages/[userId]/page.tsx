@@ -20,6 +20,8 @@ function formatDate(dateString: string) {
 }
 
 function getMessagePreview(content: string) {
+    if (!content) return "";
+
     if (content.startsWith("🎤 ")) return "🎤 Voice Note";
     if (content.startsWith("🖼️ ")) return "🖼️ Photo";
     if (content.startsWith("📎 ")) {
@@ -28,6 +30,13 @@ function getMessagePreview(content: string) {
         if (url.includes(".doc") || url.includes(".docx")) return "📝 Word Document";
         return "📎 File Attachment";
     }
+
+    // 👇 NEW: Catch raw URLs for older messages
+    if (content.match(/https?:\/\/.*\.(jpeg|jpg|gif|png|webp)/i)) return "🖼️ Photo";
+    if (content.match(/https?:\/\/.*\.(webm|mp4|m4a|mp3)/i)) return "🎤 Voice Note";
+    if (content.match(/https?:\/\/.*\.(pdf|doc|docx)/i)) return "📄 Document";
+    if (content.startsWith("http")) return "📎 File Attachment";
+
     return content;
 }
 

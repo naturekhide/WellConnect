@@ -248,8 +248,7 @@ function CircleFeed({ circleId }: any) {
             });
 
             if (r.ok) {
-                var post = await r.json();
-                setPosts([post].concat(posts));
+                await load(); // 👈 This refreshes the feed with the properly formatted data
                 setContent("");
                 previews.forEach(function (p) { URL.revokeObjectURL(p); });
                 setFiles([]);
@@ -357,12 +356,14 @@ function CircleFeed({ circleId }: any) {
     );
 }
 
+// ─────────────────────────────────────────────────────────────
+// CHAT COMPONENT (Updated with Reactions & Voice Notes)
+// ─────────────────────────────────────────────────────────────
+
 function CircleChat({ circleId }: any) {
     var C = useColors();
     var [messages, setMessages] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
-    var [text, setText] = useState("");
-    var [sending, setSending] = useState(false);
     var [replyingTo, setReplyingTo] = useState<any>(null);
     var [activeMenu, setActiveMenu] = useState<string | null>(null);
     var [editingMessage, setEditingMessage] = useState<any>(null);
@@ -403,48 +404,34 @@ function CircleChat({ circleId }: any) {
         } catch (e) { }
     };
 
-    var handleSend = async function () {
-        if (!text.trim() || sending) return;
-        setSending(true);
-        try {
-            var payload: any = { content: text.trim() };
-            if (replyingTo) payload.replyToId = replyingTo.id;
+    // 🚨 REACTION HANDLER
+    var handleReaction = async function (messageId: string, emoji: string) {
+        setActiveMenu(null);
+        // Optimistic update
+        setMessages(messages.map(function (m) {
+            if (m.id !== messageId) return m;
+            var existing = (m.reactions || []).find(function (r: any) { return r.mine; });
 
-            var r = await fetch("/api/circles/" + circleId + "/messages", {
+            if (existing && existing.emoji === emoji) {
+                // Toggle off
+                return { ...m, reactions: m.reactions.filter(function (r: any) { return !r.mine; }) };
+            }
+            if (existing) {
+                // Change emoji
+                return { ...m, reactions: m.reactions.map(function (r: any) { return r.mine ? { ...r, emoji } : r; }) };
+            }
+            // Add new
+            return { ...m, reactions: [...(m.reactions || []), { emoji, count: 1, mine: true }] };
+        }));
+
+        try {
+            await fetch("/api/circles/" + circleId + "/messages/" + messageId + "/react", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload),
+                body: JSON.stringify({ emoji }),
             });
-            if (r.ok) {
-                var msg = await r.json();
-                setMessages(messages.concat([msg]));
-                setText("");
-                setReplyingTo(null);
-            }
-        } catch (e) { }
-        setSending(false);
-    };
-
-    var handleSaveEdit = async function () {
-        if (!text.trim() || !editingMessage) return;
-        try {
-            // UPDATED URL: passing messageId as a query parameter to match the route structure
-            var r = await fetch("/api/circles/" + circleId + "/messages/edit?messageId=" + editingMessage.id, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content: text.trim() }),
-            });
-            if (r.ok) {
-                var data = await r.json();
-                setMessages(messages.map(function (m) {
-                    return m.id === editingMessage.id ? { ...m, content: data.content } : m;
-                }));
-                setEditingMessage(null);
-                setText("");
-            } else {
-                var err = await r.json();
-                alert("Failed to edit: " + (err.error || "Unknown error"));
-            }
+            // Re-fetch to sync exactly with backend
+            loadInitial();
         } catch (e) { }
     };
 
@@ -464,13 +451,11 @@ function CircleChat({ circleId }: any) {
     var handleReply = function (m: any) {
         setReplyingTo(m);
         setEditingMessage(null);
-        setText("");
     };
 
     var handleEdit = function (m: any) {
         setEditingMessage(m);
         setReplyingTo(null);
-        setText(m.content);
     };
 
     return (
@@ -488,6 +473,7 @@ function CircleChat({ circleId }: any) {
                         var isMine = m.isMine;
                         var isEditing = editingMessage && editingMessage.id === m.id;
                         var isEditable = isMine && (Date.now() - new Date(m.createdAt).getTime() < 15 * 60 * 1000);
+                        var isAudio = m.content.startsWith("🎤 ");
 
                         return (
                             <div
@@ -500,7 +486,19 @@ function CircleChat({ circleId }: any) {
                                         <button onClick={function () { setActiveMenu(activeMenu === m.id ? null : m.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textTertiary, fontSize: 18, padding: "0 6px" }}>···</button>
 
                                         {activeMenu === m.id && (
-                                            <div style={{ position: "absolute", bottom: "100%", [isMine ? "right" : "left"]: 0, background: C.surface, border: "1px solid " + C.border, borderRadius: R.md, padding: 4, zIndex: 10, minWidth: 120, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+                                            <div style={{ position: "absolute", bottom: "100%", [isMine ? "right" : "left"]: 0, background: C.surface, border: "1px solid " + C.border, borderRadius: R.md, padding: 4, zIndex: 10, minWidth: 140, boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
+
+                                                {/* 🚨 QUICK REACTIONS ROW (Top of Menu) */}
+                                                <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", borderBottom: "1px solid " + C.border, marginBottom: 4 }}>
+                                                    {["❤️", "😂", "👍", "😮", "😢"].map(function (emoji) {
+                                                        return (
+                                                            <button key={emoji} onClick={function () { handleReaction(m.id, emoji); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, padding: 2 }}>
+                                                                {emoji}
+                                                            </button>
+                                                        )
+                                                    })}
+                                                </div>
+
                                                 <button onClick={function () { handleReply(m); setActiveMenu(null); }} style={{ display: "block", width: "100%", textAlign: "left", background: "none", border: "none", padding: "6px 12px", cursor: "pointer", fontSize: 13, color: C.textPrimary }}>Reply</button>
                                                 {isMine && (
                                                     <>
@@ -529,20 +527,20 @@ function CircleChat({ circleId }: any) {
                                         )}
 
                                         {isEditing ? (
-                                            <div>
-                                                <textarea
-                                                    value={text}
-                                                    onChange={function (e) { setText(e.target.value); }}
-                                                    style={{ width: "100%", background: "rgba(0,0,0,0.1)", border: "none", color: "#fff", borderRadius: 4, padding: 8, fontSize: 14, outline: "none", resize: "none" }}
-                                                    rows={2}
-                                                />
-                                                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
-                                                    <button onClick={function () { setEditingMessage(null); setText(""); }} style={{ background: "none", border: "none", color: "#fff", opacity: 0.7, cursor: "pointer", fontSize: 12 }}>Cancel</button>
-                                                    <button onClick={handleSaveEdit} style={{ background: "rgba(255,255,255,0.2)", border: "none", color: "#fff", padding: "4px 12px", borderRadius: 4, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Save</button>
-                                                </div>
-                                            </div>
+                                            <CircleChatInput
+                                                circleId={circleId}
+                                                initialText={m.content}
+                                                editingMessageId={m.id}
+                                                onCancelEdit={function () { setEditingMessage(null); }}
+                                                onSent={loadInitial}
+                                                isEditingStyle={true}
+                                            />
                                         ) : (
-                                            <p style={{ fontSize: 14, lineHeight: 1.4, margin: 0, wordBreak: "break-word" }}>{m.content}</p>
+                                            isAudio ? (
+                                                <audio controls src={m.content.replace("🎤 ", "")} style={{ maxWidth: "100%", height: 40, marginTop: 4 }} />
+                                            ) : (
+                                                <p style={{ fontSize: 14, lineHeight: 1.4, margin: 0, wordBreak: "break-word" }}>{m.content}</p>
+                                            )
                                         )}
 
                                         {!isEditing && (
@@ -551,6 +549,20 @@ function CircleChat({ circleId }: any) {
                                             </p>
                                         )}
                                     </div>
+
+                                    {/* 🚨 RENDER REACTIONS PILLS */}
+                                    {m.reactions && m.reactions.length > 0 && (
+                                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 4, justifyContent: isMine ? "flex-end" : "flex-start" }}>
+                                            {m.reactions.map(function (r: any, i: number) {
+                                                return (
+                                                    <div key={i} style={{ background: r.mine ? C.primaryLight : C.surface, border: "1px solid " + (r.mine ? C.primary : C.border), borderRadius: 12, padding: "2px 6px", display: "flex", alignItems: "center", gap: 4 }}>
+                                                        <span style={{ fontSize: 12 }}>{r.emoji}</span>
+                                                        <span style={{ fontSize: 10, color: r.mine ? C.primary : C.textSecondary }}>{r.count}</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -559,40 +571,159 @@ function CircleChat({ circleId }: any) {
                 <div ref={bottomRef} />
             </div>
 
+            {/* COMPOSER AREA */}
             <div style={{ position: "fixed", bottom: 72, left: 0, right: 0, background: C.background, borderTop: "1px solid " + C.border, padding: S.md }}>
                 <div style={{ maxWidth: 600, margin: "0 auto" }}>
-
-                    {replyingTo && (
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surfaceAlt, padding: S.sm, borderRadius: R.md, marginBottom: S.sm, borderLeft: "3px solid " + C.primary }}>
-                            <div style={{ overflow: "hidden" }}>
-                                <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>Replying to {replyingTo.user?.name}</p>
-                                <p style={{ fontSize: 12, color: C.textSecondary, margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{replyingTo.content}</p>
-                            </div>
-                            <button onClick={function () { setReplyingTo(null); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textSecondary, fontSize: 16 }}>✕</button>
-                        </div>
-                    )}
-
                     {!editingMessage && (
-                        <div style={{ display: "flex", gap: S.sm }}>
-                            <input
-                                type="text"
-                                value={text}
-                                onChange={function (e) { setText(e.target.value); }}
-                                onKeyDown={function (e) { if (e.key === "Enter") handleSend(); }}
-                                placeholder="Message the circle..."
-                                maxLength={500}
-                                style={{ flex: 1, padding: S.md, borderRadius: R.full, border: "1px solid " + C.border, fontSize: 14, background: C.surfaceAlt, color: C.textPrimary, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
-                            />
-                            <button
-                                onClick={handleSend}
-                                disabled={!text.trim() || sending}
-                                style={{ width: 40, height: 40, borderRadius: 20, background: text.trim() ? C.primary : C.border, color: text.trim() ? "#fff" : C.textTertiary, border: "none", fontSize: 16, fontWeight: 700, cursor: text.trim() ? "pointer" : "not-allowed", flexShrink: 0 }}
-                            >
-                                →
-                            </button>
-                        </div>
+                        <CircleChatInput
+                            circleId={circleId}
+                            replyingTo={replyingTo}
+                            onCancelReply={function () { setReplyingTo(null); }}
+                            onSent={function (msg: any) {
+                                setMessages(messages.concat([msg]));
+                                setReplyingTo(null);
+                            }}
+                        />
                     )}
                 </div>
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────
+// NEW: COMPOSER COMPONENT (TEXT + VOICE + EDIT)
+// ─────────────────────────────────────────────────────────────
+
+function CircleChatInput({ circleId, replyingTo, onCancelReply, onSent, initialText = "", editingMessageId, onCancelEdit, isEditingStyle }: any) {
+    var C = useColors();
+    var [text, setText] = useState(initialText);
+    var [sending, setSending] = useState(false);
+    var [isRecording, setIsRecording] = useState(false);
+    var mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    var audioChunksRef = useRef<Blob[]>([]);
+
+    var handleSend = async function (overrideContent?: string) {
+        var content = overrideContent || text;
+        if (!content.trim() || sending) return;
+        setSending(true);
+
+        try {
+            var payload: any = { content: content.trim() };
+            if (replyingTo) payload.replyToId = replyingTo.id;
+
+            if (editingMessageId) {
+                var rEdit = await fetch("/api/circles/" + circleId + "/messages/edit?messageId=" + editingMessageId, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ content: text.trim() }),
+                });
+                if (rEdit.ok) onSent(); // triggers reload
+            } else {
+                var r = await fetch("/api/circles/" + circleId + "/messages", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload),
+                });
+                if (r.ok) {
+                    var msg = await r.json();
+                    onSent(msg);
+                    setText("");
+                }
+            }
+        } catch (e) { }
+        setSending(false);
+    };
+
+    var startRecording = async function () {
+        try {
+            var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            var recorder = new MediaRecorder(stream);
+            mediaRecorderRef.current = recorder;
+            audioChunksRef.current = [];
+
+            recorder.ondataavailable = function (e) {
+                if (e.data.size > 0) audioChunksRef.current.push(e.data);
+            };
+
+            recorder.onstop = async function () {
+                var audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+                stream.getTracks().forEach(function (track) { track.stop(); }); // stop mic
+
+                // Upload
+                setSending(true);
+                try {
+                    var fd = new FormData();
+                    fd.append("files", audioBlob, "voice-note.webm");
+                    var upRes = await fetch("/api/upload/multi", { method: "POST", body: fd });
+                    if (upRes.ok) {
+                        var data = await upRes.json();
+                        var url = data.urls[0];
+                        await handleSend("🎤 " + url);
+                    }
+                } catch (e) { }
+                setSending(false);
+            };
+
+            recorder.start();
+            setIsRecording(true);
+        } catch (e) {
+            alert("Microphone access denied or not available.");
+        }
+    };
+
+    var stopRecording = function () {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+        }
+    };
+
+    return (
+        <div style={{ width: "100%" }}>
+            {replyingTo && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surfaceAlt, padding: S.sm, borderRadius: R.md, marginBottom: S.sm, borderLeft: "3px solid " + C.primary }}>
+                    <div style={{ overflow: "hidden" }}>
+                        <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>Replying to {replyingTo.user?.name}</p>
+                        <p style={{ fontSize: 12, color: C.textSecondary, margin: "2px 0 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{replyingTo.content}</p>
+                    </div>
+                    <button onClick={onCancelReply} style={{ background: "none", border: "none", cursor: "pointer", color: C.textSecondary, fontSize: 16 }}>✕</button>
+                </div>
+            )}
+
+            <div style={{ display: "flex", gap: S.sm, alignItems: "center" }}>
+                <input
+                    type="text"
+                    value={text}
+                    onChange={function (e) { setText(e.target.value); }}
+                    onKeyDown={function (e) { if (e.key === "Enter") handleSend(); }}
+                    placeholder={isRecording ? "Recording..." : "Message the circle..."}
+                    disabled={isRecording || sending}
+                    maxLength={500}
+                    style={{ flex: 1, padding: S.md, borderRadius: R.full, border: "1px solid " + C.border, fontSize: 14, background: C.surfaceAlt, color: C.textPrimary, boxSizing: "border-box", outline: "none", fontFamily: "inherit" }}
+                />
+
+                {text.trim().length === 0 && !isRecording ? (
+                    <button
+                        onClick={startRecording}
+                        disabled={sending}
+                        style={{ width: 40, height: 40, borderRadius: 20, background: C.border, color: C.textPrimary, border: "none", fontSize: 16, cursor: "pointer", flexShrink: 0, display: "flex", justifyContent: "center", alignItems: "center" }}
+                    >
+                        🎤
+                    </button>
+                ) : (
+                    <button
+                        onClick={isRecording ? stopRecording : function () { handleSend(); }}
+                        disabled={sending}
+                        style={{ width: 40, height: 40, borderRadius: 20, background: isRecording ? C.danger : C.primary, color: "#fff", border: "none", fontSize: 16, fontWeight: 700, cursor: sending ? "not-allowed" : "pointer", flexShrink: 0 }}
+                    >
+                        {isRecording ? "■" : "→"}
+                    </button>
+                )}
+
+                {isEditingStyle && (
+                    <button onClick={onCancelEdit} style={{ background: "none", border: "none", color: C.textSecondary, cursor: "pointer", fontSize: 13 }}>Cancel</button>
+                )}
             </div>
         </div>
     );
@@ -620,23 +751,99 @@ function CircleMembers({ circleId, creatorId }: any) {
         return <p style={{ padding: S.xxl, textAlign: "center", color: C.textSecondary }}>Loading...</p>;
     }
 
+    if (members.length === 0) {
+        return (
+            <div style={{ textAlign: "center", padding: S.xxl }}>
+                <div style={{ fontSize: 40, marginBottom: S.md }}>👥</div>
+                <p style={{ fontSize: 14, color: C.textSecondary, margin: 0 }}>No members yet.</p>
+            </div>
+        );
+    }
+
     return (
-        <div style={{ padding: S.lg }}>
+        <div style={{ padding: S.md }}>
             {members.map(function (m: any) {
+                var isCreator = m.id === creatorId || m.role === "creator";
                 return (
-                    <div key={m.id} style={{ display: "flex", alignItems: "center", gap: S.md, padding: S.md, borderRadius: R.md, background: C.surface, marginBottom: S.sm }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 18, background: C.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 }}>
-                            {m.user?.name?.charAt(0) || "U"}
+                    <div
+                        key={m.id}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: S.md,
+                            padding: S.md,
+                            borderBottom: "1px solid " + C.border,
+                        }}
+                    >
+                        <div
+                            style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 22,
+                                background: m.avatarColor || C.surfaceAlt,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 18,
+                                fontWeight: 600,
+                                color: C.textPrimary,
+                                flexShrink: 0,
+                                overflow: "hidden",
+                            }}
+                        >
+                            {m.avatarUrl ? (
+                                <img
+                                    src={m.avatarUrl}
+                                    alt={m.name}
+                                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                />
+                            ) : (
+                                (m.name || "?").charAt(0).toUpperCase()
+                            )}
                         </div>
+
                         <div style={{ flex: 1, minWidth: 0 }}>
-                            <p style={{ fontSize: 14, fontWeight: 600, color: C.textPrimary, margin: 0 }}>{m.user?.name || "User"}</p>
-                            <p style={{ fontSize: 12, color: C.textSecondary, marginTop: 2, margin: "2px 0 0 0" }}>@{m.user?.username || "user"}</p>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <p
+                                    style={{
+                                        fontSize: 14,
+                                        fontWeight: 600,
+                                        color: C.textPrimary,
+                                        margin: 0,
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                    }}
+                                >
+                                    {m.name}
+                                </p>
+                                {isCreator && (
+                                    <span
+                                        style={{
+                                            fontSize: 10,
+                                            fontWeight: 600,
+                                            padding: "1px 6px",
+                                            borderRadius: 4,
+                                            background: C.primaryLight,
+                                            color: C.primary,
+                                        }}
+                                    >
+                                        creator
+                                    </span>
+                                )}
+                            </div>
+                            {m.username && (
+                                <p
+                                    style={{
+                                        fontSize: 12,
+                                        color: C.textSecondary,
+                                        margin: "2px 0 0 0",
+                                    }}
+                                >
+                                    @{m.username}
+                                </p>
+                            )}
                         </div>
-                        {m.role === "creator" && (
-                            <span style={{ fontSize: 10, fontWeight: 600, padding: "2px 6px", borderRadius: 4, background: C.primaryLight, color: C.primary }}>
-                                creator
-                            </span>
-                        )}
                     </div>
                 );
             })}

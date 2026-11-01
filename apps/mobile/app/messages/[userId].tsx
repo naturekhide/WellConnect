@@ -19,6 +19,8 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import EmojiPicker from "rn-emoji-keyboard";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM, uploadImages, reactToMessage } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 import VoiceNoteButton from "../../components/VoiceNoteButton";
@@ -60,6 +62,10 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
     var bubbleBg = isMine ? MY_BUBBLE : THEIR_BUBBLE;
     var textColor = isMine ? "#ffffff" : "#e2e8f0";
 
+    var isVoice = m.content.startsWith("🎤 ");
+    var isImage = m.content.startsWith("🖼️ ") || m.content.match(/https?:\/\/.*\.(jpeg|jpg|gif|png|webp)/i);
+    var isDoc = m.content.startsWith("📎 ") || m.content.match(/https?:\/\/.*\.(pdf|doc|docx)/i);
+
     return (
         <View style={{ marginBottom: showAvatar ? spacing.md : 4, position: "relative" }}>
             <View style={{ position: "absolute", left: isMine ? "auto" : 20, right: isMine ? 20 : "auto", top: 15, opacity: 0.5 }}>
@@ -74,16 +80,22 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
                         {m.replyTo && (
                             <View style={[styles.quoteBox, { borderLeftColor: isMine ? "#34d399" : "#059669", backgroundColor: "rgba(0,0,0,0.2)" }]}>
                                 <Text style={[styles.quoteName, { color: isMine ? "#34d399" : "#059669" }]}>{m.replyTo.senderName}</Text>
-                                <Text style={[styles.quoteText, { color: "#94a3b8" }]} numberOfLines={1}>{m.replyTo.content}</Text>
+                                <Text style={[styles.quoteText, { color: "#94a3b8" }]} numberOfLines={1}>
+                                    {/* 👇 This is the new logic that hides the raw URL */}
+                                    {m.replyTo.content.startsWith("🎤 ") ? "🎤 Voice message"
+                                        : m.replyTo.content.startsWith("🖼️ ") || m.replyTo.content.match(/https?:\/\/.*\.(jpeg|jpg|gif|png|webp)/i) ? "📷 Photo"
+                                            : m.replyTo.content.startsWith("📎 ") || m.replyTo.content.match(/https?:\/\/.*\.(pdf|doc|docx)/i) ? "📄 Document"
+                                                : m.replyTo.content}
+                                </Text>
                             </View>
                         )}
 
-                        {m.content.startsWith("🎤 ") ? (
+                        {isVoice ? (
                             <AudioMessage url={m.content.replace("🎤 ", "")} isMine={isMine} />
-                        ) : m.content.startsWith("🖼️ ") ? (
-                            <Image source={{ uri: m.content.replace("🖼️ ", "") }} style={{ width: 220, height: 260, borderRadius: radius.lg, marginVertical: 4 }} resizeMode="cover" />
-                        ) : m.content.startsWith("📎 ") ? (
-                            <TouchableOpacity onPress={() => Linking.openURL(m.content.replace("📎 ", ""))} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 8, backgroundColor: "rgba(0,0,0,0.2)", borderRadius: radius.md, marginVertical: 4 }}>
+                        ) : isImage ? (
+                            <Image source={{ uri: m.content.replace("🖼️ ", "").split("\n")[0] }} style={{ width: 220, height: 260, borderRadius: radius.lg, marginVertical: 4 }} resizeMode="cover" />
+                        ) : isDoc ? (
+                            <TouchableOpacity onPress={() => Linking.openURL(m.content.replace("📎 ", "").split("\n")[0])} style={{ flexDirection: "row", alignItems: "center", gap: 8, padding: 8, backgroundColor: "rgba(0,0,0,0.2)", borderRadius: radius.md, marginVertical: 4 }}>
                                 <Text style={{ fontSize: 24 }}>📄</Text>
                                 <Text style={{ color: textColor, fontWeight: "600" }}>Download File</Text>
                             </TouchableOpacity>
@@ -95,7 +107,6 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
                             <Text style={{ fontSize: 10, color: isMine ? "rgba(255,255,255,0.7)" : "#64748b" }}>
                                 {new Date(m.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                             </Text>
-
                             {isMine && (
                                 m.readAt ? (
                                     <Ionicons name="checkmark-done" size={14} color="#34d399" />
@@ -107,7 +118,6 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
                     </View>
                 </TouchableOpacity>
 
-                {/* 🚨 RENDER REACTIONS */}
                 {m.reactions && m.reactions.length > 0 && (
                     <View style={{ flexDirection: "row", gap: 4, marginTop: 4, alignSelf: isMine ? "flex-end" : "flex-start", paddingRight: isMine ? 8 : 0, paddingLeft: isMine ? 0 : 8 }}>
                         {m.reactions.map(function (r: any, i: number) {
@@ -140,6 +150,7 @@ export default function ChatScreen() {
     var [editingMessage, setEditingMessage] = useState<any>(null);
     var [menuMessage, setMenuMessage] = useState<any>(null);
     var [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
+    var [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
     var scrollRef = useRef<ScrollView>(null);
 
@@ -180,7 +191,8 @@ export default function ChatScreen() {
                 var uploadResult = await uploadImages([pendingAttachment.uri]);
                 var url = uploadResult.urls[0];
                 var prefix = pendingAttachment.type === "image" ? "🖼️ " : "📎 ";
-                finalContent = `${prefix}${url}\n${finalContent}`;
+                finalContent = `${prefix}${url}`;
+                if (text.trim()) finalContent += `\n${text.trim()}`;
             }
 
             if (editingMessage) {
@@ -200,7 +212,6 @@ export default function ChatScreen() {
         setSending(false);
     };
 
-    // 🚨 Reaction Handler
     var handleReaction = async function (msgId: string, emoji: string) {
         setMenuMessage(null);
         try {
@@ -221,6 +232,28 @@ export default function ChatScreen() {
                 }
             }
         ]);
+    };
+
+    var handlePickImage = async function () {
+        var result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.8,
+        });
+
+        if (!result.canceled && result.assets[0].uri) {
+            setPendingAttachment({ uri: result.assets[0].uri, type: "image", name: "Photo" });
+        }
+    };
+
+    var handlePickFile = async function () {
+        var result = await DocumentPicker.getDocumentAsync({
+            type: "*/*",
+            copyToCacheDirectory: true
+        });
+
+        if (!result.canceled && result.assets[0].uri) {
+            setPendingAttachment({ uri: result.assets[0].uri, type: "file", name: result.assets[0].name || "File" });
+        }
     };
 
     if (loading) {
@@ -328,17 +361,20 @@ export default function ChatScreen() {
                                 <Text style={{ color: "#e2e8f0", marginLeft: 8, flex: 1 }} numberOfLines={1}>{pendingAttachment.name}</Text>
                             </View>
                         )}
-                        <TouchableOpacity onPress={() => setPendingAttachment(null)} style={styles.closePreview}>
+                        <TouchableOpacity onPress={function () { setPendingAttachment(null); }} style={styles.closePreview}>
                             <Ionicons name="close-circle" size={24} color="#ef4444" />
                         </TouchableOpacity>
                     </View>
                 )}
 
                 <View style={[styles.composerRow, { backgroundColor: THEIR_BUBBLE }]}>
-                    <AttachmentButton onPick={function (uri, type, name) { setPendingAttachment({ uri, type, name }); }} />
+                    {/* 👇 Here is your original AttachmentButton, just wired to the new modal */}
+                    <AttachmentButton onPress={function () { setShowAttachmentMenu(true); }} />
+
                     <TouchableOpacity onPress={function () { setIsEmojiPickerOpen(true); }} style={styles.iconBtn}>
                         <Ionicons name="happy-outline" size={24} color="#94a3b8" />
                     </TouchableOpacity>
+
                     <TextInput
                         style={styles.input}
                         value={text}
@@ -357,6 +393,45 @@ export default function ChatScreen() {
                 </View>
             </View>
 
+            <Modal visible={showAttachmentMenu} transparent animationType="slide" onRequestClose={function () { setShowAttachmentMenu(false); }}>
+                <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)" }} activeOpacity={1} onPress={function () { setShowAttachmentMenu(false); }}>
+                    <View style={{ flex: 1, justifyContent: "flex-end" }}>
+                        <View style={{ backgroundColor: "#132a25", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.xl, paddingBottom: Platform.OS === "ios" ? 40 : spacing.xl }}>
+                            <View style={{ width: 40, height: 4, backgroundColor: "#64748b", borderRadius: 2, alignSelf: "center", marginBottom: spacing.xl }} />
+                            <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: spacing.lg }}>Attach</Text>
+
+                            <View style={{ flexDirection: "row", gap: spacing.xl }}>
+                                <TouchableOpacity
+                                    style={{ alignItems: "center", gap: spacing.sm }}
+                                    onPress={function () {
+                                        setShowAttachmentMenu(false);
+                                        handlePickImage();
+                                    }}
+                                >
+                                    <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(16, 185, 129, 0.15)", alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ fontSize: 28 }}>📷</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#fff" }}>Photo</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={{ alignItems: "center", gap: spacing.sm }}
+                                    onPress={function () {
+                                        setShowAttachmentMenu(false);
+                                        handlePickFile();
+                                    }}
+                                >
+                                    <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(16, 185, 129, 0.15)", alignItems: "center", justifyContent: "center" }}>
+                                        <Text style={{ fontSize: 28 }}>📄</Text>
+                                    </View>
+                                    <Text style={{ fontSize: 13, fontWeight: "500", color: "#fff" }}>Document</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
+
             <EmojiPicker
                 open={isEmojiPickerOpen}
                 onClose={() => setIsEmojiPickerOpen(false)}
@@ -373,8 +448,6 @@ export default function ChatScreen() {
                     <View style={{ backgroundColor: "#132a25", borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 40 }}>
                         {menuMessage && (
                             <View style={{ paddingTop: spacing.md }}>
-
-                                {/* 🚨 QUICK REACTIONS ROW */}
                                 <View style={{ flexDirection: "row", justifyContent: "space-around", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: "#1e293b" }}>
                                     {["❤️", "😂", "👍", "😮", "😢"].map(function (emoji) {
                                         return (
