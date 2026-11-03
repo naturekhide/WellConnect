@@ -39,7 +39,7 @@ export default function VoiceNoteButton({ userId, onSent }: { userId: string, on
         try {
             await recorder.stop();
             setIsRecording(false);
-        } catch (e) {}
+        } catch (e) { }
     };
 
     const stopAndSend = async () => {
@@ -72,19 +72,18 @@ export default function VoiceNoteButton({ userId, onSent }: { userId: string, on
     // 🚨 If recording, show the floating bar instead of the mic icon
     if (isRecording) {
         return (
-            <View style={styles.recordingBar}>
+            <View style={styles.recordingOverlay}>
                 <TouchableOpacity onPress={cancelRecording} style={styles.cancelBtn}>
-                    <Ionicons name="trash-outline" size={22} color="#ef4444" />
+                    <Ionicons name="trash-outline" size={24} color="#ef4444" />
                 </TouchableOpacity>
-                
+
                 <View style={styles.timerContainer}>
                     <View style={styles.redDot} />
                     <Text style={styles.timerText}>{formatTime(seconds)}</Text>
-                    <Text style={styles.recordingLabel}>Recording...</Text>
                 </View>
 
                 <TouchableOpacity onPress={stopAndSend} style={styles.sendAudioBtn} disabled={isUploading}>
-                    <Ionicons name={isUploading ? "hourglass-outline" : "send"} size={20} color="#000" />
+                    <Ionicons name={isUploading ? "hourglass-outline" : "send"} size={20} color="#fff" />
                 </TouchableOpacity>
             </View>
         );
@@ -100,26 +99,28 @@ export default function VoiceNoteButton({ userId, onSent }: { userId: string, on
 
 const styles = StyleSheet.create({
     iconBtn: { padding: 8, justifyContent: "center", alignItems: "center" },
-    
-    // 🚨 Floating Recording Bar Styles
-    recordingBar: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
+
+    // 🚨 Absolute Overlay for Recording
+    recordingOverlay: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
         backgroundColor: "#132a25",
         borderRadius: 30,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginHorizontal: 8,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 16,
         justifyContent: "space-between",
+        zIndex: 10,
     },
-    cancelBtn: { padding: 4 },
+    cancelBtn: { padding: 8 },
     timerContainer: { flexDirection: "row", alignItems: "center", gap: 8 },
-    redDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#ef4444" },
+    redDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#ef4444" },
     timerText: { fontSize: 16, fontWeight: "700", color: "#fff", fontVariant: ["tabular-nums"] },
-    recordingLabel: { fontSize: 13, color: "#94a3b8", marginLeft: 4 },
-    sendAudioBtn: { 
-        width: 36, height: 36, borderRadius: 18, 
-        backgroundColor: "#059669", alignItems: "center", justifyContent: "center" 
+    sendAudioBtn: {
+        width: 40, height: 40, borderRadius: 20,
+        backgroundColor: "#059669", alignItems: "center", justifyContent: "center"
     },
 });

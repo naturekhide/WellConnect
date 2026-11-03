@@ -58,16 +58,8 @@ export default function LoginScreen() {
                     secureTextEntry
                 />
 
-                <TextInput
-                    style={[styles.input, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
-                    placeholder="Password"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                />
+                {/* 👇 The duplicate password field was here. I deleted it! */}
 
-                {/* ADD THIS LINK */}
                 <TouchableOpacity onPress={function () { router.push("/auth/forgot-password"); }} style={{ alignSelf: "flex-end", marginBottom: spacing.md }}>
                     <Text style={{ fontSize: 13, color: colors.textSecondary }}>Forgot password?</Text>
                 </TouchableOpacity>

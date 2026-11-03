@@ -1,37 +1,10 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useColors, spacing, radius, shadow } from "../src/theme";
-import { useAuthStore } from "../src/store/authStore";
 
 export default function PrivacyScreen() {
     var router = useRouter();
     var colors = useColors();
-    var { logout } = useAuthStore();
-
-    var handleDeleteAccount = function () {
-        Alert.alert(
-            "Delete account?",
-            "This will permanently delete your account, mood entries, journal entries, and goals. This cannot be undone.",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: function () {
-                        Alert.alert("Not yet available", "Account deletion will be enabled soon. Contact support@wellconnect.app to request deletion.");
-                    },
-                },
-            ]
-        );
-    };
-
-    var handleExportData = function () {
-        Alert.alert(
-            "Export your data",
-            "We'll email you a copy of your WellConnect data. This feature will be available soon.",
-            [{ text: "OK" }]
-        );
-    };
 
     var sections = [
         {
@@ -103,31 +76,7 @@ export default function PrivacyScreen() {
                     );
                 })}
 
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your controls</Text>
-
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    onPress={handleExportData}
-                >
-                    <Text style={styles.rowIcon}>📤</Text>
-                    <View style={styles.rowContent}>
-                        <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>Export my data</Text>
-                        <Text style={[styles.rowDetail, { color: colors.textSecondary }]}>Download a copy of everything you've created.</Text>
-                    </View>
-                    <Text style={[styles.rowArrow, { color: colors.textTertiary }]}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: colors.surface, borderColor: colors.danger }]}
-                    onPress={handleDeleteAccount}
-                >
-                    <Text style={styles.rowIcon}>🗑️</Text>
-                    <View style={styles.rowContent}>
-                        <Text style={[styles.rowLabel, { color: colors.danger }]}>Delete my account</Text>
-                        <Text style={[styles.rowDetail, { color: colors.textSecondary }]}>Permanently remove your account and all data.</Text>
-                    </View>
-                    <Text style={[styles.rowArrow, { color: colors.textTertiary }]}>›</Text>
-                </TouchableOpacity>
+                {/* 👇 The "Your controls" section with Export/Delete was removed from here! */}
 
                 <Text style={[styles.footer, { color: colors.textTertiary }]}>
                     Questions? Contact support@wellconnect.app
@@ -162,15 +111,5 @@ var styles = StyleSheet.create({
     rowContent: { flex: 1 },
     rowLabel: { fontSize: 14, fontWeight: "600" },
     rowDetail: { fontSize: 12, marginTop: 3, lineHeight: 17 },
-    rowArrow: { fontSize: 22, alignSelf: "center" },
-    actionButton: {
-        flexDirection: "row",
-        alignItems: "flex-start",
-        padding: spacing.lg,
-        gap: spacing.md,
-        borderRadius: radius.lg,
-        borderWidth: 1,
-        ...shadow.sm,
-    },
     footer: { fontSize: 11, textAlign: "center", marginTop: spacing.lg },
 });
