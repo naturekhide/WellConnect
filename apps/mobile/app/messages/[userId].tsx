@@ -81,7 +81,6 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
                             <View style={[styles.quoteBox, { borderLeftColor: isMine ? "#34d399" : "#059669", backgroundColor: "rgba(0,0,0,0.2)" }]}>
                                 <Text style={[styles.quoteName, { color: isMine ? "#34d399" : "#059669" }]}>{m.replyTo.senderName}</Text>
                                 <Text style={[styles.quoteText, { color: "#94a3b8" }]} numberOfLines={1}>
-                                    {/* 👇 This is the new logic that hides the raw URL */}
                                     {m.replyTo.content.startsWith("🎤 ") ? "🎤 Voice message"
                                         : m.replyTo.content.startsWith("🖼️ ") || m.replyTo.content.match(/https?:\/\/.*\.(jpeg|jpg|gif|png|webp)/i) ? "📷 Photo"
                                             : m.replyTo.content.startsWith("📎 ") || m.replyTo.content.match(/https?:\/\/.*\.(pdf|doc|docx)/i) ? "📄 Document"
@@ -272,8 +271,12 @@ export default function ChatScreen() {
                     <Ionicons name="chevron-back" size={28} color="#fff" />
                 </TouchableOpacity>
 
+                {/* 👇 CHANGED: Wrapped in TouchableOpacity and added router.push */}
                 {other && (
-                    <View style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center", marginRight: 40 }}>
+                    <TouchableOpacity
+                        onPress={function () { router.push("/users/" + otherId); }}
+                        style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center", marginRight: 40 }}
+                    >
                         <View style={[styles.avatarSmall, { backgroundColor: MY_BUBBLE }]}>
                             <Text style={styles.avatarSmallText}>{other.name?.charAt(0) || "U"}</Text>
                         </View>
@@ -281,8 +284,9 @@ export default function ChatScreen() {
                             <Text style={[styles.headerName, { color: "#fff" }]}>{other.name}</Text>
                             <Text style={[styles.headerStatus, { color: "#64748b" }]}>@{other.username || "user"}</Text>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 )}
+
                 <TouchableOpacity style={{ padding: spacing.sm }}>
                     <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
                 </TouchableOpacity>
@@ -368,7 +372,6 @@ export default function ChatScreen() {
                 )}
 
                 <View style={[styles.composerRow, { backgroundColor: THEIR_BUBBLE }]}>
-                    {/* 👇 Here is your original AttachmentButton, just wired to the new modal */}
                     <AttachmentButton onPress={function () { setShowAttachmentMenu(true); }} />
 
                     <TouchableOpacity onPress={function () { setIsEmojiPickerOpen(true); }} style={styles.iconBtn}>
