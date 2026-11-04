@@ -1,17 +1,3 @@
-{
-  "expo": {
-    "name": "WellConnect",
-    "slug": "wellconnect",
-    "version": "1.0.0",
-    "orientation": "portrait",
-    "icon": "./assets/wellconnect.png",
-    "userInterfaceStyle": "automatic",
-    "scheme": "wellconnect",
-    "ios": {
-      "supportsTablet": true,
-      "userInterfaceStyle": "automatic",
-      "bundleIdentifier": "app.wellconnect"
-    },
     "android": {
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
@@ -23,29 +9,6 @@
       "permissions": [
         "NOTIFICATIONS"
       ],
-      "allowBackup": false
+      "allowBackup": false,
+      "softwareKeyboardLayoutMode": "pan" // 👈 Add this line
     },
-    "web": {
-      "favicon": "./assets/wellconnect.png"
-    },
-    "plugins": [
-      "expo-router",
-      "expo-notifications",
-      "expo-sharing",
-      "expo-audio"
-    ],
-    "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "4cd4d98e-a22f-4988-a840-2b5c5b0f2409"
-      }
-    },
-    "owner": "nature66",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/4cd4d98e-a22f-4988-a840-2b5c5b0f2409"
-    }
-  }
-}

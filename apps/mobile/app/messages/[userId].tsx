@@ -140,6 +140,8 @@ export default function ChatScreen() {
     var otherId = params.userId as string;
 
     var [messages, setMessages] = useState<any[]>([]);
+    var messagesRef = useRef<any[]>([]); // 👈 1. UseRef to track latest messages
+
     var [loading, setLoading] = useState(true);
     var [text, setText] = useState("");
     var [sending, setSending] = useState(false);
@@ -155,7 +157,8 @@ export default function ChatScreen() {
 
     useEffect(function () {
         loadInitial();
-        var interval = setInterval(poll, 3000);
+        // 👈 2. Poll faster (1.5 seconds)
+        var interval = setInterval(poll, 1500);
         return function () { clearInterval(interval); };
     }, [otherId]);
 
@@ -167,17 +170,22 @@ export default function ChatScreen() {
         try {
             var results = await Promise.all([getDMMessages(otherId), getUserProfile(otherId)]);
             setMessages(results[0].messages || []);
+            messagesRef.current = results[0].messages || []; // 👈 Update ref
             setOther(results[1]);
         } catch (e) { }
         setLoading(false);
     };
 
     var poll = async function () {
-        if (!messages.length) return;
-        var last = messages[messages.length - 1].createdAt;
+        if (!messagesRef.current || !messagesRef.current.length) return;
+        var last = messagesRef.current[messagesRef.current.length - 1].createdAt;
         try {
             var data = await getDMMessages(otherId, last);
-            if (data.messages && data.messages.length > 0) setMessages(messages.concat(data.messages));
+            if (data.messages && data.messages.length > 0) {
+                var newMsgs = messagesRef.current.concat(data.messages);
+                setMessages(newMsgs);
+                messagesRef.current = newMsgs; // 👈 Update ref
+            }
         } catch (e) { }
     };
 
@@ -196,11 +204,17 @@ export default function ChatScreen() {
 
             if (editingMessage) {
                 await editDM(otherId, editingMessage.id, text.trim());
-                setMessages(messages.map(function (m) { return m.id === editingMessage.id ? { ...m, content: text.trim() } : m; }));
+                var updatedMsgs = messagesRef.current.map(function (m) { 
+                    return m.id === editingMessage.id ? { ...m, content: text.trim() } : m; 
+                });
+                setMessages(updatedMsgs);
+                messagesRef.current = updatedMsgs;
                 setEditingMessage(null);
             } else {
                 var msg = await sendDM(otherId, finalContent, replyingTo?.id);
-                setMessages(messages.concat([msg]));
+                var newMsgs = messagesRef.current.concat([msg]);
+                setMessages(newMsgs);
+                messagesRef.current = newMsgs;
                 setReplyingTo(null);
             }
             setText("");
@@ -226,7 +240,9 @@ export default function ChatScreen() {
                 text: "Delete", style: "destructive", onPress: async function () {
                     try {
                         await deleteDM(otherId, messageId);
-                        setMessages(messages.filter(function (m) { return m.id !== messageId; }));
+                        var filtered = messagesRef.current.filter(function (m) { return m.id !== messageId; });
+                        setMessages(filtered);
+                        messagesRef.current = filtered;
                     } catch (e: any) { Alert.alert("Failed", e.message); }
                 }
             }
@@ -271,9 +287,8 @@ export default function ChatScreen() {
                     <Ionicons name="chevron-back" size={28} color="#fff" />
                 </TouchableOpacity>
 
-                {/* 👇 CHANGED: Wrapped in TouchableOpacity and added router.push */}
                 {other && (
-                    <TouchableOpacity
+                    <TouchableOpacity 
                         onPress={function () { router.push("/users/" + otherId); }}
                         style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center", marginRight: 40 }}
                     >
@@ -286,7 +301,7 @@ export default function ChatScreen() {
                         </View>
                     </TouchableOpacity>
                 )}
-
+                
                 <TouchableOpacity style={{ padding: spacing.sm }}>
                     <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
                 </TouchableOpacity>
