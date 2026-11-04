@@ -5,13 +5,11 @@ import { getCurrentUserId } from "@/lib/get-user";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
-    // 1. Verify the user is logged in
     var userId = await getCurrentUserId(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const formData = await request.formData();
-        // Use formData.getAll because the mobile app sends it as 'files' array
         const files = formData.getAll('files') as File[];
 
         if (!files || files.length === 0) {
@@ -20,25 +18,33 @@ export async function POST(request: NextRequest) {
 
         var uploadedUrls: string[] = [];
 
-        // 2. Upload each file to Vercel Blob
         for (const file of files) {
-            // Convert the File to a Buffer (this fixes the Web/React Native upload issue)
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
 
-            // Ensure we have a valid filename
             var fileName = file.name || "upload.png";
+            
+            // 👇 Bulletproof type detection
+            var contentType = file.type;
+            if (!contentType || contentType === "application/octet-stream") {
+                if (fileName.endsWith(".webm")) contentType = "audio/webm";
+                else if (fileName.endsWith(".m4a")) contentType = "audio/mp4";
+                else if (fileName.endsWith(".mp3")) contentType = "audio/mpeg";
+                else if (fileName.endsWith(".pdf")) contentType = "application/pdf";
+                else if (fileName.endsWith(".png")) contentType = "image/png";
+                else if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) contentType = "image/jpeg";
+                else contentType = "application/octet-stream";
+            }
 
             const blob = await put(fileName, buffer, {
                 access: 'public',
                 addRandomSuffix: true,
-                contentType: file.type || 'image/png', // Explicitly set the mime type
+                contentType: contentType, // 👈 Now it's always correct
             });
 
             uploadedUrls.push(blob.url);
         }
 
-        // 3. Return the URLs to the frontend
         return NextResponse.json({ urls: uploadedUrls });
 
     } catch (error: any) {

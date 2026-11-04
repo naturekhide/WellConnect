@@ -1,46 +1,44 @@
 "use client";
+import { useEffect, useState } from "react";
 
-import { useState, useRef } from "react";
+export default function WebAudioPlayer({ url, isMine }: { url: string; isMine?: boolean }) {
+    const [src, setSrc] = useState<string | null>(null);
+    const [error, setError] = useState(false);
 
-export default function WebAudioPlayer({ url, isMine }: { url: string, isMine: boolean }) {
-    const audioRef = useRef<HTMLAudioElement>(null);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const [progress, setProgress] = useState(0);
-
-    const togglePlay = () => {
-        if (audioRef.current) {
-            if (isPlaying) {
-                audioRef.current.pause();
-            } else {
-                audioRef.current.play();
-            }
-            setIsPlaying(!isPlaying);
+    useEffect(() => {
+        if (!url) {
+            setError(true);
+            return;
         }
-    };
 
-    const handleTimeUpdate = () => {
-        if (audioRef.current) {
-            const current = audioRef.current.currentTime;
-            const duration = audioRef.current.duration || 1;
-            setProgress((current / duration) * 100);
-        }
-    };
+        // Fetch the file as a blob to bypass Chrome's streaming restrictions
+        fetch(url)
+            .then((res) => {
+                if (!res.ok) throw new Error("Failed to fetch audio");
+                return res.blob();
+            })
+            .then((blob) => {
+                setSrc(URL.createObjectURL(blob));
+            })
+            .catch((err) => {
+                console.error("Audio load failed:", err);
+                setError(true);
+            });
+    }, [url]);
+
+    if (error) return <p style={{ color: "#ef4444", fontSize: 12, margin: "8px 0" }}>Failed to load audio</p>;
+    if (!src) return <p style={{ color: "#94a3b8", fontSize: 12, margin: "8px 0" }}>Loading audio...</p>;
 
     return (
-        <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "8px", background: isMine ? "rgba(0,0,0,0.2)" : "rgba(255,255,255,0.1)", borderRadius: "12px", minWidth: "200px", marginTop: "4px" }}>
-            <audio 
-                ref={audioRef} 
-                src={url} 
-                onTimeUpdate={handleTimeUpdate} 
-                onEnded={() => { setIsPlaying(false); setProgress(0); }} 
-                preload="metadata"
-            />
-            <button onClick={togglePlay} style={{ width: "32px", height: "32px", borderRadius: "16px", background: isMine ? "#fff" : "#059669", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: isMine ? "#059669" : "#fff" }}>
-                {isPlaying ? "⏸" : "▶"}
-            </button>
-            <div style={{ flex: 1, height: "4px", background: isMine ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)", borderRadius: "2px", overflow: "hidden" }}>
-                <div style={{ width: `${progress}%`, height: "100%", background: isMine ? "#fff" : "#059669" }} />
-            </div>
-        </div>
+        <audio
+            controls
+            src={src}
+            style={{
+                height: 40,
+                maxWidth: "100%",
+                marginTop: 4,
+                filter: isMine ? "invert(1) hue-rotate(180deg)" : "none"
+            }}
+        />
     );
 }
