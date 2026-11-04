@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useAuthStore } from "../../src/store/authStore";
 import { getMoodStats, getJournal, getGoals } from "../../src/api/client";
@@ -13,7 +13,7 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://well-connect-web.ver
 export default function YouScreen() {
     var router = useRouter();
     var colors = useColors();
-    var { user, logout, token } = useAuthStore(); // Assuming your store has a token
+    var { user, logout } = useAuthStore();
     var [stats, setStats] = useState<any>(null);
     var [journalCount, setJournalCount] = useState(0);
     var [goalCount, setGoalCount] = useState(0);
@@ -52,14 +52,8 @@ export default function YouScreen() {
         setDownloadingPdf(true);
         try {
             var fileUri = FileSystem.documentDirectory + "wellconnect-report.pdf";
-            var res = await FileSystem.downloadAsync(
-                `${API_URL}/api/users/export-pdf`, 
-                fileUri,
-                {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                }
-            );
-            
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri);
+
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
@@ -75,14 +69,8 @@ export default function YouScreen() {
         setDownloadingJson(true);
         try {
             var fileUri = FileSystem.documentDirectory + "wellconnect-data.json";
-            var res = await FileSystem.downloadAsync(
-                `${API_URL}/api/users/export`, 
-                fileUri,
-                {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                }
-            );
-            
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri);
+
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
@@ -100,16 +88,13 @@ export default function YouScreen() {
             "Are you absolutely sure? This will permanently delete all your data.",
             [
                 { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Delete", 
+                {
+                    text: "Delete",
                     style: "destructive",
                     onPress: async function () {
                         setDeleting(true);
                         try {
-                            var res = await fetch(`${API_URL}/api/users/delete`, { 
-                                method: "DELETE",
-                                headers: token ? { Authorization: `Bearer ${token}` } : {}
-                            });
+                            var res = await fetch(`${API_URL}/api/users/delete`, { method: "DELETE" });
                             if (res.ok) {
                                 await logout();
                                 router.replace("/auth/login");
