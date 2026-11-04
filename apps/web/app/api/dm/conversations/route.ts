@@ -11,15 +11,15 @@ export async function GET(request: NextRequest) {
     }
     var userId: string = userIdOrNull;
 
-    // Get every user the current user has exchanged messages with
+    // Get every user the current user has exchanged messages with (ignoring deleted ones)
     var sent = await prisma.directMessage.findMany({
-        where: { senderId: userId },
+        where: { senderId: userId, deletedAt: null }, // 👈 Ignore deleted
         select: { receiverId: true },
         distinct: ["receiverId"],
     });
 
     var received = await prisma.directMessage.findMany({
-        where: { receiverId: userId },
+        where: { receiverId: userId, deletedAt: null }, // 👈 Ignore deleted
         select: { senderId: true },
         distinct: ["senderId"],
     });
@@ -42,6 +42,7 @@ export async function GET(request: NextRequest) {
                         { senderId: userId, receiverId: otherId },
                         { senderId: otherId, receiverId: userId },
                     ],
+                    deletedAt: null, // 👈 Grab the most recent UNDELETED message
                 },
                 orderBy: { createdAt: "desc" },
                 include: {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
             });
 
             var unread = await prisma.directMessage.count({
-                where: { senderId: otherId, receiverId: userId, readAt: null },
+                where: { senderId: otherId, receiverId: userId, readAt: null, deletedAt: null },
             });
 
             var other = await prisma.user.findUnique({
@@ -58,10 +59,13 @@ export async function GET(request: NextRequest) {
                 select: { id: true, name: true, username: true },
             });
 
-            // 🚨 THE FIX: Clean up the preview text if it's a voice note
             var previewContent = lastMessage?.content || "";
             if (previewContent.startsWith("🎤 ")) {
                 previewContent = "🎤 Voice Note";
+            } else if (previewContent.startsWith("🖼️ ")) {
+                previewContent = "🖼️ Photo";
+            } else if (previewContent.startsWith("📎 ")) {
+                previewContent = "📎 Document";
             }
 
             return {
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
                 lastMessage: lastMessage
                     ? {
                         id: lastMessage.id,
-                        content: previewContent, // 🚨 Return the clean text
+                        content: previewContent,
                         createdAt: lastMessage.createdAt,
                         isMine: lastMessage.senderId === userId,
                     }
@@ -79,11 +83,14 @@ export async function GET(request: NextRequest) {
         })
     );
 
-    conversations.sort(function (a, b) {
+    // Filter out any conversations that have no messages left after deletes
+    var validConversations = conversations.filter(function(c) { return c.lastMessage !== null; });
+
+    validConversations.sort(function (a, b) {
         var aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
         var bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
         return bTime - aTime;
     });
 
-    return NextResponse.json({ conversations });
+    return NextResponse.json({ conversations: validConversations });
 }

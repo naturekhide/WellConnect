@@ -21,7 +21,6 @@ function formatDate(dateString: string) {
 
 function getMessagePreview(content: string) {
     if (!content) return "";
-
     if (content.startsWith("🎤 ")) return "🎤 Voice Note";
     if (content.startsWith("🖼️ ")) return "🖼️ Photo";
     if (content.startsWith("📎 ")) {
@@ -30,13 +29,10 @@ function getMessagePreview(content: string) {
         if (url.includes(".doc") || url.includes(".docx")) return "📝 Word Document";
         return "📎 File Attachment";
     }
-
-    // 👇 NEW: Catch raw URLs for older messages
     if (content.match(/https?:\/\/.*\.(jpeg|jpg|gif|png|webp)/i)) return "🖼️ Photo";
     if (content.match(/https?:\/\/.*\.(webm|mp4|m4a|mp3)/i)) return "🎤 Voice Note";
     if (content.match(/https?:\/\/.*\.(pdf|doc|docx)/i)) return "📄 Document";
     if (content.startsWith("http")) return "📎 File Attachment";
-
     return content;
 }
 
@@ -51,17 +47,21 @@ export default function WebChatPage() {
     const [loading, setLoading] = useState(true);
     const [showEmoji, setShowEmoji] = useState(false);
 
+    // Recording States
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Attachment States
     const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [pendingAudio, setPendingAudio] = useState<Blob | null>(null);
 
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editText, setEditText] = useState("");
     const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     const [replyingTo, setReplyingTo] = useState<any>(null);
-
-    // 🚨 Attachment Menu State
     const [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -74,7 +74,6 @@ export default function WebChatPage() {
         return () => clearInterval(interval);
     }, [otherId]);
 
-    // 🚨 CLOSE MENUS ON CLICK OUTSIDE
     useEffect(() => {
         const handleClickOutside = () => {
             if (menuOpenId) setMenuOpenId(null);
@@ -116,12 +115,61 @@ export default function WebChatPage() {
         setLoading(false);
     };
 
+    const startRecording = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const recorder = new MediaRecorder(stream);
+            const chunks: BlobPart[] = [];
+
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: "audio/webm" });
+                setPendingAudio(blob); // Save to state
+                setRecordingTime(0);
+                if (timerRef.current) clearInterval(timerRef.current);
+            };
+
+            recorder.start();
+            setMediaRecorder(recorder);
+            setIsRecording(true);
+
+            timerRef.current = setInterval(() => {
+                setRecordingTime(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) { alert("Microphone access denied."); }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorder && isRecording) {
+            mediaRecorder.stop();
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            setIsRecording(false);
+        }
+    };
+
+    const cancelRecording = () => {
+        stopRecording();
+        setPendingAudio(null);
+    };
+
     const handleSend = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!text.trim() && !pendingFile) return;
+        if (!text.trim() && !pendingFile && !pendingAudio) return;
         let content = text.trim();
 
-        if (pendingFile) {
+        if (pendingAudio) {
+            const formData = new FormData();
+            formData.append("files", pendingAudio, "voice-note.webm");
+            try {
+                const res = await fetch("/api/upload/multi", { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.urls && data.urls.length > 0) {
+                    content = `🎤 ${data.urls[0]}\n${content}`;
+                }
+            } catch (err) { alert("Audio upload failed"); return; }
+        }
+        else if (pendingFile) {
             const formData = new FormData();
             formData.append("files", pendingFile);
             try {
@@ -137,6 +185,7 @@ export default function WebChatPage() {
 
         setText("");
         setPendingFile(null);
+        setPendingAudio(null);
         setReplyingTo(null);
 
         try {
@@ -183,47 +232,6 @@ export default function WebChatPage() {
             setDeleteConfirmId(null);
             loadChat();
         } catch (e) { alert("Delete failed"); }
-    };
-
-    const startRecording = async () => {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream);
-            const chunks: BlobPart[] = [];
-
-            recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: "audio/webm" });
-                const file = new File([blob], "voice-note.webm", { type: "audio/webm" });
-                const formData = new FormData();
-                formData.append("files", file);
-                try {
-                    const res = await fetch("/api/upload/multi", { method: "POST", body: formData });
-                    const data = await res.json();
-                    if (data.urls && data.urls.length > 0) {
-                        await fetch(`/api/dm/${otherId}`, {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ content: `🎤 ${data.urls[0]}` }),
-                        });
-                        loadChat();
-                        setTimeout(() => scrollToBottom(true), 100);
-                    }
-                } catch (err) { alert("Audio upload failed"); }
-            };
-
-            recorder.start();
-            setMediaRecorder(recorder);
-            setIsRecording(true);
-        } catch (err) { alert("Microphone access denied."); }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorder) {
-            mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            setIsRecording(false);
-        }
     };
 
     if (loading) return <div style={{ color: "white", textAlign: "center", marginTop: "100px" }}>Loading...</div>;
@@ -317,9 +325,9 @@ export default function WebChatPage() {
                                     ) : (
                                         <>
                                             {m.content.startsWith("🎤 ") ? (
-                                                <WebAudioPlayer url={m.content.replace("🎤 ", "")} isMine={isMine} />
+                                                <WebAudioPlayer url={m.content.replace("🎤 ", "").split("\n")[0]} isMine={isMine} />
                                             ) : m.content.startsWith("🖼️ ") ? (
-                                                <img src={m.content.replace("🖼️ ", "")} style={{ maxWidth: "100%", borderRadius: "12px", marginTop: "8px" }} />
+                                                <img src={m.content.replace("🖼️ ", "").split("\n")[0]} style={{ maxWidth: "100%", borderRadius: "12px", marginTop: "8px" }} />
                                             ) : m.content.startsWith("📎 ") ? (
                                                 (() => {
                                                     var rawText = m.content.replace("📎 ", "").trim();
@@ -395,68 +403,65 @@ export default function WebChatPage() {
                     </div>
                 )}
 
+                {/* 🚨 PENDING AUDIO PREVIEW */}
+                {pendingAudio && !isRecording && (
+                    <div style={{ background: "#132a25", padding: "12px", borderRadius: "12px", marginBottom: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <span>🎤 Voice Note ready</span>
+                        </div>
+                        <button onClick={() => setPendingAudio(null)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: "16px" }}>🗑️</button>
+                    </div>
+                )}
+
                 <form onSubmit={handleSend} style={{ display: "flex", gap: "12px", background: "#132a25", padding: "8px 16px", borderRadius: "30px", alignItems: "center", position: "relative" }}>
 
-                    {/* 🚨 PAPERCLIP BUTTON */}
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            setShowAttachmentMenu(!showAttachmentMenu);
-                        }}
-                        style={{ background: "none", border: "none", color: showAttachmentMenu ? "#059669" : "#94a3b8", fontSize: "20px", cursor: "pointer" }}
-                    >
-                        📎
-                    </button>
+                    {isRecording ? (
+                        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 8px" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#ef4444" }}>
+                                <div style={{ width: 10, height: 10, borderRadius: 5, background: "#ef4444", animation: "pulse 1.5s infinite" }}></div>
+                                <span>{Math.floor(recordingTime / 60)}:{String(recordingTime % 60).padStart(2, '0')}</span>
+                            </div>
 
-                    {/* 🚨 FLOATING ATTACHMENT MENU */}
-                    {showAttachmentMenu && (
-                        <div
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ position: "absolute", bottom: "60px", left: 0, background: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "8px", display: "flex", flexDirection: "column", gap: "4px", zIndex: 50, minWidth: "150px", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}
-                        >
-                            <button
-                                type="button"
-                                onClick={() => { fileInputRef.current?.setAttribute('accept', 'image/*'); fileInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#fff", padding: "10px", cursor: "pointer", borderRadius: "8px", textAlign: "left" }}
-                            >
-                                🖼️ Photo
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => { fileInputRef.current?.setAttribute('accept', '*/*'); fileInputRef.current?.click(); setShowAttachmentMenu(false); }}
-                                style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#fff", padding: "10px", cursor: "pointer", borderRadius: "8px", textAlign: "left" }}
-                            >
-                                📄 Document
-                            </button>
+                            <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                                <button type="button" onClick={cancelRecording} style={{ background: "none", border: "none", color: "#ef4444", fontSize: "20px", cursor: "pointer" }} title="Delete recording">🗑️</button>
+                                <button type="button" onClick={stopRecording} style={{ background: "#059669", border: "none", color: "#fff", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Stop recording">⏸</button>
+                            </div>
                         </div>
+                    ) : (
+                        <>
+                            <button type="button" onClick={(e) => { e.preventDefault(); setShowAttachmentMenu(!showAttachmentMenu); }} style={{ background: "none", border: "none", color: showAttachmentMenu ? "#059669" : "#94a3b8", fontSize: "20px", cursor: "pointer" }}>📎</button>
+
+                            {showAttachmentMenu && (
+                                <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", bottom: "60px", left: 0, background: "#1e293b", border: "1px solid #334155", borderRadius: "12px", padding: "8px", display: "flex", flexDirection: "column", gap: "4px", zIndex: 50, minWidth: "150px", boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}>
+                                    <button type="button" onClick={() => { fileInputRef.current?.setAttribute('accept', 'image/*'); fileInputRef.current?.click(); setShowAttachmentMenu(false); }} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#fff", padding: "10px", cursor: "pointer", borderRadius: "8px", textAlign: "left" }}>🖼️ Photo</button>
+                                    <button type="button" onClick={() => { fileInputRef.current?.setAttribute('accept', '*/*'); fileInputRef.current?.click(); setShowAttachmentMenu(false); }} style={{ display: "flex", alignItems: "center", gap: "8px", background: "none", border: "none", color: "#fff", padding: "10px", cursor: "pointer", borderRadius: "8px", textAlign: "left" }}>📄 Document</button>
+                                </div>
+                            )}
+
+                            <input type="file" ref={fileInputRef} style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files[0]) setPendingFile(e.target.files[0]); e.target.value = ""; }} />
+
+                            <button type="button" onClick={(e) => { e.preventDefault(); setShowEmoji(!showEmoji); }} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}>😊</button>
+                            {showEmoji && (
+                                <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", bottom: "80px", right: "20px", zIndex: 10 }}>
+                                    <EmojiPicker onEmojiClick={(e) => setText(prev => prev + e.emoji)} theme="dark" />
+                                </div>
+                            )}
+
+                            <input
+                                type="text"
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                placeholder="Message..."
+                                style={{ flex: 1, background: "none", border: "none", color: "#fff", fontSize: "15px", outline: "none" }}
+                            />
+
+                            {!text.trim() && !pendingFile && !pendingAudio ? (
+                                <button type="button" onClick={startRecording} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}>🎤</button>
+                            ) : (
+                                <button type="submit" style={{ width: "36px", height: "36px", borderRadius: "18px", background: MY_BUBBLE, border: "none", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>↑</button>
+                            )}
+                        </>
                     )}
-
-                    <input type="file" ref={fileInputRef} style={{ display: "none" }} onChange={(e) => { if (e.target.files && e.target.files[0]) setPendingFile(e.target.files[0]); e.target.value = ""; }} />
-
-                    <button type="button" onClick={(e) => { e.preventDefault(); setShowEmoji(!showEmoji); }} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: "20px", cursor: "pointer" }}>😊</button>
-                    {showEmoji && (
-                        <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", bottom: "80px", right: "20px", zIndex: 10 }}>
-                            <EmojiPicker onEmojiClick={(e) => setText(prev => prev + e.emoji)} theme="dark" />
-                        </div>
-                    )}
-
-                    <input
-                        type="text"
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        placeholder={isRecording ? "Recording..." : "Message..."}
-                        disabled={isRecording}
-                        style={{ flex: 1, background: "none", border: "none", color: "#fff", fontSize: "15px", outline: "none" }}
-                    />
-
-                    <button type="button" onClick={isRecording ? stopRecording : startRecording} style={{ background: "none", border: "none", color: isRecording ? "#ef4444" : "#94a3b8", fontSize: "20px", cursor: "pointer" }}>
-                        {isRecording ? "⏹" : "🎤"}
-                    </button>
-
-                    <button type="submit" disabled={(!text.trim() && !pendingFile) || isRecording} style={{ width: "36px", height: "36px", borderRadius: "18px", background: (text.trim() || pendingFile) ? MY_BUBBLE : "#1e293b", border: "none", color: "#fff", cursor: (text.trim() || pendingFile) ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        ↑
-                    </button>
                 </form>
             </div>
 
