@@ -121,7 +121,23 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     // but we keep the optional chaining for safety.
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
-    var safeImages = Array.isArray(post.imageUrls) ? post.imageUrls.filter(function (url: string) { return url && (url.startsWith("http") || url.startsWith("/")); }) : [];
+    // 🚨 Safely parse images whether they come as an array or a JSON string
+    var parsedImages = post.imageUrls;
+    if (typeof parsedImages === "string") {
+        try {
+            parsedImages = JSON.parse(parsedImages);
+        } catch (e) {
+            parsedImages = [];
+        }
+    }
+
+    // 🚨 Filter out nulls, empties, and invalid strings
+    var safeImages = Array.isArray(parsedImages)
+        ? parsedImages.filter(function (url: string) {
+            return url && typeof url === "string" && url.trim().length > 0 && (url.startsWith("http") || url.startsWith("/"));
+        })
+        : [];
+
 
     return (
         <div
