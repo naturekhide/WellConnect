@@ -4,7 +4,8 @@ import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useAuthStore } from "../../src/store/authStore";
-import { getMoodStats, getJournal, getGoals } from "../../src/api/client";
+// 👇 Import the helpers from your client
+import { getMoodStats, getJournal, getGoals, getAuthToken, apiFetch, clearAuthToken } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
 
@@ -51,8 +52,17 @@ export default function YouScreen() {
     var handleDownloadPdf = async function () {
         setDownloadingPdf(true);
         try {
+            var token = getAuthToken();
             var fileUri = FileSystem.documentDirectory + "wellconnect-report.pdf";
-            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri);
+            
+            // 👇 Passed the token in the headers
+            var res = await FileSystem.downloadAsync(
+                `${API_URL}/api/users/export-pdf`, 
+                fileUri,
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }
+            );
 
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
@@ -68,8 +78,17 @@ export default function YouScreen() {
     var handleDownloadJson = async function () {
         setDownloadingJson(true);
         try {
+            var token = getAuthToken();
             var fileUri = FileSystem.documentDirectory + "wellconnect-data.json";
-            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri);
+            
+            // 👇 Passed the token in the headers
+            var res = await FileSystem.downloadAsync(
+                `${API_URL}/api/users/export`, 
+                fileUri,
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }
+            );
 
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
@@ -94,16 +113,13 @@ export default function YouScreen() {
                     onPress: async function () {
                         setDeleting(true);
                         try {
-                            var res = await fetch(`${API_URL}/api/users/delete`, { method: "DELETE" });
-                            if (res.ok) {
-                                await logout();
-                                router.replace("/auth/login");
-                            } else {
-                                Alert.alert("Error", "Failed to delete account.");
-                                setDeleting(false);
-                            }
-                        } catch (e) {
-                            Alert.alert("Error", "An error occurred.");
+                            // 👇 Used your apiFetch helper which automatically adds the token
+                            await apiFetch("/api/users/delete", { method: "DELETE" });
+                            await clearAuthToken();
+                            await logout();
+                            router.replace("/auth/login");
+                        } catch (e: any) {
+                            Alert.alert("Error", e.message || "Failed to delete account.");
                             setDeleting(false);
                         }
                     }
@@ -132,6 +148,7 @@ export default function YouScreen() {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
             >
+                {/* ... REST OF YOUR UI (Profile Header, Stats, Menu, etc.) ... */}
                 <View style={styles.profileHeader}>
                     <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                         <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
@@ -280,6 +297,7 @@ export default function YouScreen() {
 }
 
 var styles = StyleSheet.create({
+    // ... all your existing styles
     container: { flex: 1 },
     content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
     profileHeader: { alignItems: "center", marginTop: spacing.sm, marginBottom: spacing.sm },
