@@ -2,26 +2,23 @@ import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system";
-import { Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useAuthStore } from "../../src/store/authStore";
 import { getMoodStats, getJournal, getGoals } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.X:3000"; // Ensure this is your actual IP
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "https://well-connect-web.vercel.app";
 
 export default function YouScreen() {
     var router = useRouter();
     var colors = useColors();
-    var { user, logout } = useAuthStore();
+    var { user, logout, token } = useAuthStore(); // Assuming your store has a token
     var [stats, setStats] = useState<any>(null);
     var [journalCount, setJournalCount] = useState(0);
     var [goalCount, setGoalCount] = useState(0);
     var [loading, setLoading] = useState(true);
     var [refreshing, setRefreshing] = useState(false);
-
-    // 👇 New States for Account Actions
     var [downloadingPdf, setDownloadingPdf] = useState(false);
     var [downloadingJson, setDownloadingJson] = useState(false);
     var [deleting, setDeleting] = useState(false);
@@ -51,21 +48,25 @@ export default function YouScreen() {
         router.replace("/auth/login");
     };
 
-    // 👇 New Functions for Download & Delete
     var handleDownloadPdf = async function () {
         setDownloadingPdf(true);
         try {
-            var fileUri = Paths.document.uri + "wellconnect-report.pdf";
-            // 👇 Removed the headers object entirely
-            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri);
-
+            var fileUri = FileSystem.documentDirectory + "wellconnect-report.pdf";
+            var res = await FileSystem.downloadAsync(
+                `${API_URL}/api/users/export-pdf`, 
+                fileUri,
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }
+            );
+            
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
-                Alert.alert("Error", "Failed to download PDF.");
+                Alert.alert("Error", `Failed to download PDF. Status: ${res.status}`);
             }
-        } catch (e) {
-            Alert.alert("Error", "An error occurred while downloading.");
+        } catch (e: any) {
+            Alert.alert("Error", e.message || "An error occurred.");
         }
         setDownloadingPdf(false);
     };
@@ -73,17 +74,22 @@ export default function YouScreen() {
     var handleDownloadJson = async function () {
         setDownloadingJson(true);
         try {
-            var fileUri = Paths.document.uri + "wellconnect-data.json";
-            // 👇 Removed the headers object entirely
-            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri);
-
+            var fileUri = FileSystem.documentDirectory + "wellconnect-data.json";
+            var res = await FileSystem.downloadAsync(
+                `${API_URL}/api/users/export`, 
+                fileUri,
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                }
+            );
+            
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
-                Alert.alert("Error", "Failed to download data.");
+                Alert.alert("Error", `Failed to download data. Status: ${res.status}`);
             }
-        } catch (e) {
-            Alert.alert("Error", "An error occurred while downloading.");
+        } catch (e: any) {
+            Alert.alert("Error", e.message || "An error occurred.");
         }
         setDownloadingJson(false);
     };
@@ -94,16 +100,15 @@ export default function YouScreen() {
             "Are you absolutely sure? This will permanently delete all your data.",
             [
                 { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
+                { 
+                    text: "Delete", 
                     style: "destructive",
                     onPress: async function () {
                         setDeleting(true);
                         try {
-                            // Inside the "Delete" onPress function:
-                            var res = await fetch(`${API_URL}/api/users/delete`, {
-                                method: "DELETE"
-                                // 👇 Removed the headers object entirely
+                            var res = await fetch(`${API_URL}/api/users/delete`, { 
+                                method: "DELETE",
+                                headers: token ? { Authorization: `Bearer ${token}` } : {}
                             });
                             if (res.ok) {
                                 await logout();
@@ -131,13 +136,6 @@ export default function YouScreen() {
                         <Skeleton width={140} height={22} />
                         <Skeleton width={100} height={14} />
                     </View>
-                    <View style={{ flexDirection: "row", gap: 8, marginTop: 16 }}>
-                        <Skeleton width="31%" height={80} />
-                        <Skeleton width="31%" height={80} />
-                        <Skeleton width="31%" height={80} />
-                    </View>
-                    <Skeleton width="100%" height={60} style={{ marginTop: 16 }} />
-                    <Skeleton width="100%" height={280} style={{ marginTop: 16 }} />
                 </View>
             </View>
         );
@@ -241,7 +239,6 @@ export default function YouScreen() {
                         <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    {/* 👇 NEW: Download JSON */}
                     <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={handleDownloadJson} disabled={downloadingJson}>
                         <Text style={styles.menuIcon}>📥</Text>
                         <View style={styles.menuContent}>
@@ -252,7 +249,6 @@ export default function YouScreen() {
                         {downloadingJson ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
                     </TouchableOpacity>
 
-                    {/* 👇 NEW: Download PDF */}
                     <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={handleDownloadPdf} disabled={downloadingPdf}>
                         <Text style={styles.menuIcon}>📄</Text>
                         <View style={styles.menuContent}>
@@ -272,7 +268,6 @@ export default function YouScreen() {
                     </TouchableOpacity>
                 </View>
 
-                {/* 👇 NEW: Danger Zone */}
                 <Text style={[styles.sectionTitle, { color: colors.danger, marginTop: spacing.md }]}>Danger Zone</Text>
                 <View style={[styles.menu, { backgroundColor: colors.danger + "10", borderColor: colors.danger + "40" }]}>
                     <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={handleDeleteAccount} disabled={deleting}>
@@ -300,7 +295,6 @@ export default function YouScreen() {
 }
 
 var styles = StyleSheet.create({
-    // ... keep all your existing styles exactly as they were
     container: { flex: 1 },
     content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
     profileHeader: { alignItems: "center", marginTop: spacing.sm, marginBottom: spacing.sm },
