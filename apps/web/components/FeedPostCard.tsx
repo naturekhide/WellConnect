@@ -120,30 +120,33 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
-    // 🚨 1. Safely parse images whether they come as an array or a JSON string
+    // 🚨 1. Safe Image Parser (For Main Post)
     var parsedImages: any = post.imageUrls;
     if (typeof parsedImages === "string") {
-        try {
-            parsedImages = JSON.parse(parsedImages);
-        } catch (e) {
-            parsedImages = [];
-        }
+        try { parsedImages = JSON.parse(parsedImages); } catch (e) { parsedImages = []; }
     }
-
-    // 🚨 2. Filter out nulls, empties, and invalid strings
     var safeImages = Array.isArray(parsedImages)
         ? parsedImages.filter(function (url: string) {
             return url && typeof url === "string" && url.trim().length > 0 && (url.startsWith("http") || url.startsWith("/"));
         })
         : [];
 
-    // 🚨 3. Clean the text to remove any broken HTML image tags pasted by users
+    // 🚨 2. Safe Image Parser (For Repost)
+    var parsedOrigImages: any = post.originalPost?.imageUrls;
+    if (typeof parsedOrigImages === "string") {
+        try { parsedOrigImages = JSON.parse(parsedOrigImages); } catch (e) { parsedOrigImages = []; }
+    }
+    var safeOrigImages = Array.isArray(parsedOrigImages)
+        ? parsedOrigImages.filter(function (url: string) {
+            return url && typeof url === "string" && url.trim().length > 0 && (url.startsWith("http") || url.startsWith("/"));
+        })
+        : [];
+
+    // 🚨 3. Clean Text
     var cleanContent = function (text: string) {
         if (!text) return "";
         return text.replace(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi, function (match, src) {
-            if (!src || src.trim() === "" || src === "null" || src === "undefined") {
-                return "";
-            }
+            if (!src || src.trim() === "" || src === "null" || src === "undefined") return "";
             return match;
         });
     };
@@ -224,7 +227,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                 </p>
                             )}
 
-                            {/* 🚨 REPOST UI */}
+                            {/* 🚨 REPOST UI WITH SAFE IMAGES */}
                             {post.originalPost && (
                                 <div style={{ padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, marginTop: S.sm, backgroundColor: "rgba(255,255,255,0.02)" }}>
                                     <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 4 }}>
@@ -238,13 +241,37 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                         )}
                                     </div>
                                     <div style={{ fontSize: 14, color: C.textPrimary }}>{cleanContent(post.originalPost.content)}</div>
+
+                                    {/* Repost Images */}
+                                    {safeOrigImages.length > 0 && (
+                                        <div style={{ marginTop: S.sm }}>
+                                            {safeOrigImages.map(function (url: string, i: number) {
+                                                return (
+                                                    <img
+                                                        key={i}
+                                                        src={url}
+                                                        onError={function (e: any) { e.target.style.display = 'none'; }}
+                                                        style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: R.md, marginBottom: 4 }}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
+                            {/* Main Post Images */}
                             {safeImages.length > 0 && (
                                 <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                                     {safeImages.map(function (url: string, i: number) {
-                                        return <img key={i} src={url} style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }} />;
+                                        return (
+                                            <img
+                                                key={i}
+                                                src={url}
+                                                onError={function (e: any) { e.target.style.display = 'none'; }}
+                                                style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }}
+                                            />
+                                        );
                                     })}
                                 </div>
                             )}
@@ -270,7 +297,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                 {post.replyCount > 0 && <span style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary }}>{post.replyCount}</span>}
                             </button>
 
-                            {/* 🚨 SHARE DROPDOWN */}
                             <div ref={shareRef} style={{ position: "relative" }}>
                                 <button onClick={function (e) { e.stopPropagation(); setShowShareMenu(!showShareMenu); }} style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px " + S.sm + "px", borderRadius: R.full, background: "transparent", border: "none", cursor: "pointer" }}>
                                     <span style={{ fontSize: 16 }}>🔗</span>
