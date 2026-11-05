@@ -4,15 +4,19 @@ import { getCurrentUserId } from "@/lib/get-user";
 
 export const dynamic = "force-dynamic";
 
-// 🚨 Helper to safely parse images whether they are JSON strings, comma-separated strings, or null
+// 🚨 Helper to safely parse and clean images
 function parseImages(imgStr: string | null) {
     if (!imgStr || imgStr === "[]" || imgStr === "") return [];
     try {
         var parsed = JSON.parse(imgStr);
-        return Array.isArray(parsed) ? parsed : [parsed];
+        if (Array.isArray(parsed)) {
+            return parsed.map((u: any) => typeof u === "string" ? u.replace(/^["\\]+|["\\]+$/g, "").trim() : u);
+        }
+        return [parsed];
     } catch (e) {
-        // Fallback for old posts saved with commas
-        return imgStr.split(",").map(function (u) { return u.trim(); }).filter(function (u) { return u.length > 0; });
+        // Fallback for completely broken strings (like missing brackets)
+        var cleaned = imgStr.replace(/[\[\]"\\]/g, "").split(",");
+        return cleaned.map((u) => u.trim()).filter((u) => u.startsWith("http"));
     }
 }
 
@@ -79,7 +83,7 @@ export async function GET(request: NextRequest) {
         return {
             id: p.id,
             content: p.content,
-            imageUrls: parseImages(p.imageUrls), // 👈 Use the safe parser
+            imageUrls: parseImages(p.imageUrls),
             anonymous: p.anonymous,
             createdAt: p.createdAt,
             author: p.anonymous ? { id: "anonymous", name: "Anonymous", username: "anonymous" } : p.author,
@@ -91,7 +95,7 @@ export async function GET(request: NextRequest) {
             originalPost: p.originalPost ? {
                 id: p.originalPost.id,
                 content: p.originalPost.content,
-                imageUrls: parseImages(p.originalPost.imageUrls), // 👈 Use the safe parser
+                imageUrls: parseImages(p.originalPost.imageUrls),
                 createdAt: p.originalPost.createdAt,
                 author: p.originalPost.author,
             } : null,
@@ -126,7 +130,12 @@ export async function POST(request: NextRequest) {
 
     var imageUrlsString = "[]";
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
-        imageUrlsString = JSON.stringify(imageUrls); // 👈 Store as JSON array string
+        // 👇 CLEAN THE URLS before saving to prevent broken quotes
+        var cleanedUrls = imageUrls.map(function(u: string) {
+            return u.replace(/^["\\]+|["\\]+$/g, "").trim();
+        }).filter(function(u: string) { return u.length > 0; });
+        
+        imageUrlsString = JSON.stringify(cleanedUrls);
     }
 
     var post = await prisma.feedPost.create({

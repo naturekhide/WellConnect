@@ -126,7 +126,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         try { parsedImages = JSON.parse(parsedImages); } catch (e) { parsedImages = [parsedImages]; }
     }
 
-    // 🚨 2. Very permissive filter (accepts any string)
+    // 🚨 2. Very permissive filter
     var safeImages = Array.isArray(parsedImages)
         ? parsedImages.filter(function (url: any) {
             return typeof url === "string" && url.length > 5;
@@ -248,12 +248,13 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                     {safeOrigImages.length > 0 && (
                                         <div style={{ marginTop: S.sm }}>
                                             {safeOrigImages.map(function (url: string, i: number) {
+                                                var absoluteUrl = url.startsWith("http") ? url : `https://${url}`;
                                                 return (
                                                     <img
                                                         key={i}
-                                                        src={url}
+                                                        src={absoluteUrl}
                                                         onError={function (e: any) {
-                                                            console.log("❌ Repost image failed:", url);
+                                                            console.log("❌ Repost image failed:", absoluteUrl);
                                                         }}
                                                         style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: R.md, marginBottom: 4 }}
                                                     />
@@ -268,12 +269,13 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                             {safeImages.length > 0 && (
                                 <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                                     {safeImages.map(function (url: string, i: number) {
+                                        var absoluteUrl = url.startsWith("http") ? url : `https://${url}`;
                                         return (
                                             <img
                                                 key={i}
-                                                src={url}
+                                                src={absoluteUrl}
                                                 onError={function (e: any) {
-                                                    console.log("❌ Main image failed:", url);
+                                                    console.log("❌ Main image failed:", absoluteUrl);
                                                 }}
                                                 style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }}
                                             />

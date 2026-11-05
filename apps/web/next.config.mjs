@@ -4,9 +4,18 @@ const nextConfig = {
     typescript: { ignoreBuildErrors: true },
     eslint: { ignoreDuringBuilds: true },
 
+    // 👇 Allow images from Vercel Blob
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: '*.public.blob.vercel-storage.com',
+            },
+        ],
+    },
+
     webpack: (config, { isServer }) => {
         if (isServer) {
-            // Tell Webpack to treat pdfkit as an external CommonJS module
             config.externals.push('pdfkit');
         }
         return config;
@@ -14,9 +23,7 @@ const nextConfig = {
 
     experimental: {
         outputFileTracingIncludes: {
-            // Include Prisma client
             "/api/**/*": ["./node_modules/.prisma/client/**/*"],
-            // Include PDFKit font files (essential for pdfkit to work)
             "/api/users/export-pdf": [
                 "../../node_modules/.pnpm/pdfkit*/node_modules/pdfkit/js/data/*.afm",
                 "../../node_modules/.pnpm/pdfkit*/node_modules/pdfkit/js/standard-fonts/*.cjs"
