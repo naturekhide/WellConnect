@@ -4,6 +4,18 @@ import { getCurrentUserId } from "@/lib/get-user";
 
 export const dynamic = "force-dynamic";
 
+// 🚨 Helper to safely parse images whether they are JSON strings, comma-separated strings, or null
+function parseImages(imgStr: string | null) {
+    if (!imgStr || imgStr === "[]" || imgStr === "") return [];
+    try {
+        var parsed = JSON.parse(imgStr);
+        return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+        // Fallback for old posts saved with commas
+        return imgStr.split(",").map(function (u) { return u.trim(); }).filter(function (u) { return u.length > 0; });
+    }
+}
+
 export async function GET(request: NextRequest) {
     var userIdOrNull = await getCurrentUserId(request);
     if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -47,7 +59,6 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         include: {
             author: { select: { id: true, name: true, username: true } },
-            // 🚨 INCLUDE ORIGINAL POST FOR REPOSTS
             originalPost: {
                 include: { author: { select: { id: true, name: true, username: true } } }
             },
@@ -64,11 +75,11 @@ export async function GET(request: NextRequest) {
     var hasMore = posts.length > take;
     if (hasMore) posts.pop();
 
-    var result = posts.map(function (p) {
+    var result = posts.map(function (p: any) {
         return {
             id: p.id,
             content: p.content,
-            imageUrls: p.imageUrls && p.imageUrls !== "[]" ? p.imageUrls.split(",") : [],
+            imageUrls: parseImages(p.imageUrls), // 👈 Use the safe parser
             anonymous: p.anonymous,
             createdAt: p.createdAt,
             author: p.anonymous ? { id: "anonymous", name: "Anonymous", username: "anonymous" } : p.author,
@@ -77,15 +88,14 @@ export async function GET(request: NextRequest) {
             reactionCount: p._count.reactions,
             myReaction: p.reactions[0]?.type || null,
             isMine: p.authorId === userId,
-            // 🚨 MAP ORIGINAL POST
             originalPost: p.originalPost ? {
                 id: p.originalPost.id,
                 content: p.originalPost.content,
-                imageUrls: p.originalPost.imageUrls ? p.originalPost.imageUrls.split(",") : [],
+                imageUrls: parseImages(p.originalPost.imageUrls), // 👈 Use the safe parser
                 createdAt: p.originalPost.createdAt,
                 author: p.originalPost.author,
             } : null,
-            recentReplies: p.replies.map(function (r) {
+            recentReplies: p.replies.map(function (r: any) {
                 return { id: r.id, content: r.content, author: r.anonymous ? { name: "Anonymous" } : r.author };
             }),
         };
@@ -104,7 +114,6 @@ export async function POST(request: NextRequest) {
     var userId: string = userIdOrNull;
 
     var body = await request.json();
-    // 🚨 ADD originalPostId
     var { content, imageUrls, anonymous, circleId, originalPostId } = body;
 
     if ((!content || content.trim().length === 0) && (!imageUrls || imageUrls.length === 0) && !originalPostId) {
@@ -115,11 +124,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Post too long" }, { status: 400 });
     }
 
-    var imageUrlsString = "";
+    var imageUrlsString = "[]";
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
-        imageUrlsString = imageUrls.join(",");
-    } else if (typeof imageUrls === "string" && imageUrls !== "[]") {
-        imageUrlsString = imageUrls;
+        imageUrlsString = JSON.stringify(imageUrls); // 👈 Store as JSON array string
     }
 
     var post = await prisma.feedPost.create({
@@ -129,7 +136,7 @@ export async function POST(request: NextRequest) {
             anonymous: anonymous || false,
             circleId: circleId || null,
             authorId: userId,
-            originalPostId: originalPostId || null, // 🚨 SAVE originalPostId
+            originalPostId: originalPostId || null,
         },
     });
 
