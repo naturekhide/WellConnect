@@ -117,21 +117,10 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var elapsedMs = post.createdAt ? Date.now() - new Date(post.createdAt).getTime() : Infinity;
     var isEditable = post.isMine && elapsedMs < 15 * 60 * 1000;
 
-    // Since authorId is now required, we can safely assume author exists, 
-    // but we keep the optional chaining for safety.
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
-    // 🚨 Safely parse images whether they come as an array or a JSON string
-    var parsedImages = post.imageUrls;
-    if (typeof parsedImages === "string") {
-        try {
-            parsedImages = JSON.parse(parsedImages);
-        } catch (e) {
-            parsedImages = [];
-        }
-    }
 
-    // 🚨 Safely parse images whether they come as an array or a JSON string
+    // 🚨 1. Safely parse images whether they come as an array or a JSON string
     var parsedImages: any = post.imageUrls;
     if (typeof parsedImages === "string") {
         try {
@@ -141,13 +130,23 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         }
     }
 
-    // 🚨 Filter out nulls, empties, and invalid strings
+    // 🚨 2. Filter out nulls, empties, and invalid strings
     var safeImages = Array.isArray(parsedImages)
         ? parsedImages.filter(function (url: string) {
             return url && typeof url === "string" && url.trim().length > 0 && (url.startsWith("http") || url.startsWith("/"));
         })
         : [];
 
+    // 🚨 3. Clean the text to remove any broken HTML image tags pasted by users
+    var cleanContent = function (text: string) {
+        if (!text) return "";
+        return text.replace(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi, function (match, src) {
+            if (!src || src.trim() === "" || src === "null" || src === "undefined") {
+                return "";
+            }
+            return match;
+        });
+    };
 
     return (
         <div
@@ -221,7 +220,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                         <>
                             {editedContent && (
                                 <p style={{ fontSize: 15, lineHeight: 1.4, color: C.textPrimary, margin: "0 0 " + S.sm + "px 0" }}>
-                                    {editedContent}
+                                    {cleanContent(editedContent)}
                                 </p>
                             )}
 
@@ -238,7 +237,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                             <span>Deleted User</span>
                                         )}
                                     </div>
-                                    <div style={{ fontSize: 14, color: C.textPrimary }}>{post.originalPost.content}</div>
+                                    <div style={{ fontSize: 14, color: C.textPrimary }}>{cleanContent(post.originalPost.content)}</div>
                                 </div>
                             )}
 
