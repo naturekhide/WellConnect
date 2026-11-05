@@ -123,18 +123,13 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     // 🚨 1. Safe Image Parser (For Main Post)
     var parsedImages: any = post.imageUrls;
     if (typeof parsedImages === "string") {
-        try {
-            parsedImages = JSON.parse(parsedImages);
-        } catch (e) {
-            // If it fails to parse, it might just be a single URL string
-            parsedImages = [parsedImages];
-        }
+        try { parsedImages = JSON.parse(parsedImages); } catch (e) { parsedImages = [parsedImages]; }
     }
 
-    // 🚨 2. Filter out only null, empty strings, or non-strings
+    // 🚨 2. Very permissive filter (accepts any string)
     var safeImages = Array.isArray(parsedImages)
         ? parsedImages.filter(function (url: any) {
-            return url && typeof url === "string" && url.trim().length > 0;
+            return typeof url === "string" && url.length > 5;
         })
         : [];
 
@@ -145,11 +140,11 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     }
     var safeOrigImages = Array.isArray(parsedOrigImages)
         ? parsedOrigImages.filter(function (url: any) {
-            return url && typeof url === "string" && url.trim().length > 0;
+            return typeof url === "string" && url.length > 5;
         })
         : [];
 
-    // 🚨 3. Clean Text
+    // 🚨 4. Clean Text
     var cleanContent = function (text: string) {
         if (!text) return "";
         return text.replace(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi, function (match, src) {
@@ -257,7 +252,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                                     <img
                                                         key={i}
                                                         src={url}
-                                                        onError={function (e: any) { e.target.style.display = 'none'; }}
+                                                        onError={function (e: any) {
+                                                            console.log("❌ Repost image failed:", url);
+                                                        }}
                                                         style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: R.md, marginBottom: 4 }}
                                                     />
                                                 );
@@ -275,7 +272,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                             <img
                                                 key={i}
                                                 src={url}
-                                                onError={function (e: any) { e.target.style.display = 'none'; }}
+                                                onError={function (e: any) {
+                                                    console.log("❌ Main image failed:", url);
+                                                }}
                                                 style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }}
                                             />
                                         );
