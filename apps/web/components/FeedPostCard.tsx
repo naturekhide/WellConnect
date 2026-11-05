@@ -148,6 +148,7 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
             return url && typeof url === "string" && url.trim().length > 0;
         })
         : [];
+
     // 🚨 3. Clean Text
     var cleanContent = function (text: string) {
         if (!text) return "";

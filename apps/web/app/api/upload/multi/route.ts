@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
             const buffer = Buffer.from(arrayBuffer);
 
             var fileName = file.name || "upload.png";
-            
+
             // 👇 Bulletproof type detection
             var contentType = file.type;
             if (!contentType || contentType === "application/octet-stream") {

@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Filter out any conversations that have no messages left after deletes
-    var validConversations = conversations.filter(function(c) { return c.lastMessage !== null; });
+    var validConversations = conversations.filter(function (c) { return c.lastMessage !== null; });
 
     validConversations.sort(function (a, b) {
         var aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;

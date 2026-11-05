@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
     try {
         const response = await fetch(url);
         const blob = await response.blob();
-        
+
         // 🚨 Force the browser to download it
         return new NextResponse(blob, {
             headers: {

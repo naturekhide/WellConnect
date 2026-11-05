@@ -32,12 +32,12 @@ export async function GET(request: NextRequest) {
             prisma.goal.findMany({ where: { userId } }),
             prisma.insight.findMany({ where: { userId } }),
             prisma.achievement.findMany({ where: { userId } }),
-            prisma.feedPost.findMany({ 
-                where: { authorId: userId }, 
-                include: { reactions: true, replies: true } 
+            prisma.feedPost.findMany({
+                where: { authorId: userId },
+                include: { reactions: true, replies: true }
             }),
             prisma.feedReply.findMany({ where: { authorId: userId } }),
-            prisma.circleMember.findMany({ 
+            prisma.circleMember.findMany({
                 where: { userId },
                 include: { circle: { select: { name: true } } }
             })

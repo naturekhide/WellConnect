@@ -54,10 +54,10 @@ export default function YouScreen() {
         try {
             var token = getAuthToken();
             var fileUri = FileSystem.documentDirectory + "wellconnect-report.pdf";
-            
+
             // 👇 Passed the token in the headers
             var res = await FileSystem.downloadAsync(
-                `${API_URL}/api/users/export-pdf`, 
+                `${API_URL}/api/users/export-pdf`,
                 fileUri,
                 {
                     headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -80,10 +80,10 @@ export default function YouScreen() {
         try {
             var token = getAuthToken();
             var fileUri = FileSystem.documentDirectory + "wellconnect-data.json";
-            
+
             // 👇 Passed the token in the headers
             var res = await FileSystem.downloadAsync(
-                `${API_URL}/api/users/export`, 
+                `${API_URL}/api/users/export`,
                 fileUri,
                 {
                     headers: token ? { Authorization: `Bearer ${token}` } : {}

@@ -140,7 +140,7 @@ export default function ChatScreen() {
     var otherId = params.userId as string;
 
     var [messages, setMessages] = useState<any[]>([]);
-    var messagesRef = useRef<any[]>([]); // 👈 1. UseRef to track latest messages
+    var messagesRef = useRef<any[]>([]);
 
     var [loading, setLoading] = useState(true);
     var [text, setText] = useState("");
@@ -157,7 +157,6 @@ export default function ChatScreen() {
 
     useEffect(function () {
         loadInitial();
-        // 👈 2. Poll faster (1.5 seconds)
         var interval = setInterval(poll, 1500);
         return function () { clearInterval(interval); };
     }, [otherId]);
@@ -170,21 +169,29 @@ export default function ChatScreen() {
         try {
             var results = await Promise.all([getDMMessages(otherId), getUserProfile(otherId)]);
             setMessages(results[0].messages || []);
-            messagesRef.current = results[0].messages || []; // 👈 Update ref
+            messagesRef.current = results[0].messages || [];
             setOther(results[1]);
         } catch (e) { }
         setLoading(false);
     };
 
+    // 🚨 1. FIXED POLLING TO PREVENT DUPLICATES
     var poll = async function () {
         if (!messagesRef.current || !messagesRef.current.length) return;
         var last = messagesRef.current[messagesRef.current.length - 1].createdAt;
+
         try {
             var data = await getDMMessages(otherId, last);
             if (data.messages && data.messages.length > 0) {
-                var newMsgs = messagesRef.current.concat(data.messages);
-                setMessages(newMsgs);
-                messagesRef.current = newMsgs; // 👈 Update ref
+                // Filter out messages we already have locally
+                var existingIds = new Set(messagesRef.current.map((m: any) => m.id));
+                var newMessages = data.messages.filter((m: any) => !existingIds.has(m.id));
+
+                if (newMessages.length > 0) {
+                    var updatedMsgs = messagesRef.current.concat(newMessages);
+                    setMessages(updatedMsgs);
+                    messagesRef.current = updatedMsgs;
+                }
             }
         } catch (e) { }
     };
@@ -204,8 +211,8 @@ export default function ChatScreen() {
 
             if (editingMessage) {
                 await editDM(otherId, editingMessage.id, text.trim());
-                var updatedMsgs = messagesRef.current.map(function (m) { 
-                    return m.id === editingMessage.id ? { ...m, content: text.trim() } : m; 
+                var updatedMsgs = messagesRef.current.map(function (m) {
+                    return m.id === editingMessage.id ? { ...m, content: text.trim() } : m;
                 });
                 setMessages(updatedMsgs);
                 messagesRef.current = updatedMsgs;
@@ -288,7 +295,7 @@ export default function ChatScreen() {
                 </TouchableOpacity>
 
                 {other && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={function () { router.push("/users/" + otherId); }}
                         style={{ flexDirection: "row", alignItems: "center", flex: 1, justifyContent: "center", marginRight: 40 }}
                     >
@@ -301,7 +308,7 @@ export default function ChatScreen() {
                         </View>
                     </TouchableOpacity>
                 )}
-                
+
                 <TouchableOpacity style={{ padding: spacing.sm }}>
                     <Ionicons name="ellipsis-vertical" size={24} color="#fff" />
                 </TouchableOpacity>

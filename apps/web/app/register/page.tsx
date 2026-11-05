@@ -45,7 +45,7 @@ export default function RegisterPage() {
     return (
         <main style={{ background: C.background, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: S.lg }}>
             <div style={{ width: "100%", maxWidth: 400 }}>
-                
+
                 {/* Header */}
                 <div style={{ textAlign: "center", marginBottom: S.xl }}>
                     <h1 style={{ fontSize: 24, fontWeight: 700, color: C.textPrimary, margin: "0 0 " + S.xs + "px 0" }}>

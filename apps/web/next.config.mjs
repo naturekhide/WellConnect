@@ -3,7 +3,7 @@
 const nextConfig = {
     typescript: { ignoreBuildErrors: true },
     eslint: { ignoreDuringBuilds: true },
-    
+
     webpack: (config, { isServer }) => {
         if (isServer) {
             // Tell Webpack to treat pdfkit as an external CommonJS module

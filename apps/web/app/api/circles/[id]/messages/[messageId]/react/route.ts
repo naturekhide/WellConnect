@@ -9,7 +9,7 @@ export async function POST(
     try {
         // 1. Dynamic Auth Check
         const userId = await getCurrentUserId(req);
-        
+
         if (!userId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -20,7 +20,7 @@ export async function POST(
         // 2. Check for existing reaction using the CIRCLE unique constraint
         const existing = await prisma.messageReaction.findUnique({
             where: {
-                circleMessageId_userId: { 
+                circleMessageId_userId: {
                     circleMessageId,
                     userId
                 }
