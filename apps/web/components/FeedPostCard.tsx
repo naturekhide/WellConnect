@@ -123,25 +123,31 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     // 🚨 1. Safe Image Parser (For Main Post)
     var parsedImages: any = post.imageUrls;
     if (typeof parsedImages === "string") {
-        try { parsedImages = JSON.parse(parsedImages); } catch (e) { parsedImages = []; }
+        try {
+            parsedImages = JSON.parse(parsedImages);
+        } catch (e) {
+            // If it fails to parse, it might just be a single URL string
+            parsedImages = [parsedImages];
+        }
     }
+
+    // 🚨 2. Filter out only null, empty strings, or non-strings
     var safeImages = Array.isArray(parsedImages)
-        ? parsedImages.filter(function (url: string) {
-            return url && typeof url === "string" && url.trim().length > 0 && (url.startsWith("http") || url.startsWith("/"));
+        ? parsedImages.filter(function (url: any) {
+            return url && typeof url === "string" && url.trim().length > 0;
         })
         : [];
 
-    // 🚨 2. Safe Image Parser (For Repost)
+    // 🚨 3. Safe Image Parser (For Repost)
     var parsedOrigImages: any = post.originalPost?.imageUrls;
     if (typeof parsedOrigImages === "string") {
-        try { parsedOrigImages = JSON.parse(parsedOrigImages); } catch (e) { parsedOrigImages = []; }
+        try { parsedOrigImages = JSON.parse(parsedOrigImages); } catch (e) { parsedOrigImages = [parsedOrigImages]; }
     }
     var safeOrigImages = Array.isArray(parsedOrigImages)
-        ? parsedOrigImages.filter(function (url: string) {
-            return url && typeof url === "string" && url.trim().length > 0 && (url.startsWith("http") || url.startsWith("/"));
+        ? parsedOrigImages.filter(function (url: any) {
+            return url && typeof url === "string" && url.trim().length > 0;
         })
         : [];
-
     // 🚨 3. Clean Text
     var cleanContent = function (text: string) {
         if (!text) return "";
