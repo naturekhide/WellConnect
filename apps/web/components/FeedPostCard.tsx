@@ -247,14 +247,18 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                     {/* Repost Images */}
                                     {safeOrigImages.length > 0 && (
                                         <div style={{ marginTop: S.sm }}>
-                                            {safeOrigImages.map(function (url: string, i: number) {
-                                                var absoluteUrl = url.startsWith("http") ? url : `https://${url}`;
+                                            {safeOrigImages.map(function (rawUrl: string, i: number) {
+                                                // 🚨 BRUTE FORCE CLEAN
+                                                var cleanUrl = rawUrl.replace(/[\[\]"\\]/g, "").split(",")[0].trim();
+                                                if (!cleanUrl.startsWith("http")) cleanUrl = "https://" + cleanUrl;
+
                                                 return (
                                                     <img
                                                         key={i}
-                                                        src={absoluteUrl}
+                                                        src={cleanUrl}
                                                         onError={function (e: any) {
-                                                            console.log("❌ Repost image failed:", absoluteUrl);
+                                                            console.log("❌ Repost image failed:", cleanUrl);
+                                                            e.target.style.display = 'none';
                                                         }}
                                                         style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: R.md, marginBottom: 4 }}
                                                     />
@@ -268,14 +272,18 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                             {/* Main Post Images */}
                             {safeImages.length > 0 && (
                                 <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
-                                    {safeImages.map(function (url: string, i: number) {
-                                        var absoluteUrl = url.startsWith("http") ? url : `https://${url}`;
+                                    {safeImages.map(function (rawUrl: string, i: number) {
+                                        // 🚨 BRUTE FORCE CLEAN
+                                        var cleanUrl = rawUrl.replace(/[\[\]"\\]/g, "").split(",")[0].trim();
+                                        if (!cleanUrl.startsWith("http")) cleanUrl = "https://" + cleanUrl;
+
                                         return (
                                             <img
                                                 key={i}
-                                                src={absoluteUrl}
+                                                src={cleanUrl}
                                                 onError={function (e: any) {
-                                                    console.log("❌ Main image failed:", absoluteUrl);
+                                                    console.log("❌ Main image failed:", cleanUrl);
+                                                    e.target.style.display = 'none';
                                                 }}
                                                 style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }}
                                             />
