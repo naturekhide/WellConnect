@@ -131,6 +131,16 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         }
     }
 
+    // 🚨 Safely parse images whether they come as an array or a JSON string
+    var parsedImages: any = post.imageUrls;
+    if (typeof parsedImages === "string") {
+        try {
+            parsedImages = JSON.parse(parsedImages);
+        } catch (e) {
+            parsedImages = [];
+        }
+    }
+
     // 🚨 Filter out nulls, empties, and invalid strings
     var safeImages = Array.isArray(parsedImages)
         ? parsedImages.filter(function (url: string) {
