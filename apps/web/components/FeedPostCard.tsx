@@ -248,9 +248,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                     {safeOrigImages.length > 0 && (
                                         <div style={{ marginTop: S.sm }}>
                                             {safeOrigImages.map(function (rawUrl: string, i: number) {
-                                                // 🚨 BRUTE FORCE CLEAN
-                                                var cleanUrl = rawUrl.replace(/[\[\]"\\]/g, "").split(",")[0].trim();
-                                                if (!cleanUrl.startsWith("http")) cleanUrl = "https://" + cleanUrl;
+                                                // 🚨 NUCLEAR REGEX OPTION
+                                                var match = rawUrl.match(/https?:\/\/[^"\]\s]+/);
+                                                var cleanUrl = match ? match[0] : rawUrl;
 
                                                 return (
                                                     <img
@@ -273,9 +273,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                             {safeImages.length > 0 && (
                                 <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                                     {safeImages.map(function (rawUrl: string, i: number) {
-                                        // 🚨 BRUTE FORCE CLEAN
-                                        var cleanUrl = rawUrl.replace(/[\[\]"\\]/g, "").split(",")[0].trim();
-                                        if (!cleanUrl.startsWith("http")) cleanUrl = "https://" + cleanUrl;
+                                        // 🚨 NUCLEAR REGEX OPTION
+                                        var match = rawUrl.match(/https?:\/\/[^"\]\s]+/);
+                                        var cleanUrl = match ? match[0] : rawUrl;
 
                                         return (
                                             <img
