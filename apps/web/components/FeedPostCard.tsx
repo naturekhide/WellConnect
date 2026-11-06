@@ -12,23 +12,31 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-// 🚨 Smart Image Loader with Visual Error State
+// 🚨 Smart Image Loader (Extracts ONLY the URL and bypasses CORS)
 function SafeImage({ url, style }: { url: string, style: any }) {
     const [src, setSrc] = useState<string | null>(null);
     const [error, setError] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
-        const cleanUrl = url.replace(/[\[\]"\\]/g, "").trim();
-        const finalUrl = cleanUrl.startsWith("http") ? cleanUrl : `https://${cleanUrl}`;
 
-        fetch(finalUrl)
+        // 1. Extract ONLY the http... part, ignoring "DEBUG URL:", brackets, and quotes
+        const match = (url || "").match(/https?:\/\/[^"\]\s]+/);
+        const cleanUrl = match ? match[0] : null;
+
+        if (!cleanUrl) {
+            if (isMounted) setError(true);
+            return;
+        }
+
+        // 2. Fetch as a blob to bypass CORS
+        fetch(cleanUrl)
             .then(res => res.blob())
             .then(blob => {
                 if (isMounted) setSrc(URL.createObjectURL(blob));
             })
             .catch(err => {
-                console.error("❌ Failed to load image:", finalUrl);
+                console.error("❌ Failed to load image:", cleanUrl);
                 if (isMounted) setError(true);
             });
 
@@ -207,13 +215,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                 position: "relative",
             }}
         >
-            {/* 🚨 ONSCREEN DEBUGGER FOR IMAGE URLS */}
-            {safeImages.length > 0 && (
-                <div style={{ background: "#000", color: "#0f0", fontSize: 10, padding: 4, marginBottom: 4, borderRadius: 4, zIndex: 999 }}>
-                    DEBUG URL: {safeImages[0]}
-                </div>
-            )}
-
             <div style={{ display: "flex", gap: S.md }}>
                 <div style={{ width: 40, flexShrink: 0 }}>
                     <div

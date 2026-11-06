@@ -1,6 +1,5 @@
 import { Platform } from "react-native";
 import { fetch as expoFetch } from "expo/fetch";
-import { Blob } from "expo-blob"; // 👈 Import expo-blob
 import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -156,26 +155,13 @@ export async function uploadImages(uris: string[]) {
         var rawName = rawUri.split("/").pop() || ("file_" + i);
 
         try {
-            // 1. Fetch the file as an ArrayBuffer (Much faster than .blob())
+            // 1. Use standard fetch to read the file
             var response = await fetch(rawUri);
-            var arrayBuffer = await response.arrayBuffer();
 
-            // 2. Detect the MIME type
-            var contentType = "image/jpeg"; // Default
-            var lowerName = rawName.toLowerCase();
-            if (lowerName.endsWith(".png")) contentType = "image/png";
-            else if (lowerName.endsWith(".gif")) contentType = "image/gif";
-            else if (lowerName.endsWith(".webp")) contentType = "image/webp";
-            else if (lowerName.endsWith(".webm")) contentType = "audio/webm";
-            else if (lowerName.endsWith(".m4a")) contentType = "audio/mp4";
-            else if (lowerName.endsWith(".mp3")) contentType = "audio/mpeg";
-            else if (lowerName.endsWith(".pdf")) contentType = "application/pdf";
-            else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) contentType = "application/msword";
+            // 2. Use response.blob() (works natively without crashing)
+            var blob = await response.blob();
 
-            // 3. Create a fast Blob using expo-blob
-            var blob = new Blob([arrayBuffer], { type: contentType });
-
-            formData.append("files", blob as any, rawName); 
+            formData.append("files", blob, rawName);
         } catch (err) {
             console.error("File read error:", err);
             throw new Error("Failed to process file");
