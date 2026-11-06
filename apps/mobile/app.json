@@ -13,7 +13,7 @@
       "bundleIdentifier": "app.wellconnect"
     },
     "android": {
-      "softwareKeyboardLayoutMode":  "pan",
+      "softwareKeyboardLayoutMode": "pan",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/wellconnect.png",
@@ -33,7 +33,8 @@
       "expo-router",
       "expo-notifications",
       "expo-sharing",
-      "expo-audio"
+      "expo-audio",
+      "expo-splash-screen"
     ],
     "extra": {
       "router": {},
