@@ -30,7 +30,6 @@ export default function RegisterPage() {
             });
 
             if (r.ok) {
-                // Redirect to login or directly to feed if auto-logged in
                 router.push("/login?registered=true");
             } else {
                 var data = await r.json();
@@ -46,8 +45,13 @@ export default function RegisterPage() {
         <main style={{ background: C.background, minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: S.lg }}>
             <div style={{ width: "100%", maxWidth: 400 }}>
 
-                {/* Header */}
+                {/* Header with Logo */}
                 <div style={{ textAlign: "center", marginBottom: S.xl }}>
+                    <img
+                        src="/wellconnect.png"
+                        alt="WellConnect Logo"
+                        style={{ width: 64, height: 64, objectFit: "contain", marginBottom: S.sm, borderRadius: 16 }}
+                    />
                     <h1 style={{ fontSize: 24, fontWeight: 700, color: C.textPrimary, margin: "0 0 " + S.xs + "px 0" }}>
                         Create an account
                     </h1>

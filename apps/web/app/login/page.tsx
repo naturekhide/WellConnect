@@ -61,10 +61,16 @@ function LoginContent() {
     return (
         <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: S.lg, background: C.background }}>
             <div style={{ width: "100%", maxWidth: 380 }}>
+
+                {/* Header with Logo */}
                 <div style={{ textAlign: "center", marginBottom: S.xxl }}>
-                    <span style={{ fontSize: 48 }}>🌱</span>
-                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: S.sm + "px 0 0 0" }}>Welcome back</h1>
-                    <p style={{ color: C.textSecondary, fontSize: 13, margin: "2px 0 0 0" }}>Sign in to WellConnect</p>
+                    <img
+                        src="/wellconnect.png"
+                        alt="WellConnect Logo"
+                        style={{ width: 64, height: 64, objectFit: "contain", marginBottom: S.sm, borderRadius: 16 }}
+                    />
+                    <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>Welcome back</h1>
+                    <p style={{ color: C.textSecondary, fontSize: 13, margin: "4px 0 0 0" }}>Sign in to WellConnect</p>
                 </div>
 
                 <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: S.md }}>
