@@ -1,5 +1,6 @@
 import { Platform } from "react-native";
 import { fetch as expoFetch } from "expo/fetch";
+import { Blob } from "expo-blob"; // 👈 Import expo-blob
 import { getItem, setItem, removeItem } from "../storage";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -146,6 +147,7 @@ export async function replyToPost(id: string, content: string, anonymous: boolea
     return apiFetch("/api/feed/" + id + "/reply", { method: "POST", body: JSON.stringify({ content, anonymous, parentId: parentId || null }) });
 }
 
+// ━━━━━ UPLOAD ━━━━━
 export async function uploadImages(uris: string[]) {
     var formData = new FormData();
 
@@ -154,10 +156,26 @@ export async function uploadImages(uris: string[]) {
         var rawName = rawUri.split("/").pop() || ("file_" + i);
 
         try {
-            const response = await expoFetch(rawUri);
-            const blob = await response.blob();
+            // 1. Fetch the file as an ArrayBuffer (Much faster than .blob())
+            var response = await fetch(rawUri);
+            var arrayBuffer = await response.arrayBuffer();
 
-            formData.append("files", blob, rawName);
+            // 2. Detect the MIME type
+            var contentType = "image/jpeg"; // Default
+            var lowerName = rawName.toLowerCase();
+            if (lowerName.endsWith(".png")) contentType = "image/png";
+            else if (lowerName.endsWith(".gif")) contentType = "image/gif";
+            else if (lowerName.endsWith(".webp")) contentType = "image/webp";
+            else if (lowerName.endsWith(".webm")) contentType = "audio/webm";
+            else if (lowerName.endsWith(".m4a")) contentType = "audio/mp4";
+            else if (lowerName.endsWith(".mp3")) contentType = "audio/mpeg";
+            else if (lowerName.endsWith(".pdf")) contentType = "application/pdf";
+            else if (lowerName.endsWith(".doc") || lowerName.endsWith(".docx")) contentType = "application/msword";
+
+            // 3. Create a fast Blob using expo-blob
+            var blob = new Blob([arrayBuffer], { type: contentType });
+
+            formData.append("files", blob as any, rawName); 
         } catch (err) {
             console.error("File read error:", err);
             throw new Error("Failed to process file");
@@ -229,7 +247,6 @@ export async function deleteDM(userId: string, messageId: string) {
     return apiFetch("/api/dm/" + userId + "/delete?messageId=" + messageId, { method: "DELETE" });
 }
 
-// 🚨 NEW: React to DM Message
 export async function reactToMessage(userId: string, messageId: string, emoji: string) {
     return apiFetch("/api/dm/" + userId + "/react", {
         method: "POST",

@@ -12,6 +12,48 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
+// 🚨 Smart Image Loader with Visual Error State
+function SafeImage({ url, style }: { url: string, style: any }) {
+    const [src, setSrc] = useState<string | null>(null);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+        let isMounted = true;
+        const cleanUrl = url.replace(/[\[\]"\\]/g, "").trim();
+        const finalUrl = cleanUrl.startsWith("http") ? cleanUrl : `https://${cleanUrl}`;
+
+        fetch(finalUrl)
+            .then(res => res.blob())
+            .then(blob => {
+                if (isMounted) setSrc(URL.createObjectURL(blob));
+            })
+            .catch(err => {
+                console.error("❌ Failed to load image:", finalUrl);
+                if (isMounted) setError(true);
+            });
+
+        return () => { isMounted = false; };
+    }, [url]);
+
+    if (error) {
+        return (
+            <div style={{ ...style, backgroundColor: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#fff", fontSize: 12 }}>Failed to load image</span>
+            </div>
+        );
+    }
+
+    if (!src) {
+        return (
+            <div style={{ ...style, backgroundColor: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#64748b", fontSize: 12 }}>Loading image...</span>
+            </div>
+        );
+    }
+
+    return <img src={src} style={style} alt="Post attachment" />;
+}
+
 export default function FeedPostCard({ post, onReactionChange, onPress, onDelete, onUpdated }: any) {
     var C = useColors();
     var router = useRouter();
@@ -165,6 +207,13 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                 position: "relative",
             }}
         >
+            {/* 🚨 ONSCREEN DEBUGGER FOR IMAGE URLS */}
+            {safeImages.length > 0 && (
+                <div style={{ background: "#000", color: "#0f0", fontSize: 10, padding: 4, marginBottom: 4, borderRadius: 4, zIndex: 999 }}>
+                    DEBUG URL: {safeImages[0]}
+                </div>
+            )}
+
             <div style={{ display: "flex", gap: S.md }}>
                 <div style={{ width: 40, flexShrink: 0 }}>
                     <div
@@ -248,18 +297,10 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                     {safeOrigImages.length > 0 && (
                                         <div style={{ marginTop: S.sm }}>
                                             {safeOrigImages.map(function (rawUrl: string, i: number) {
-                                                // 🚨 NUCLEAR REGEX OPTION
-                                                var match = rawUrl.match(/https?:\/\/[^"\]\s]+/);
-                                                var cleanUrl = match ? match[0] : rawUrl;
-
                                                 return (
-                                                    <img
+                                                    <SafeImage
                                                         key={i}
-                                                        src={cleanUrl}
-                                                        onError={function (e: any) {
-                                                            console.log("❌ Repost image failed:", cleanUrl);
-                                                            e.target.style.display = 'none';
-                                                        }}
+                                                        url={rawUrl}
                                                         style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: R.md, marginBottom: 4 }}
                                                     />
                                                 );
@@ -273,18 +314,10 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                             {safeImages.length > 0 && (
                                 <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                                     {safeImages.map(function (rawUrl: string, i: number) {
-                                        // 🚨 NUCLEAR REGEX OPTION
-                                        var match = rawUrl.match(/https?:\/\/[^"\]\s]+/);
-                                        var cleanUrl = match ? match[0] : rawUrl;
-
                                         return (
-                                            <img
+                                            <SafeImage
                                                 key={i}
-                                                src={cleanUrl}
-                                                onError={function (e: any) {
-                                                    console.log("❌ Main image failed:", cleanUrl);
-                                                    e.target.style.display = 'none';
-                                                }}
+                                                url={rawUrl}
                                                 style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }}
                                             />
                                         );
