@@ -12,17 +12,15 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-// 🚨 Simplified SafeImage (Uses direct proxy URL, no blob conversion)
 function SafeImage({ url, style }: { url: string; style: any }) {
     const [error, setError] = useState(false);
 
-    // If the URL is missing or invalid, don't render anything
     if (!url || !url.startsWith("https://")) {
         return null;
     }
 
-    // Route it through the proxy API
-    const proxyUrl = `/api/image?url=${encodeURIComponent(url)}`;
+    // 👇 Append a timestamp to force cache-busting
+    const proxyUrl = `/api/image?url=${encodeURIComponent(url)}&t=${Date.now()}`;
 
     if (error) {
         return (
@@ -158,20 +156,17 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var displayName = post.anonymous ? "Anonymous" : post.author?.name || "User";
     var initials = post.anonymous ? "🎭" : post.author?.name?.charAt(0) || "U";
 
-    // 🚨 1. Safe Image Parser (For Main Post)
     var parsedImages: any = post.imageUrls;
     if (typeof parsedImages === "string") {
         try { parsedImages = JSON.parse(parsedImages); } catch (e) { parsedImages = [parsedImages]; }
     }
 
-    // 🚨 2. Very permissive filter
     var safeImages = Array.isArray(parsedImages)
         ? parsedImages.filter(function (url: any) {
             return typeof url === "string" && url.length > 5;
         })
         : [];
 
-    // 🚨 3. Safe Image Parser (For Repost)
     var parsedOrigImages: any = post.originalPost?.imageUrls;
     if (typeof parsedOrigImages === "string") {
         try { parsedOrigImages = JSON.parse(parsedOrigImages); } catch (e) { parsedOrigImages = [parsedOrigImages]; }
@@ -182,7 +177,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
         })
         : [];
 
-    // 🚨 4. Clean Text
     var cleanContent = function (text: string) {
         if (!text) return "";
         return text.replace(/<img[^>]*src=["']([^"']*)["'][^>]*>/gi, function (match, src) {
@@ -267,7 +261,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                 </p>
                             )}
 
-                            {/* 🚨 REPOST UI WITH SAFE IMAGES */}
                             {post.originalPost && (
                                 <div style={{ padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, marginTop: S.sm, backgroundColor: "rgba(255,255,255,0.02)" }}>
                                     <div style={{ fontSize: 12, fontWeight: 600, color: C.textSecondary, marginBottom: 4 }}>
@@ -282,7 +275,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                     </div>
                                     <div style={{ fontSize: 14, color: C.textPrimary }}>{cleanContent(post.originalPost.content)}</div>
 
-                                    {/* Repost Images */}
                                     {safeOrigImages.length > 0 && (
                                         <div style={{ marginTop: S.sm }}>
                                             {safeOrigImages.map(function (rawUrl: string, i: number) {
@@ -299,7 +291,6 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                 </div>
                             )}
 
-                            {/* Main Post Images */}
                             {safeImages.length > 0 && (
                                 <div style={{ marginTop: S.sm, marginBottom: S.sm }}>
                                     {safeImages.map(function (rawUrl: string, i: number) {
