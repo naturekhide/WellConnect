@@ -8,43 +8,39 @@ export async function GET(request: NextRequest) {
     var url = request.nextUrl.searchParams.get("url");
     if (!url) return new NextResponse("Missing URL", { status: 400 });
 
-    console.log("🔍 [PROXY] Received request for URL:", url);
-    console.log("🔑 [PROXY] BLOB_READ_WRITE_TOKEN is:", process.env.BLOB_READ_WRITE_TOKEN ? "SET" : "MISSING");
-
     try {
-        // 1. Clean the URL just in case
+        // 1. Clean the URL
         const cleanUrl = url.replace(/[\[\]"\\]/g, "").trim();
 
-        console.log("🔄 [PROXY] Calling head()...");
-        var blobInfo = await head(cleanUrl, {
+        // 2. Extract ONLY the pathname (e.g., /filename.jpeg)
+        const urlObj = new URL(cleanUrl);
+        const pathname = urlObj.pathname;
+
+        // 3. Call head() with the pathname
+        var blobInfo = await head(pathname, {
             token: process.env.BLOB_READ_WRITE_TOKEN,
         });
-        console.log("✅ [PROXY] head() success! Download URL:", blobInfo.downloadUrl);
 
-        console.log("🔄 [PROXY] Fetching image from downloadUrl...");
+        if (!blobInfo) {
+            return new NextResponse("Image not found", { status: 404 });
+        }
+
+        // 4. Fetch the image
         var res = await fetch(blobInfo.downloadUrl);
-        console.log("✅ [PROXY] Fetch status:", res.status);
 
         if (!res.ok) {
-            console.error("❌ [PROXY] Fetch failed with status:", res.status);
-            return new NextResponse("Failed to fetch image", {
-                status: res.status,
-                headers: { "Cache-Control": "no-store" }
-            });
+            return new NextResponse("Failed to fetch image", { status: res.status });
         }
 
         var arrayBuffer = await res.arrayBuffer();
-        console.log("✅ [PROXY] ArrayBuffer size:", arrayBuffer.byteLength);
-
         return new NextResponse(arrayBuffer, {
             headers: {
                 "Content-Type": blobInfo.contentType || "image/jpeg",
-                // 👇 Disable caching to prevent Vercel from storing errors
                 "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
             },
         });
     } catch (e: any) {
-        console.error("❌ [PROXY] FATAL ERROR:", e.message);
+        console.error("Image proxy error:", e.message);
         return new NextResponse(`Failed to load image: ${e.message}`, {
             status: 500,
             headers: { "Cache-Control": "no-store" }
