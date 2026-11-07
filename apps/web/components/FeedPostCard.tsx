@@ -12,56 +12,42 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-// 🚨 Smart Image Loader (Routes through API Proxy to bypass CORS)
-function SafeImage({ url, style }: { url: string, style: any }) {
-    const [src, setSrc] = useState<string | null>(null);
+// 🚨 Simplified SafeImage (Uses direct proxy URL, no blob conversion)
+function SafeImage({ url, style }: { url: string; style: any }) {
     const [error, setError] = useState(false);
 
-    useEffect(() => {
-        let isMounted = true;
+    // If the URL is missing or invalid, don't render anything
+    if (!url || !url.startsWith("https://")) {
+        return null;
+    }
 
-        // 1. Extract ONLY the http... part, ignoring brackets and quotes
-        const match = (url || "").match(/https?:\/\/[^"\]\s]+/);
-        const cleanUrl = match ? match[0] : null;
-
-        if (!cleanUrl) {
-            if (isMounted) setError(true);
-            return;
-        }
-
-        // 2. Route through our proxy API to bypass CORS
-        const proxyUrl = `/api/image?url=${encodeURIComponent(cleanUrl)}`;
-
-        fetch(proxyUrl)
-            .then(res => res.blob())
-            .then(blob => {
-                if (isMounted) setSrc(URL.createObjectURL(blob));
-            })
-            .catch(err => {
-                console.error("❌ Failed to load image:", cleanUrl);
-                if (isMounted) setError(true);
-            });
-
-        return () => { isMounted = false; };
-    }, [url]);
+    // Route it through the proxy API
+    const proxyUrl = `/api/image?url=${encodeURIComponent(url)}`;
 
     if (error) {
         return (
-            <div style={{ ...style, backgroundColor: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#fff", fontSize: 12 }}>Failed to load image</span>
+            <div style={{
+                ...style,
+                backgroundColor: "#ef4444",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+            }}>
+                <span style={{ color: "#fff", fontSize: 12 }}>
+                    Failed to load image
+                </span>
             </div>
         );
     }
 
-    if (!src) {
-        return (
-            <div style={{ ...style, backgroundColor: "#1e293b", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#64748b", fontSize: 12 }}>Loading image...</span>
-            </div>
-        );
-    }
-
-    return <img src={src} style={style} alt="Post attachment" />;
+    return (
+        <img
+            src={proxyUrl}
+            style={style}
+            alt="Post attachment"
+            onError={() => setError(true)}
+        />
+    );
 }
 
 export default function FeedPostCard({ post, onReactionChange, onPress, onDelete, onUpdated }: any) {
