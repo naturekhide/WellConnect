@@ -6,13 +6,8 @@ export async function GET(request: NextRequest) {
     if (!url) return new NextResponse("Missing URL", { status: 400 });
 
     try {
-        // 1. Extract the pathname from the URL
-        var urlObj = new URL(url);
-        var pathname = urlObj.pathname.substring(1);
-
-        // 2. Use head() to get the blob's metadata (this works on all versions)
-        // Passing the pathname is supported, and head() will resolve it correctly
-        var blobInfo = await head(pathname, {
+        // 1. Pass the FULL URL to head(). The SDK will extract the filename automatically.
+        var blobInfo = await head(url, {
             token: process.env.BLOB_READ_WRITE_TOKEN,
         });
 
@@ -20,15 +15,14 @@ export async function GET(request: NextRequest) {
             return new NextResponse("Image not found", { status: 404 });
         }
 
-        // 3. Fetch the actual image data using the downloadUrl from head()
-        // We use the direct fetch here because the blob is public
+        // 2. Fetch the actual image data
         var res = await fetch(blobInfo.downloadUrl);
 
         if (!res.ok) {
             return new NextResponse("Failed to fetch image", { status: res.status });
         }
 
-        // 4. Return the image
+        // 3. Return the image
         var arrayBuffer = await res.arrayBuffer();
         return new NextResponse(arrayBuffer, {
             headers: {
