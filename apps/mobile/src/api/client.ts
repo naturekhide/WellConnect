@@ -150,20 +150,24 @@ export async function replyToPost(id: string, content: string, anonymous: boolea
 export async function uploadImages(uris: string[]) {
     var formData = new FormData();
 
+    console.log("🚨 [UPLOAD] Starting upload with URIs:", uris);
+
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
         var rawName = rawUri.split("/").pop() || ("file_" + i);
 
         try {
+            console.log("🔄 [UPLOAD] Fetching local file:", rawUri);
             // 1. Use standard fetch to read the file
             var response = await fetch(rawUri);
 
             // 2. Use response.blob() (works natively without crashing)
             var blob = await response.blob();
+            console.log("✅ [UPLOAD] Blob created, size:", blob.size);
 
             formData.append("files", blob, rawName);
         } catch (err) {
-            console.error("File read error:", err);
+            console.error("❌ [UPLOAD] File read error:", err);
             throw new Error("Failed to process file");
         }
     }
@@ -171,19 +175,33 @@ export async function uploadImages(uris: string[]) {
     if (!tokenStorage) await loadToken();
     var headers: any = {};
     if (tokenStorage) headers["Authorization"] = "Bearer " + tokenStorage;
+    else console.error("❌ [UPLOAD] No token found!");
 
-    var res = await expoFetch(API_URL + "/api/upload/multi", {
-        method: "POST",
-        headers: headers,
-        body: formData,
-    });
+    console.log("🚀 [UPLOAD] Sending request to Vercel:", API_URL + "/api/upload/multi");
 
-    if (!res.ok) {
-        var error = await res.text();
-        throw new Error(error || "Upload failed");
+    try {
+        var res = await expoFetch(API_URL + "/api/upload/multi", {
+            method: "POST",
+            headers: headers,
+            body: formData,
+        });
+
+        console.log("✅ [UPLOAD] Server response status:", res.status);
+
+        if (!res.ok) {
+            var error = await res.text();
+            console.error("❌ [UPLOAD] Server error:", error);
+            throw new Error(error || "Upload failed");
+        }
+
+        var data = await res.json();
+        console.log("🎉 [UPLOAD] Success! URLs:", data.urls);
+        return data;
+
+    } catch (err: any) {
+        console.error("❌ [UPLOAD] Network error:", err.message);
+        throw err;
     }
-
-    return res.json();
 }
 
 // ━━━━━ Users / Follow ━━━━━

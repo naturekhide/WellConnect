@@ -12,7 +12,7 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-// 🚨 Smart Image Loader (Extracts ONLY the URL and bypasses CORS)
+// 🚨 Smart Image Loader (Routes through API Proxy to bypass CORS)
 function SafeImage({ url, style }: { url: string, style: any }) {
     const [src, setSrc] = useState<string | null>(null);
     const [error, setError] = useState(false);
@@ -20,7 +20,7 @@ function SafeImage({ url, style }: { url: string, style: any }) {
     useEffect(() => {
         let isMounted = true;
 
-        // 1. Extract ONLY the http... part, ignoring "DEBUG URL:", brackets, and quotes
+        // 1. Extract ONLY the http... part, ignoring brackets and quotes
         const match = (url || "").match(/https?:\/\/[^"\]\s]+/);
         const cleanUrl = match ? match[0] : null;
 
@@ -29,8 +29,10 @@ function SafeImage({ url, style }: { url: string, style: any }) {
             return;
         }
 
-        // 2. Fetch as a blob to bypass CORS
-        fetch(cleanUrl)
+        // 2. Route through our proxy API to bypass CORS
+        const proxyUrl = `/api/image?url=${encodeURIComponent(cleanUrl)}`;
+
+        fetch(proxyUrl)
             .then(res => res.blob())
             .then(blob => {
                 if (isMounted) setSrc(URL.createObjectURL(blob));
