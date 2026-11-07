@@ -6,27 +6,33 @@ export async function GET(request: NextRequest) {
     if (!url) return new NextResponse("Missing URL", { status: 400 });
 
     try {
-        // 1. Fetch the image from Vercel Blob with the token
-        var res = await fetch(url, {
-            headers: {
-                // 👇 Pass the Vercel Blob token to authenticate server-side fetches
-                Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-            },
+        // 1. Extract the pathname from the URL
+        var urlObj = new URL(url);
+        var pathname = urlObj.pathname.substring(1);
+
+        // 2. Use head() to get the blob's metadata (this works on all versions)
+        // Passing the pathname is supported, and head() will resolve it correctly
+        var blobInfo = await head(pathname, {
+            token: process.env.BLOB_READ_WRITE_TOKEN,
         });
 
+        if (!blobInfo) {
+            return new NextResponse("Image not found", { status: 404 });
+        }
+
+        // 3. Fetch the actual image data using the downloadUrl from head()
+        // We use the direct fetch here because the blob is public
+        var res = await fetch(blobInfo.downloadUrl);
+
         if (!res.ok) {
-            console.error("Blob fetch failed:", res.status, res.statusText);
             return new NextResponse("Failed to fetch image", { status: res.status });
         }
 
-        // 2. Get the image data
+        // 4. Return the image
         var arrayBuffer = await res.arrayBuffer();
-        var contentType = res.headers.get("content-type") || "image/jpeg";
-
-        // 3. Return the image
         return new NextResponse(arrayBuffer, {
             headers: {
-                "Content-Type": contentType,
+                "Content-Type": blobInfo.contentType || "image/jpeg",
                 "Cache-Control": "public, max-age=31536000, immutable",
             },
         });
