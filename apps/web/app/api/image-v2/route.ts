@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,13 +11,17 @@ export async function GET(request: NextRequest) {
         // 1. Clean the URL
         const cleanUrl = url.replace(/[\[\]"\\]/g, "").trim();
 
-        // 2. Fetch the image directly from Vercel Blob
-        // No head() needed! We just fetch the public URL directly.
-        const res = await fetch(cleanUrl);
+        // 2. Fetch the image with the Vercel Blob token
+        const res = await fetch(cleanUrl, {
+            headers: {
+                // 👇 Pass the token to authenticate the server-side fetch
+                Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+            },
+        });
 
         if (!res.ok) {
             console.error("Failed to fetch blob:", res.status, res.statusText);
-            return new NextResponse("Failed to fetch image", { status: res.status });
+            return new NextResponse(`Failed to fetch image: ${res.status}`, { status: res.status });
         }
 
         // 3. Get the image data
