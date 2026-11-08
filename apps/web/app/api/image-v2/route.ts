@@ -9,18 +9,13 @@ export async function GET(request: NextRequest) {
     if (!url) return new NextResponse("Missing URL", { status: 400 });
 
     try {
-        // 1. Clean the URL
         const cleanUrl = url.replace(/[\[\]"\\]/g, "").trim();
-
-        // 2. Extract ONLY the filename from the URL
-        // Example: "https://...com/a66ac34...jpeg" -> "a66ac34...jpeg"
         const filename = cleanUrl.split("/").pop() || "";
 
         if (!filename) {
             return new NextResponse("Invalid URL", { status: 400 });
         }
 
-        // 3. Call head() with just the filename
         var blobInfo = await head(filename, {
             token: process.env.BLOB_READ_WRITE_TOKEN,
         });
@@ -29,7 +24,6 @@ export async function GET(request: NextRequest) {
             return new NextResponse("Image not found", { status: 404 });
         }
 
-        // 4. Fetch the image using the downloadUrl returned by head()
         var res = await fetch(blobInfo.downloadUrl);
 
         if (!res.ok) {
