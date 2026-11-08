@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server";
+import { head } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,27 +12,31 @@ export async function GET(request: NextRequest) {
         // 1. Clean the URL
         const cleanUrl = url.replace(/[\[\]"\\]/g, "").trim();
 
-        // 2. Fetch the image with the Vercel Blob token
-        const res = await fetch(cleanUrl, {
-            headers: {
-                // 👇 Pass the token to authenticate the server-side fetch
-                Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
-            },
+        // 2. Extract ONLY the pathname (the part after the domain)
+        // Example: "https://...com/a66ac34...jpeg" -> "a66ac34...jpeg"
+        const urlObj = new URL(cleanUrl);
+        const pathname = urlObj.pathname.slice(1); // Remove leading slash
+
+        // 3. Call head() with the pathname
+        var blobInfo = await head(pathname, {
+            token: process.env.BLOB_READ_WRITE_TOKEN,
         });
 
-        if (!res.ok) {
-            console.error("Failed to fetch blob:", res.status, res.statusText);
-            return new NextResponse(`Failed to fetch image: ${res.status}`, { status: res.status });
+        if (!blobInfo) {
+            return new NextResponse("Image not found", { status: 404 });
         }
 
-        // 3. Get the image data
-        const arrayBuffer = await res.arrayBuffer();
-        const contentType = res.headers.get("content-type") || "image/jpeg";
+        // 4. Fetch the image
+        var res = await fetch(blobInfo.downloadUrl);
 
-        // 4. Return the image
+        if (!res.ok) {
+            return new NextResponse("Failed to fetch image", { status: res.status });
+        }
+
+        var arrayBuffer = await res.arrayBuffer();
         return new NextResponse(arrayBuffer, {
             headers: {
-                "Content-Type": contentType,
+                "Content-Type": blobInfo.contentType || "image/jpeg",
                 "Cache-Control": "no-store, no-cache, must-revalidate",
             },
         });
