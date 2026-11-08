@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
             return new NextResponse("Image not found", { status: 404 });
         }
 
-        // 4. Fetch the image
+        // 4. Fetch the image using the downloadUrl returned by head()
         var res = await fetch(blobInfo.downloadUrl);
 
         if (!res.ok) {
