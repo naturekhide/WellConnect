@@ -146,62 +146,48 @@ export async function replyToPost(id: string, content: string, anonymous: boolea
     return apiFetch("/api/feed/" + id + "/reply", { method: "POST", body: JSON.stringify({ content, anonymous, parentId: parentId || null }) });
 }
 
-// ━━━━━ UPLOAD ━━━━━
+// ━━━━━ UPLOAD (The correct way to upload from Expo) ━━━━━
 export async function uploadImages(uris: string[]) {
     var formData = new FormData();
-
-    console.log("🚨 [UPLOAD] Starting upload with URIs:", uris);
 
     for (var i = 0; i < uris.length; i++) {
         var rawUri = uris[i];
         var rawName = rawUri.split("/").pop() || ("file_" + i);
 
-        try {
-            console.log("🔄 [UPLOAD] Fetching local file:", rawUri);
-            // 1. Use standard fetch to read the file
-            var response = await fetch(rawUri);
+        // Determine the type based on the file extension
+        var mimeType = "image/jpeg";
+        var lowerName = rawName.toLowerCase();
+        if (lowerName.endsWith(".png")) mimeType = "image/png";
+        else if (lowerName.endsWith(".webm")) mimeType = "audio/webm";
+        else if (lowerName.endsWith(".m4a")) mimeType = "audio/mp4";
+        else if (lowerName.endsWith(".mp3")) mimeType = "audio/mpeg";
+        else if (lowerName.endsWith(".pdf")) mimeType = "application/pdf";
 
-            // 2. Use response.blob() (works natively without crashing)
-            var blob = await response.blob();
-            console.log("✅ [UPLOAD] Blob created, size:", blob.size);
-
-            formData.append("files", blob, rawName);
-        } catch (err) {
-            console.error("❌ [UPLOAD] File read error:", err);
-            throw new Error("Failed to process file");
-        }
+        // 👇 Append the file using the standard React Native file descriptor
+        formData.append("files", {
+            uri: rawUri,
+            name: rawName,
+            type: mimeType
+        } as any);
     }
 
     if (!tokenStorage) await loadToken();
     var headers: any = {};
     if (tokenStorage) headers["Authorization"] = "Bearer " + tokenStorage;
-    else console.error("❌ [UPLOAD] No token found!");
 
-    console.log("🚀 [UPLOAD] Sending request to Vercel:", API_URL + "/api/upload/multi");
+    // 👇 Use standard fetch, NOT expoFetch, for the upload
+    var res = await fetch(API_URL + "/api/upload/multi", {
+        method: "POST",
+        headers: headers,
+        body: formData,
+    });
 
-    try {
-        var res = await expoFetch(API_URL + "/api/upload/multi", {
-            method: "POST",
-            headers: headers,
-            body: formData,
-        });
-
-        console.log("✅ [UPLOAD] Server response status:", res.status);
-
-        if (!res.ok) {
-            var error = await res.text();
-            console.error("❌ [UPLOAD] Server error:", error);
-            throw new Error(error || "Upload failed");
-        }
-
-        var data = await res.json();
-        console.log("🎉 [UPLOAD] Success! URLs:", data.urls);
-        return data;
-
-    } catch (err: any) {
-        console.error("❌ [UPLOAD] Network error:", err.message);
-        throw err;
+    if (!res.ok) {
+        var error = await res.text();
+        throw new Error(error || "Upload failed");
     }
+
+    return res.json();
 }
 
 // ━━━━━ Users / Follow ━━━━━
