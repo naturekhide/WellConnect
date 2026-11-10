@@ -103,25 +103,9 @@ export default function ConnectPage() {
 
     return (
         <main style={{ background: C.background, minHeight: "100vh" }}>
-            
-            {/* 🚨 ON-SCREEN DEBUGGER START */}
-            <div style={{ background: "#ef4444", color: "white", padding: 16, zIndex: 9999, position: "relative" }}>
-                <h3 style={{ margin: 0, fontSize: 16 }}>Debug: {posts.length} posts loaded</h3>
-                <div style={{ maxHeight: 250, overflowY: "auto", fontSize: 12, marginTop: 8, background: "rgba(0,0,0,0.2)", padding: 8 }}>
-                    {posts.map((p: any) => (
-                        <div key={p.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.4)", padding: "8px 0" }}>
-                            <div><strong>{p.author?.name || "NO AUTHOR"}</strong>: {p.content}</div>
-                            <div style={{ color: "#fca5a5" }}>ID: {p.id}</div>
-                            <div style={{ color: "#fde047" }}>Images: {JSON.stringify(p.imageUrls)}</div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-            {/* 🚨 ON-SCREEN DEBUGGER END */}
-
             <div style={{ maxWidth: 600, margin: "0 auto" }}>
 
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: S.lg, paddingTop: 30, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
                     <div>
                         <h1 style={{ fontSize: 22, fontWeight: 700, color: C.textPrimary, margin: 0 }}>🌍 Connect</h1>
                         <p style={{ color: C.textSecondary, marginTop: 2, fontSize: 13, margin: "2px 0 0 0" }}>Share moments. Support each other.</p>

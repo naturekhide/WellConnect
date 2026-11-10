@@ -19,8 +19,7 @@ function SafeImage({ url, style }: { url: string; style: any }) {
         return null;
     }
 
-    // 👇 Append a timestamp to force cache-busting
-    const proxyUrl = `/api/image?url=${encodeURIComponent(url)}&t=${Date.now()}`;
+    const proxyUrl = `/api/image?url=${encodeURIComponent(url)}`;
 
     if (error) {
         return (
@@ -282,7 +281,15 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                                     <SafeImage
                                                         key={i}
                                                         url={rawUrl}
-                                                        style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: R.md, marginBottom: 4 }}
+                                                        style={{
+                                                            width: "100%",
+                                                            height: "auto",
+                                                            maxHeight: "none",
+                                                            objectFit: "contain",
+                                                            borderRadius: R.md,
+                                                            marginBottom: 4,
+                                                            backgroundColor: C.surfaceAlt
+                                                        }}
                                                     />
                                                 );
                                             })}
@@ -298,7 +305,16 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                             <SafeImage
                                                 key={i}
                                                 url={rawUrl}
-                                                style={{ width: "100%", maxHeight: 500, objectFit: "cover", borderRadius: R.lg, border: "1px solid " + C.border, marginBottom: 4 }}
+                                                style={{
+                                                    width: "100%",
+                                                    height: "auto",
+                                                    maxHeight: "none",
+                                                    objectFit: "contain",
+                                                    borderRadius: R.lg,
+                                                    border: "1px solid " + C.border,
+                                                    marginBottom: 4,
+                                                    backgroundColor: C.surfaceAlt
+                                                }}
                                             />
                                         );
                                     })}

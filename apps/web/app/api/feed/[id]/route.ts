@@ -6,6 +6,21 @@ export const dynamic = "force-dynamic";
 
 var EDIT_WINDOW_MS = 15 * 60 * 1000;
 
+// Helper to safely parse images
+function parseImages(imgStr: string | null) {
+    if (!imgStr || imgStr === "[]" || imgStr === "") return [];
+    try {
+        var parsed = JSON.parse(imgStr);
+        if (Array.isArray(parsed)) {
+            return parsed.map((u: any) => typeof u === "string" ? u.replace(/^["\\]+|["\\]+$/g, "").trim() : u);
+        }
+        return [parsed];
+    } catch (e) {
+        var cleaned = imgStr.replace(/[\[\]"\\]/g, "").split(",");
+        return cleaned.map((u) => u.trim()).filter((u) => u.startsWith("http"));
+    }
+}
+
 export async function GET(
     request: NextRequest,
     { params }: { params: { id: string } }
@@ -68,18 +83,10 @@ export async function GET(
         }
     });
 
-    // 🚨 FIX: Safely split the comma-separated string instead of JSON.parse
-    var safeImages: string[] = [];
-    if (post.imageUrls && post.imageUrls !== "[]") {
-        safeImages = post.imageUrls.split(",").filter(function (url) {
-            return url.trim().length > 0;
-        });
-    }
-
     return NextResponse.json({
         id: post.id,
         content: post.content,
-        imageUrls: safeImages, // 🚨 Returns an array
+        imageUrls: parseImages(post.imageUrls), // 👈 Use the safe parser
         anonymous: post.anonymous,
         sentiment: post.sentiment,
         circleId: post.circleId,
