@@ -1,11 +1,10 @@
 import { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, ActivityIndicator, TextInput, Linking } from "react-native";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useAuthStore } from "../../src/store/authStore";
-// 👇 Import the helpers from your client
-import { getMoodStats, getJournal, getGoals, getAuthToken, apiFetch, clearAuthToken } from "../../src/api/client";
+import { getMoodStats, getJournal, getGoals, apiFetch } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
 
@@ -24,6 +23,13 @@ export default function YouScreen() {
     var [downloadingJson, setDownloadingJson] = useState(false);
     var [deleting, setDeleting] = useState(false);
 
+    // 🚨 Linktree States
+    var [links, setLinks] = useState<any[]>([]);
+    var [showAddLink, setShowAddLink] = useState(false);
+    var [newLinkTitle, setNewLinkTitle] = useState("");
+    var [newLinkUrl, setNewLinkUrl] = useState("");
+    var [savingLink, setSavingLink] = useState(false);
+
     useEffect(function () { loadAll(); }, []);
 
     var loadAll = async function () {
@@ -34,8 +40,70 @@ export default function YouScreen() {
             setJournalCount(j.length);
             var g = await getGoals();
             setGoalCount(g.length);
+
+            // 👇 Fetch links after we have the user ID
+            if (user?.id) {
+                fetchLinks(user.id);
+            }
         } catch (e) { }
         setLoading(false);
+    };
+
+    var fetchLinks = async function (userId: string) {
+        try {
+            var r = await fetch(`${API_URL}/api/users/${userId}/links`);
+            if (r.ok) {
+                var data = await r.json();
+                setLinks(data.links || []);
+            }
+        } catch (e) {}
+    };
+
+    var handleAddLink = async function () {
+        if (!newLinkTitle.trim() || !newLinkUrl.trim() || !user?.id) return;
+        setSavingLink(true);
+        try {
+            var r = await fetch(`${API_URL}/api/users/${user.id}/links`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    // Add auth header if needed, e.g., "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify({ title: newLinkTitle, url: newLinkUrl }),
+            });
+            if (r.ok) {
+                var newLink = await r.json();
+                setLinks([...links, newLink]);
+                setNewLinkTitle("");
+                setNewLinkUrl("");
+                setShowAddLink(false);
+            } else {
+                Alert.alert("Error", "Failed to add link");
+            }
+        } catch (e) {
+            Alert.alert("Error", "Something went wrong");
+        }
+        setSavingLink(false);
+    };
+
+    var handleDeleteLink = async function (linkId: string) {
+        Alert.alert("Delete Link", "Are you sure?", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete",
+                style: "destructive",
+                onPress: async function () {
+                    try {
+                        var r = await fetch(`${API_URL}/api/users/${user?.id}/links?linkId=${linkId}`, {
+                            method: "DELETE",
+                        });
+                        if (r.ok) {
+                            setLinks(links.filter((l) => l.id !== linkId));
+                        }
+                    } catch (e) {}
+                }
+            }
+        ]);
     };
 
     var onRefresh = async function () {
@@ -52,18 +120,8 @@ export default function YouScreen() {
     var handleDownloadPdf = async function () {
         setDownloadingPdf(true);
         try {
-            var token = getAuthToken();
             var fileUri = FileSystem.documentDirectory + "wellconnect-report.pdf";
-
-            // 👇 Passed the token in the headers
-            var res = await FileSystem.downloadAsync(
-                `${API_URL}/api/users/export-pdf`,
-                fileUri,
-                {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                }
-            );
-
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri);
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
@@ -78,18 +136,8 @@ export default function YouScreen() {
     var handleDownloadJson = async function () {
         setDownloadingJson(true);
         try {
-            var token = getAuthToken();
             var fileUri = FileSystem.documentDirectory + "wellconnect-data.json";
-
-            // 👇 Passed the token in the headers
-            var res = await FileSystem.downloadAsync(
-                `${API_URL}/api/users/export`,
-                fileUri,
-                {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                }
-            );
-
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri);
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
@@ -113,13 +161,16 @@ export default function YouScreen() {
                     onPress: async function () {
                         setDeleting(true);
                         try {
-                            // 👇 Used your apiFetch helper which automatically adds the token
-                            await apiFetch("/api/users/delete", { method: "DELETE" });
-                            await clearAuthToken();
-                            await logout();
-                            router.replace("/auth/login");
-                        } catch (e: any) {
-                            Alert.alert("Error", e.message || "Failed to delete account.");
+                            var res = await fetch(`${API_URL}/api/users/delete`, { method: "DELETE" });
+                            if (res.ok) {
+                                await logout();
+                                router.replace("/auth/login");
+                            } else {
+                                Alert.alert("Error", "Failed to delete account.");
+                                setDeleting(false);
+                            }
+                        } catch (e) {
+                            Alert.alert("Error", "An error occurred.");
                             setDeleting(false);
                         }
                     }
@@ -148,7 +199,6 @@ export default function YouScreen() {
                 contentContainerStyle={styles.content}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
             >
-                {/* ... REST OF YOUR UI (Profile Header, Stats, Menu, etc.) ... */}
                 <View style={styles.profileHeader}>
                     <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
                         <Text style={styles.avatarText}>{user?.name?.charAt(0) || "U"}</Text>
@@ -182,71 +232,73 @@ export default function YouScreen() {
                     </View>
                 )}
 
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
-
+                {/* 🚨 MOBILE LINKS SECTION */}
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your Links</Text>
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/messages"); }}>
-                        <Text style={styles.menuIcon}>💬</Text>
+                    {links.map(function (link: any) {
+                        return (
+                            <View key={link.id} style={[styles.menuItem, { borderBottomColor: colors.borderLight }]}>
+                                <Text style={styles.menuIcon}>{link.icon || "🔗"}</Text>
+                                <TouchableOpacity
+                                    style={styles.menuContent}
+                                    onPress={function () { Linking.openURL(link.url); }}
+                                >
+                                    <Text style={[styles.menuText, { color: colors.textPrimary }]}>{link.title}</Text>
+                                    <Text style={[styles.menuSub, { color: colors.textTertiary }]}>{link.url}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={function () { handleDeleteLink(link.id); }}>
+                                    <Text style={{ color: colors.danger, fontSize: 18, padding: 4 }}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+                        );
+                    })}
+
+                    {/* Add Link Button */}
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomWidth: links.length > 0 ? 1 : 0 }]}
+                        onPress={function () { setShowAddLink(!showAddLink); }}
+                    >
+                        <Text style={styles.menuIcon}>➕</Text>
                         <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Messages</Text>
-                            <Text style={[styles.menuSub, { color: colors.textTertiary }]}>Your conversations</Text>
+                            <Text style={[styles.menuText, { color: colors.primary }]}>Add Link</Text>
                         </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/(tabs)/journal"); }}>
-                        <Text style={styles.menuIcon}>💭</Text>
-                        <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Journal</Text>
-                            <Text style={[styles.menuSub, { color: colors.textTertiary }]}>{journalCount} entries</Text>
+                    {/* Add Link Form */}
+                    {showAddLink && (
+                        <View style={{ padding: spacing.md, gap: spacing.sm }}>
+                            <TextInput
+                                placeholder="Title (e.g., My Portfolio)"
+                                placeholderTextColor={colors.textTertiary}
+                                value={newLinkTitle}
+                                onChangeText={setNewLinkTitle}
+                                style={[styles.input, { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.border }]}
+                            />
+                            <TextInput
+                                placeholder="URL (e.g., mywebsite.com)"
+                                placeholderTextColor={colors.textTertiary}
+                                value={newLinkUrl}
+                                onChangeText={setNewLinkUrl}
+                                style={[styles.input, { backgroundColor: colors.background, color: colors.textPrimary, borderColor: colors.border }]}
+                            />
+                            <TouchableOpacity
+                                onPress={handleAddLink}
+                                disabled={savingLink}
+                                style={[styles.saveBtn, { backgroundColor: colors.primary }]}
+                            >
+                                <Text style={{ color: "#fff", fontWeight: "600" }}>{savingLink ? "Saving..." : "Save Link"}</Text>
+                            </TouchableOpacity>
                         </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/(tabs)/goals"); }}>
-                        <Text style={styles.menuIcon}>🎯</Text>
-                        <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Goals</Text>
-                            <Text style={[styles.menuSub, { color: colors.textTertiary }]}>{goalCount} active</Text>
-                        </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/achievements"); }}>
-                        <Text style={styles.menuIcon}>🏆</Text>
-                        <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Achievements</Text>
-                            <Text style={[styles.menuSub, { color: colors.textTertiary }]}>See what you've earned</Text>
-                        </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
-                    </TouchableOpacity>
+                    )}
                 </View>
 
+                {/* ACCOUNT SECTION */}
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Account</Text>
-
                 <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/notifications"); }}>
-                        <Text style={styles.menuIcon}>🔔</Text>
-                        <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Notifications</Text>
-                        </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/privacy"); }}>
-                        <Text style={styles.menuIcon}>🔒</Text>
-                        <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Privacy</Text>
-                        </View>
-                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
-                    </TouchableOpacity>
-
                     <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={handleDownloadJson} disabled={downloadingJson}>
                         <Text style={styles.menuIcon}>📥</Text>
                         <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-                                {downloadingJson ? "Preparing Data..." : "Download Data (JSON)"}
-                            </Text>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>{downloadingJson ? "Preparing..." : "Download Data (JSON)"}</Text>
                         </View>
                         {downloadingJson ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
                     </TouchableOpacity>
@@ -254,13 +306,11 @@ export default function YouScreen() {
                     <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={handleDownloadPdf} disabled={downloadingPdf}>
                         <Text style={styles.menuIcon}>📄</Text>
                         <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>
-                                {downloadingPdf ? "Generating PDF..." : "Download Report (PDF)"}
-                            </Text>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>{downloadingPdf ? "Generating..." : "Download Report (PDF)"}</Text>
                         </View>
                         {downloadingPdf ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
                     </TouchableOpacity>
-
+                    
                     <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/settings"); }}>
                         <Text style={styles.menuIcon}>⚙️</Text>
                         <View style={styles.menuContent}>
@@ -270,34 +320,18 @@ export default function YouScreen() {
                     </TouchableOpacity>
                 </View>
 
-                <Text style={[styles.sectionTitle, { color: colors.danger, marginTop: spacing.md }]}>Danger Zone</Text>
-                <View style={[styles.menu, { backgroundColor: colors.danger + "10", borderColor: colors.danger + "40" }]}>
-                    <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={handleDeleteAccount} disabled={deleting}>
-                        <Text style={styles.menuIcon}>🗑️</Text>
-                        <View style={styles.menuContent}>
-                            <Text style={[styles.menuText, { color: colors.danger, fontWeight: "600" }]}>
-                                {deleting ? "Deleting..." : "Delete Account"}
-                            </Text>
-                        </View>
-                        {deleting && <ActivityIndicator size="small" color={colors.danger} />}
-                    </TouchableOpacity>
-                </View>
-
                 <TouchableOpacity
                     style={[styles.logoutButton, { backgroundColor: colors.surface, borderColor: colors.danger }]}
                     onPress={handleLogout}
                 >
                     <Text style={[styles.logoutText, { color: colors.danger }]}>Sign Out</Text>
                 </TouchableOpacity>
-
-                <Text style={[styles.footer, { color: colors.textTertiary }]}>WellConnect v1.0</Text>
             </ScrollView>
         </View>
     );
 }
 
 var styles = StyleSheet.create({
-    // ... all your existing styles
     container: { flex: 1 },
     content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
     profileHeader: { alignItems: "center", marginTop: spacing.sm, marginBottom: spacing.sm },
@@ -323,7 +357,8 @@ var styles = StyleSheet.create({
     menuText: { fontSize: 15, fontWeight: "500" },
     menuSub: { fontSize: 11, marginTop: 2 },
     menuArrow: { fontSize: 22 },
+    input: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, fontSize: 14 },
+    saveBtn: { padding: spacing.md, borderRadius: radius.md, alignItems: "center", marginTop: spacing.sm },
     logoutButton: { borderRadius: radius.lg, padding: spacing.lg, alignItems: "center", borderWidth: 1, marginTop: spacing.sm },
     logoutText: { fontWeight: "600", fontSize: 15 },
-    footer: { fontSize: 11, textAlign: "center", marginTop: spacing.md },
 });

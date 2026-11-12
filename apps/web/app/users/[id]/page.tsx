@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useColors, S, R } from "@/lib/theme";
-import FeedPostCard from "@/components/FeedPostCard"; // 👈 Import the card
 
 export default function UserProfilePage() {
     var C = useColors();
@@ -17,7 +16,12 @@ export default function UserProfilePage() {
     var [isBlocked, setIsBlocked] = useState(false);
     var [toggling, setToggling] = useState(false);
 
-    useEffect(function () { load(); }, [userId]);
+    useEffect(function () {
+        // 🚨 Ping the database first to wake it up, then load the profile
+        fetch("/api/health")
+            .then(() => load())
+            .catch(() => load()); // Fallback
+    }, [userId]);
 
     var load = async function () {
         try {
@@ -201,25 +205,65 @@ export default function UserProfilePage() {
                     </div>
                 )}
 
-                {/* 🚨 RECENT POSTS SECTION */}
+                {/* 🚨 RECENT POSTS (INSTAGRAM GRID) */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Recent moments</h2>
                 </div>
 
-                <div style={{ marginTop: S.sm }}>
+                <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: S.sm,
+                    padding: S.lg,
+                    paddingTop: S.sm
+                }}>
                     {profile.posts && profile.posts.length > 0 ? (
-                        profile.posts.map((post: any) => (
-                            <FeedPostCard
-                                key={post.id}
-                                post={post}
-                                onPress={function () { router.push("/feed/" + post.id); }}
-                                onReactionChange={function () { }}
-                                onDelete={function () { }}
-                                onUpdated={function () { }}
-                            />
-                        ))
+                        profile.posts.map((post: any) => {
+                            var hasImage = post.imageUrls && post.imageUrls.length > 0;
+
+                            return (
+                                <div
+                                    key={post.id}
+                                    onClick={function () { router.push("/feed/" + post.id); }}
+                                    style={{
+                                        aspectRatio: "1/1",
+                                        borderRadius: R.md,
+                                        overflow: "hidden",
+                                        background: C.surface,
+                                        cursor: "pointer",
+                                        position: "relative",
+                                        border: "1px solid " + C.border,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                    }}
+                                >
+                                    {hasImage ? (
+                                        <img
+                                            src={`/api/image?url=${encodeURIComponent(post.imageUrls[0])}`}
+                                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                                            alt="Moment"
+                                        />
+                                    ) : (
+                                        <p style={{
+                                            padding: S.sm,
+                                            fontSize: 12,
+                                            color: C.textSecondary,
+                                            textAlign: "center",
+                                            overflow: "hidden",
+                                            display: "-webkit-box",
+                                            WebkitLineClamp: 4,
+                                            WebkitBoxOrient: "vertical",
+                                            margin: 0
+                                        }}>
+                                            {post.content}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })
                     ) : (
-                        <div style={{ padding: S.lg, paddingTop: S.sm, textAlign: "center" }}>
+                        <div style={{ gridColumn: "span 3", padding: S.lg, textAlign: "center" }}>
                             <p style={{ fontSize: 14, color: C.textTertiary, margin: 0 }}>
                                 No public moments yet.
                             </p>

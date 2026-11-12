@@ -12,7 +12,8 @@ var REACTIONS = [
     { type: "grateful", emoji: "🙏" },
 ];
 
-function SafeImage({ url, style }: { url: string; style: any }) {
+// 🚨 Updated SafeImage to accept onClick
+function SafeImage({ url, style, onClick }: { url: string; style: any; onClick?: (e: any) => void }) {
     const [error, setError] = useState(false);
 
     if (!url || !url.startsWith("https://")) {
@@ -40,9 +41,10 @@ function SafeImage({ url, style }: { url: string; style: any }) {
     return (
         <img
             src={proxyUrl}
-            style={style}
+            style={{ ...style, cursor: "zoom-in" }} // 👈 Added zoom-in cursor
             alt="Post attachment"
             onError={() => setError(true)}
+            onClick={onClick} // 👈 Forward the click
         />
     );
 }
@@ -62,6 +64,9 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
     var [editedAt, setEditedAt] = useState(post.editedAt || null);
     var menuRef = useRef<any>(null);
     var shareRef = useRef<any>(null);
+
+    // 🚨 State for the Image Lightbox
+    var [expandedImage, setExpandedImage] = useState<string | null>(null);
 
     useEffect(function () {
         var handler = function (e: any) {
@@ -196,6 +201,58 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                 position: "relative",
             }}
         >
+            {/* 🚨 Image Lightbox Modal */}
+            {expandedImage && (
+                <div
+                    onClick={() => setExpandedImage(null)}
+                    style={{
+                        position: "fixed",
+                        top: 0,
+                        left: 0,
+                        width: "100vw",
+                        height: "100vh",
+                        background: "rgba(0, 0, 0, 0.9)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 9999,
+                        cursor: "zoom-out",
+                    }}
+                >
+                    <img
+                        src={expandedImage}
+                        style={{
+                            maxWidth: "90%",
+                            maxHeight: "90vh",
+                            objectFit: "contain",
+                            borderRadius: R.md,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    <button
+                        onClick={() => setExpandedImage(null)}
+                        style={{
+                            position: "absolute",
+                            top: 20,
+                            right: 20,
+                            background: "rgba(255,255,255,0.2)",
+                            border: "none",
+                            color: "#fff",
+                            fontSize: 24,
+                            cursor: "pointer",
+                            borderRadius: "50%",
+                            width: 40,
+                            height: 40,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                    >
+                        ✕
+                    </button>
+                </div>
+            )}
+
             <div style={{ display: "flex", gap: S.md }}>
                 <div style={{ width: 40, flexShrink: 0 }}>
                     <div
@@ -290,6 +347,10 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                                             marginBottom: 4,
                                                             backgroundColor: C.surfaceAlt
                                                         }}
+                                                        onClick={function (e: any) {
+                                                            e.stopPropagation();
+                                                            setExpandedImage(`/api/image?url=${encodeURIComponent(rawUrl)}`);
+                                                        }}
                                                     />
                                                 );
                                             })}
@@ -314,6 +375,10 @@ export default function FeedPostCard({ post, onReactionChange, onPress, onDelete
                                                     border: "1px solid " + C.border,
                                                     marginBottom: 4,
                                                     backgroundColor: C.surfaceAlt
+                                                }}
+                                                onClick={function (e: any) {
+                                                    e.stopPropagation();
+                                                    setExpandedImage(`/api/image?url=${encodeURIComponent(rawUrl)}`);
                                                 }}
                                             />
                                         );

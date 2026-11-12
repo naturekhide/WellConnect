@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
         username: user.username,
         createdAt: user.createdAt,
         links: user.links,
-        posts: formattedPosts, // 👈 Add posts to the response
+        posts: formattedPosts, // 👈 Send posts to the frontend
         isMe: userId === targetId,
         isFollowing: !!follow,
         isBlocked: !!block,
