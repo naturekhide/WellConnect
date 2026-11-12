@@ -36,6 +36,7 @@ model User {
   feedPosts      FeedPost[]     @relation("FeedAuthor")
   feedReactions  FeedReaction[]
   feedReplies    FeedReply[]
+  links          ProfileLink[]
   following      Follow[]        @relation("Following")
   followers      Follow[]        @relation("Followers")
 
@@ -330,4 +331,16 @@ model FeedReaction {
   createdAt DateTime @default(now())
 
   @@unique([userId, postId])
+}
+
+model ProfileLink {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  url       String
+  icon      String   @default("🔗")
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

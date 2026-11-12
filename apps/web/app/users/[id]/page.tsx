@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useColors, S, R } from "@/lib/theme";
+import FeedPostCard from "@/components/FeedPostCard"; // 👈 Import the card
 
 export default function UserProfilePage() {
     var C = useColors();
@@ -52,7 +53,6 @@ export default function UserProfilePage() {
         setToggling(false);
     };
 
-    // 🚨 Block Handler
     var handleBlock = async function () {
         try {
             var r = await fetch("/api/users/" + userId + "/block", { method: "POST" });
@@ -169,13 +169,62 @@ export default function UserProfilePage() {
                     <StatTile value={followState.followingCount} label="Following" />
                 </div>
 
+                {/* 🚨 PUBLIC LINKS SECTION */}
+                {profile?.links && profile.links.length > 0 && (
+                    <div style={{ paddingLeft: S.lg, paddingRight: S.lg, marginBottom: S.lg }}>
+                        <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, marginBottom: S.sm }}>Links</h2>
+                        <div style={{ display: "flex", flexDirection: "column", gap: S.sm }}>
+                            {profile.links.map((link: any) => (
+                                <a
+                                    key={link.id}
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        background: C.surface,
+                                        padding: S.md,
+                                        borderRadius: R.lg,
+                                        border: "1px solid " + C.border,
+                                        textDecoration: "none",
+                                    }}
+                                >
+                                    <span style={{ fontSize: 20, marginRight: S.md }}>{link.icon || "🔗"}</span>
+                                    <span style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary }}>
+                                        {link.title}
+                                    </span>
+                                    <span style={{ marginLeft: "auto", color: C.textTertiary, fontSize: 16 }}>↗</span>
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* 🚨 RECENT POSTS SECTION */}
                 <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
                     <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Recent moments</h2>
                 </div>
-                <div style={{ padding: S.lg, paddingTop: S.sm }}>
-                    <p style={{ fontSize: 14, color: C.textTertiary, textAlign: "center", margin: 0 }}>
-                        Their posts will appear here soon.
-                    </p>
+
+                <div style={{ marginTop: S.sm }}>
+                    {profile.posts && profile.posts.length > 0 ? (
+                        profile.posts.map((post: any) => (
+                            <FeedPostCard
+                                key={post.id}
+                                post={post}
+                                onPress={function () { router.push("/feed/" + post.id); }}
+                                onReactionChange={function () { }}
+                                onDelete={function () { }}
+                                onUpdated={function () { }}
+                            />
+                        ))
+                    ) : (
+                        <div style={{ padding: S.lg, paddingTop: S.sm, textAlign: "center" }}>
+                            <p style={{ fontSize: 14, color: C.textTertiary, margin: 0 }}>
+                                No public moments yet.
+                            </p>
+                        </div>
+                    )}
                 </div>
 
             </div>

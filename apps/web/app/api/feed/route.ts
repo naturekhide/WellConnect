@@ -131,10 +131,10 @@ export async function POST(request: NextRequest) {
     var imageUrlsString = "[]";
     if (Array.isArray(imageUrls) && imageUrls.length > 0) {
         // 👇 CLEAN THE URLS before saving to prevent broken quotes
-        var cleanedUrls = imageUrls.map(function(u: string) {
+        var cleanedUrls = imageUrls.map(function (u: string) {
             return u.replace(/^["\\]+|["\\]+$/g, "").trim();
-        }).filter(function(u: string) { return u.length > 0; });
-        
+        }).filter(function (u: string) { return u.length > 0; });
+
         imageUrlsString = JSON.stringify(cleanedUrls);
     }
 

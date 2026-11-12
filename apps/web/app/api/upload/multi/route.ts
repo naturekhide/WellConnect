@@ -23,7 +23,8 @@ export async function POST(request: NextRequest) {
             const buffer = Buffer.from(arrayBuffer);
 
             var fileName = file.name || "upload.png";
-            
+
+            // 👇 Bulletproof type detection
             var contentType = file.type;
             if (!contentType || contentType === "application/octet-stream") {
                 if (fileName.endsWith(".webm")) contentType = "audio/webm";
@@ -35,14 +36,12 @@ export async function POST(request: NextRequest) {
                 else contentType = "application/octet-stream";
             }
 
-            // 👇 THIS is the function that uploads to Vercel Blob
             const blob = await put(fileName, buffer, {
                 access: 'public',
                 addRandomSuffix: true,
-                contentType: contentType,
+                contentType: contentType, // 👈 Now it's always correct
             });
 
-            // 👇 It returns the full https:// URL
             uploadedUrls.push(blob.url);
         }
 

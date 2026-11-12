@@ -20,6 +20,13 @@ export default function ProfilePage() {
     var [downloading, setDownloading] = useState(false);
     var [downloadingPdf, setDownloadingPdf] = useState(false);
 
+    // 🚨 Linktree States
+    var [links, setLinks] = useState<any[]>([]);
+    var [showAddLink, setShowAddLink] = useState(false);
+    var [newLinkTitle, setNewLinkTitle] = useState("");
+    var [newLinkUrl, setNewLinkUrl] = useState("");
+    var [savingLink, setSavingLink] = useState(false);
+
     useEffect(function () {
         fetchProfile();
     }, []);
@@ -32,6 +39,10 @@ export default function ProfilePage() {
                 setProfile(data);
                 setName(data.name || "");
                 setUsername(data.username || "");
+
+                if (data.id) {
+                    fetchLinks(data.id);
+                }
             } else if (r.status === 401) {
                 router.push("/login");
             }
@@ -43,6 +54,51 @@ export default function ProfilePage() {
             }
         } catch (e) { }
         setLoading(false);
+    };
+
+    var fetchLinks = async function (userId: string) {
+        try {
+            var r = await fetch(`/api/users/${userId}/links`);
+            if (r.ok) {
+                var data = await r.json();
+                setLinks(data.links || []);
+            }
+        } catch (e) { }
+    };
+
+    var handleAddLink = async function () {
+        if (!newLinkTitle.trim() || !newLinkUrl.trim() || !profile?.id) return;
+        setSavingLink(true);
+        try {
+            var r = await fetch(`/api/users/${profile.id}/links`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: newLinkTitle, url: newLinkUrl }),
+            });
+            if (r.ok) {
+                var newLink = await r.json();
+                setLinks([...links, newLink]);
+                setNewLinkTitle("");
+                setNewLinkUrl("");
+                setShowAddLink(false);
+            } else {
+                var err = await r.json();
+                alert("Failed to add link: " + (err.error || "Unknown error"));
+            }
+        } catch (e) { }
+        setSavingLink(false);
+    };
+
+    var handleDeleteLink = async function (linkId: string) {
+        if (!window.confirm("Delete this link?")) return;
+        try {
+            var r = await fetch(`/api/users/${profile.id}/links?linkId=${linkId}`, {
+                method: "DELETE",
+            });
+            if (r.ok) {
+                setLinks(links.filter((l) => l.id !== linkId));
+            }
+        } catch (e) { }
     };
 
     var handleSave = async function () {
@@ -125,7 +181,6 @@ export default function ProfilePage() {
         setDownloading(false);
     };
 
-    // ✅ FIXED: PDF Download Function
     var handleDownloadPdf = async function () {
         setDownloadingPdf(true);
         try {
@@ -135,7 +190,6 @@ export default function ProfilePage() {
                 var url = window.URL.createObjectURL(blob);
                 var a = document.createElement("a");
                 a.href = url;
-                // Saves as a PDF file with the user's username
                 a.download = "wellconnect-report-" + (profile?.username || "export") + ".pdf";
                 document.body.appendChild(a);
                 a.click();
@@ -208,6 +262,75 @@ export default function ProfilePage() {
                         <p style={{ fontSize: 13, color: C.textSecondary, marginTop: 2, margin: "2px 0 0 0" }}>
                             Keep showing up for yourself
                         </p>
+                    </div>
+                </div>
+
+                {/* 🚨 YOUR LINKS SECTION */}
+                <div style={{ paddingLeft: S.lg, paddingRight: S.lg, paddingBottom: S.sm }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.sm }}>
+                        <h2 style={{ fontSize: 13, fontWeight: 600, color: C.textSecondary, margin: 0 }}>Your Links</h2>
+                        <button
+                            onClick={function () { setShowAddLink(!showAddLink); }}
+                            style={{ background: "none", border: "none", color: C.primary, fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                        >
+                            + Add Link
+                        </button>
+                    </div>
+
+                    {/* Add Link Form */}
+                    {showAddLink && (
+                        <div style={{ background: C.surface, padding: S.md, borderRadius: R.lg, marginBottom: S.md, border: "1px solid " + C.border }}>
+                            <input
+                                placeholder="Title (e.g., My Portfolio)"
+                                value={newLinkTitle}
+                                onChange={(e) => setNewLinkTitle(e.target.value)}
+                                style={{ width: "100%", padding: S.sm, borderRadius: R.md, border: "1px solid " + C.border, marginBottom: S.sm, background: C.background, color: C.textPrimary, boxSizing: "border-box", outline: "none" }}
+                            />
+                            <input
+                                placeholder="URL (e.g., mywebsite.com)"
+                                value={newLinkUrl}
+                                onChange={(e) => setNewLinkUrl(e.target.value)}
+                                style={{ width: "100%", padding: S.sm, borderRadius: R.md, border: "1px solid " + C.border, marginBottom: S.sm, background: C.background, color: C.textPrimary, boxSizing: "border-box", outline: "none" }}
+                            />
+                            <div style={{ display: "flex", gap: S.sm, justifyContent: "flex-end" }}>
+                                <button onClick={() => setShowAddLink(false)} style={{ background: "none", border: "none", color: C.textSecondary, cursor: "pointer", fontSize: 13 }}>Cancel</button>
+                                <button onClick={handleAddLink} disabled={savingLink} style={{ background: C.primary, color: "#fff", border: "none", padding: "6px 12px", borderRadius: R.md, fontSize: 13, fontWeight: 600, cursor: savingLink ? "not-allowed" : "pointer" }}>
+                                    {savingLink ? "Saving..." : "Save Link"}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 🚨 CLEAN LINKS LIST */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: S.sm, marginBottom: S.lg }}>
+                        {links.map((link) => (
+                            <div key={link.id} style={{ display: "flex", alignItems: "center", background: C.surface, padding: S.md, borderRadius: R.lg, border: "1px solid " + C.border }}>
+
+                                {/* The whole left side is a clickable link */}
+                                <a
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ display: "flex", alignItems: "center", flex: 1, textDecoration: "none", minWidth: 0 }}
+                                >
+                                    <span style={{ fontSize: 20, marginRight: S.md }}>{link.icon || "🔗"}</span>
+                                    <p style={{ margin: 0, fontSize: 15, fontWeight: 600, color: C.textPrimary }}>
+                                        {link.title}
+                                    </p>
+                                </a>
+
+                                {/* The delete button stays on the right */}
+                                <button
+                                    onClick={() => handleDeleteLink(link.id)}
+                                    style={{ background: "none", border: "none", color: C.textSecondary, cursor: "pointer", fontSize: 16, padding: S.xs }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+                        {links.length === 0 && !showAddLink && (
+                            <p style={{ fontSize: 13, color: C.textTertiary, textAlign: "center", margin: 0 }}>No links added yet. Add your website, socials, or portfolio!</p>
+                        )}
                     </div>
                 </div>
 
