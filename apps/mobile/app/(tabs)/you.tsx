@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 import { useAuthStore } from "../../src/store/authStore";
-import { getMoodStats, getJournal, getGoals, apiFetch } from "../../src/api/client";
+import { getMoodStats, getJournal, getGoals, apiFetch, getAuthToken } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
 import { useColors, spacing, radius, shadow } from "../../src/theme";
 
@@ -51,26 +51,31 @@ export default function YouScreen() {
 
     var fetchLinks = async function (userId: string) {
         try {
-            var r = await fetch(`${API_URL}/api/users/${userId}/links`);
+            var token = getAuthToken();
+            var r = await fetch(`${API_URL}/api/users/${userId}/links`, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
             if (r.ok) {
                 var data = await r.json();
                 setLinks(data.links || []);
             }
-        } catch (e) {}
+        } catch (e) { }
     };
 
     var handleAddLink = async function () {
         if (!newLinkTitle.trim() || !newLinkUrl.trim() || !user?.id) return;
         setSavingLink(true);
         try {
+            var token = getAuthToken();
             var r = await fetch(`${API_URL}/api/users/${user.id}/links`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    // Add auth header if needed, e.g., "Authorization": `Bearer ${token}`
+                    Authorization: token ? `Bearer ${token}` : "",
                 },
                 body: JSON.stringify({ title: newLinkTitle, url: newLinkUrl }),
             });
+
             if (r.ok) {
                 var newLink = await r.json();
                 setLinks([...links, newLink]);
@@ -78,7 +83,8 @@ export default function YouScreen() {
                 setNewLinkUrl("");
                 setShowAddLink(false);
             } else {
-                Alert.alert("Error", "Failed to add link");
+                var errData = await r.json();
+                Alert.alert("Error", errData.error || "Failed to add link");
             }
         } catch (e) {
             Alert.alert("Error", "Something went wrong");
@@ -94,13 +100,15 @@ export default function YouScreen() {
                 style: "destructive",
                 onPress: async function () {
                     try {
+                        var token = getAuthToken();
                         var r = await fetch(`${API_URL}/api/users/${user?.id}/links?linkId=${linkId}`, {
                             method: "DELETE",
+                            headers: token ? { Authorization: `Bearer ${token}` } : {}
                         });
                         if (r.ok) {
                             setLinks(links.filter((l) => l.id !== linkId));
                         }
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             }
         ]);
@@ -310,7 +318,7 @@ export default function YouScreen() {
                         </View>
                         {downloadingPdf ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
                     </TouchableOpacity>
-                    
+
                     <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/settings"); }}>
                         <Text style={styles.menuIcon}>⚙️</Text>
                         <View style={styles.menuContent}>
