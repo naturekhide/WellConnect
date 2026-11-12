@@ -2,10 +2,12 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from "re
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { useColors, spacing, radius, shadow } from "../src/theme";
+import { useThemeStore } from "../src/store/themeStore"; // 👈 Import the theme store
 
 export default function SettingsScreen() {
     var router = useRouter();
     var colors = useColors();
+    var { mode, toggleTheme } = useThemeStore(); // 👈 Get current mode and toggle function
 
     var [pushEnabled, setPushEnabled] = useState(true);
     var [analyticsEnabled, setAnalyticsEnabled] = useState(false);
@@ -17,7 +19,7 @@ export default function SettingsScreen() {
                     <Text style={[styles.backText, { color: colors.primary }]}>← Back</Text>
                 </TouchableOpacity>
                 <Text style={[styles.title, { color: colors.textPrimary }]}>Settings</Text>
-                <View style={{ width: 60 }} /> {/* Spacer for balance */}
+                <View style={{ width: 60 }} />
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
@@ -25,6 +27,23 @@ export default function SettingsScreen() {
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>App Preferences</Text>
 
                 <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+
+                    {/* 🚨 DARK MODE TOGGLE */}
+                    <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.borderLight }]}>
+                        <View style={styles.rowContent}>
+                            <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>Dark Mode</Text>
+                            <Text style={[styles.rowDetail, { color: colors.textSecondary }]}>
+                                {mode === "dark" ? "Currently using dark theme" : "Currently using light theme"}
+                            </Text>
+                        </View>
+                        <Switch
+                            value={mode === "dark"}
+                            onValueChange={toggleTheme}
+                            trackColor={{ false: colors.border, true: colors.primary }}
+                        />
+                    </View>
+
+                    {/* PUSH NOTIFICATIONS TOGGLE */}
                     <View style={[styles.row, { borderBottomWidth: 1, borderBottomColor: colors.borderLight }]}>
                         <View style={styles.rowContent}>
                             <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>Push Notifications</Text>
@@ -37,6 +56,7 @@ export default function SettingsScreen() {
                         />
                     </View>
 
+                    {/* ANALYTICS TOGGLE */}
                     <View style={styles.row}>
                         <View style={styles.rowContent}>
                             <Text style={[styles.rowLabel, { color: colors.textPrimary }]}>Share Analytics</Text>

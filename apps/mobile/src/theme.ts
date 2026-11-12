@@ -1,4 +1,4 @@
-import { useColorScheme } from "react-native";
+import { useThemeStore } from "./store/themeStore";
 
 export var lightColors = {
     primary: "#059669",
@@ -57,12 +57,13 @@ export var darkColors = {
 };
 
 export function useColors() {
-    var scheme = useColorScheme();
-    return scheme === "dark" ? darkColors : lightColors;
+    // 👇 Read the theme mode from our global store instead of the OS
+    var mode = useThemeStore((state) => state.mode);
+    return mode === "dark" ? darkColors : lightColors;
 }
 
-// Static export — for legacy usage, defaults to light
-export var colors = lightColors;
+// Static export — for legacy usage (defaults to dark)
+export var colors = darkColors;
 
 export var spacing = {
     xs: 4,
