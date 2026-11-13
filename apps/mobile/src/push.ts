@@ -1,6 +1,6 @@
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { Platform } from "react-native";
+import { Platform, Alert } from "react-native"; // 👈 Added Alert
 import { getAuthToken } from "./api/client";
 
 var API_URL = "https://well-connect-web.vercel.app";
@@ -76,13 +76,18 @@ export async function registerForPushNotifications() {
         var tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
         var token = tokenData.data;
 
+        // 🚨 DEBUG: See the token on your phone
+        Alert.alert("Push Token Generated", token);
+
         var authToken = getAuthToken();
         if (!authToken) {
             console.log("User not logged in");
+            Alert.alert("Error", "User not logged in");
             return null;
         }
 
-        var res = await fetch(API_URL + "/api/push/register", {
+        // 👇 FIXED: Changed route from /api/push/register to /api/users/push-token
+        var res = await fetch(API_URL + "/api/users/push-token", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -93,13 +98,16 @@ export async function registerForPushNotifications() {
 
         if (!res.ok) {
             console.log("Backend save failed:", res.status);
+            Alert.alert("Save Failed", "Status: " + res.status);
             return null;
         }
 
         console.log("Push token registered");
+        Alert.alert("Success", "Push token saved to database!");
         return token;
     } catch (e: any) {
         console.log("Push registration failed:", e.message);
+        Alert.alert("Registration Error", e.message);
         return null;
     }
 }
@@ -110,7 +118,8 @@ export async function unregisterPushNotifications() {
     try {
         var authToken = getAuthToken();
         if (authToken) {
-            await fetch(API_URL + "/api/push/register", {
+            // 👇 FIXED: Changed route to match the backend
+            await fetch(API_URL + "/api/users/push-token", {
                 method: "DELETE",
                 headers: { "Authorization": "Bearer " + authToken },
             });
