@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState } from "react";
 import { View, Animated, StyleSheet, Image, Text, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuthStore } from "../src/store/authStore";
 import { useColors } from "../src/theme";
 
 const { width } = Dimensions.get("window");
 
-// 👇 Prevent the native splash screen from hiding immediately
 SplashScreen.preventAutoHideAsync();
 
 export default function Index() {
@@ -22,10 +22,8 @@ export default function Index() {
     var scaleAnim = useRef(new Animated.Value(0.8)).current;
 
     useEffect(function () {
-        // 1. Start the background auth check
         checkAuth();
 
-        // 2. Play the animation
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
@@ -39,19 +37,22 @@ export default function Index() {
             })
         ]).start();
 
-        // 3. Hide the native splash screen once the animation starts
         setTimeout(function () {
             SplashScreen.hideAsync();
             setIsReady(true);
-        }, 100); // Tiny delay to ensure the view is mounted
+        }, 100);
     }, []);
 
     useEffect(function () {
-        // 4. Wait at least 2.5 seconds before redirecting, even if auth check is done
         if (!isLoading) {
-            var timer = setTimeout(function () {
+            var timer = setTimeout(async function () {
                 if (isAuthenticated) {
-                    router.replace("/(tabs)/home");
+                    var hasSeen = await AsyncStorage.getItem("hasSeenOnboarding");
+                    if (!hasSeen) {
+                        router.replace("/onboarding");
+                    } else {
+                        router.replace("/(tabs)/home");
+                    }
                 } else {
                     router.replace("/auth/login");
                 }

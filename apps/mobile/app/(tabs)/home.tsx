@@ -103,7 +103,7 @@ export default function HomeScreen() {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
             >
                 <Text style={[styles.greeting, { color: colors.textPrimary }]}>
-                    Good {getTimeOfDay()}, {user?.name?.split(" ")[0] || "Friend"}
+                    Good {getTimeOfDay()}, {user?.name?.split(" ")[0] || "there"}
                 </Text>
                 <Text style={[styles.greetingSub, { color: colors.textSecondary }]}>How are you feeling today?</Text>
 
@@ -192,17 +192,11 @@ export default function HomeScreen() {
 
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
                 <View style={styles.quickRow}>
-                    <TouchableOpacity
-                        style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                        onPress={function () { router.push("/(tabs)/journal"); }}
-                    >
+                    <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/journal"); }}>
                         <Text style={styles.quickEmoji}>📝</Text>
                         <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Journal</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                        onPress={function () { router.push("/(tabs)/goals"); }}
-                    >
+                    <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/goals"); }}>
                         <Text style={styles.quickEmoji}>🎯</Text>
                         <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Goals</Text>
                     </TouchableOpacity>
@@ -210,21 +204,13 @@ export default function HomeScreen() {
 
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Inbox</Text>
 
-                {/* 🚨 NEW: MY CIRCLES BUTTON */}
-                <TouchableOpacity
-                    style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: spacing.sm }]}
-                    onPress={function () { router.push("/my-circles"); }}
-                >
+                <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: spacing.sm }]} onPress={function () { router.push("/my-circles"); }}>
                     <Text style={styles.inboxEmoji}>🌿</Text>
                     <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>My Circles</Text>
                     <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
                 </TouchableOpacity>
 
-                {/* EXISTING MESSAGES BUTTON */}
-                <TouchableOpacity
-                    style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]}
-                    onPress={function () { router.push("/messages"); }}
-                >
+                <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/messages"); }}>
                     <Text style={styles.inboxEmoji}>💬</Text>
                     <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>Messages</Text>
                     {unreadDMs > 0 && (

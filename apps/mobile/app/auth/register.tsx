@@ -1,11 +1,15 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors, spacing, radius } from "../../src/theme";
+import { useAuthStore } from "../../src/store/authStore";
+import { setAuthToken } from "../../src/api/client";
 
 export default function RegisterScreen() {
     var router = useRouter();
     var colors = useColors();
+    var { checkAuth } = useAuthStore();
 
     var [name, setName] = useState("");
     var [username, setUsername] = useState("");
@@ -21,26 +25,41 @@ export default function RegisterScreen() {
         setLoading(true);
 
         try {
+            // 1. Register the user
             var r = await fetch("https://well-connect-web.vercel.app/api/mobile/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name: name.trim(), username: username.trim(), email: email.trim(), password }),
             });
 
-            var data = await r.json();
-
-            if (r.ok) {
-                // 🚨 TEMPORARY: Skip email verification and go straight to the app
-                router.replace("/(tabs)/home");
-
-                // 👇 WHEN YOU GET A DOMAIN, REMOVE THE LINE ABOVE AND UNCOMMENT THIS:
-                // router.push({
-                //     pathname: "/auth/verify-email",
-                //     params: { email: email.trim(), password: password }
-                // });
-                return;
-            } else {
+            if (!r.ok) {
+                var data = await r.json();
                 setError(data.error || "Registration failed");
+                setLoading(false);
+                return;
+            }
+
+            // 2. Auto-login to get the token
+            var loginRes = await fetch("https://well-connect-web.vercel.app/api/mobile/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identifier: email.trim(), password }),
+            });
+
+            if (loginRes.ok) {
+                var loginData = await loginRes.json();
+                await setAuthToken(loginData.token, loginData.user); // Save token + user
+                await checkAuth(); // Update the store immediately
+
+                // 3. Check onboarding
+                var hasSeen = await AsyncStorage.getItem("hasSeenOnboarding");
+                if (!hasSeen) {
+                    router.replace("/onboarding");
+                } else {
+                    router.replace("/(tabs)/home");
+                }
+            } else {
+                router.replace("/auth/login");
             }
         } catch (err) {
             setError("Connection failed. Check your internet.");
@@ -64,17 +83,12 @@ export default function RegisterScreen() {
     var isFormValid = name.trim() && username.trim() && email.trim() && password;
 
     return (
-        <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: colors.background }}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardAvoidingView style={{ flex: 1, backgroundColor: colors.background }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
             <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
                 <View style={styles.header}>
                     <Text style={{ fontSize: 48, marginBottom: spacing.sm }}>🌱</Text>
                     <Text style={[styles.title, { color: colors.textPrimary }]}>Join WellConnect</Text>
-                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                        Your digital wellbeing companion
-                    </Text>
+                    <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Your digital wellbeing companion</Text>
                 </View>
 
                 {error ? (
@@ -83,57 +97,13 @@ export default function RegisterScreen() {
                     </View>
                 ) : null}
 
-                <TextInput
-                    style={inputStyle}
-                    placeholder="Full name"
-                    placeholderTextColor={colors.textTertiary}
-                    value={name}
-                    onChangeText={setName}
-                />
+                <TextInput style={inputStyle} placeholder="Full name" placeholderTextColor={colors.textTertiary} value={name} onChangeText={setName} />
+                <TextInput style={inputStyle} placeholder="Username" placeholderTextColor={colors.textTertiary} autoCapitalize="none" value={username} onChangeText={setUsername} />
+                <TextInput style={inputStyle} placeholder="Email" placeholderTextColor={colors.textTertiary} keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+                <TextInput style={inputStyle} placeholder="Password (min 8 characters)" placeholderTextColor={colors.textTertiary} secureTextEntry value={password} onChangeText={setPassword} />
 
-                <TextInput
-                    style={inputStyle}
-                    placeholder="Username"
-                    placeholderTextColor={colors.textTertiary}
-                    autoCapitalize="none"
-                    value={username}
-                    onChangeText={setUsername}
-                />
-
-                <TextInput
-                    style={inputStyle}
-                    placeholder="Email"
-                    placeholderTextColor={colors.textTertiary}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={email}
-                    onChangeText={setEmail}
-                />
-
-                <TextInput
-                    style={inputStyle}
-                    placeholder="Password (min 8 characters)"
-                    placeholderTextColor={colors.textTertiary}
-                    secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
-                />
-
-                <TouchableOpacity
-                    style={[
-                        styles.button,
-                        { backgroundColor: isFormValid ? colors.primary : colors.border }
-                    ]}
-                    onPress={handleSubmit}
-                    disabled={!isFormValid || loading}
-                >
-                    {loading ? (
-                        <ActivityIndicator color="#fff" />
-                    ) : (
-                        <Text style={[styles.buttonText, { color: isFormValid ? "#fff" : colors.textTertiary }]}>
-                            Create Account
-                        </Text>
-                    )}
+                <TouchableOpacity style={[styles.button, { backgroundColor: isFormValid ? colors.primary : colors.border }]} onPress={handleSubmit} disabled={!isFormValid || loading}>
+                    {loading ? <ActivityIndicator color="#fff" /> : <Text style={[styles.buttonText, { color: isFormValid ? "#fff" : colors.textTertiary }]}>Create Account</Text>}
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={function () { router.push("/auth/login"); }} style={styles.linkBtn}>
