@@ -4,13 +4,36 @@ import { getCurrentUserId } from "@/lib/get-user";
 
 export const dynamic = "force-dynamic";
 
+// 🚨 Helper to send push notifications
+async function sendPushNotification(expoPushToken: string, title: string, body: string, link?: string) {
+    if (!expoPushToken) return;
+    try {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                to: expoPushToken,
+                sound: 'default',
+                title,
+                body,
+                data: { link: link || "/" },
+            }),
+        });
+    } catch (e) {
+        console.error("Push error:", e);
+    }
+}
+
 export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
     var userIdOrNull = await getCurrentUserId(request);
     if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     var userId: string = userIdOrNull;
     var otherId = params.userId;
 
-    // 🚨 Check if blocked
+    // Check if blocked
     var block = await prisma.block.findFirst({
         where: {
             OR: [
@@ -50,7 +73,6 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     var formatted = messages.map(function (m) {
         var reactionCounts: any = {};
 
-        // 🚨 FIX: Explicitly cast to any[] to fix the 'never' error
         var msgReactions = (m.reactions || []) as any[];
 
         msgReactions.forEach((r: any) => {
@@ -81,7 +103,6 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     return NextResponse.json({ messages: formatted });
 }
 
-// ... (Keep your POST, PATCH, and DELETE functions exactly as they are) ...
 export async function POST(request: NextRequest, { params }: { params: { userId: string } }) {
     var userIdOrNull = await getCurrentUserId(request);
     if (!userIdOrNull) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -117,6 +138,22 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
             sender: { select: { id: true, name: true, username: true } },
         },
     });
+
+    // 🚨 Fetch receiver details to send the notification
+    var receiver = await prisma.user.findUnique({
+        where: { id: otherId },
+        select: { expoPushToken: true },
+    });
+
+    // 🚨 Send the push notification if they have a token
+    if (receiver?.expoPushToken) {
+        await sendPushNotification(
+            receiver.expoPushToken,
+            `New message from ${msg.sender.name}`,
+            content.length > 50 ? content.substring(0, 50) + "..." : content,
+            `/messages/${userId}` // 👈 Link to the chat screen
+        );
+    }
 
     return NextResponse.json({
         id: msg.id,

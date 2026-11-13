@@ -69,8 +69,6 @@ export default function TabLayout() {
                         },
                     }}
                 />
-
-                {/* 🚨 UPDATED: Using your actual filename 'new-post' */}
                 <Tabs.Screen
                     name="new-post"
                     options={{
@@ -95,14 +93,11 @@ export default function TabLayout() {
                     }}
                     listeners={{
                         tabPress: function (e) {
-                            // Prevent default navigation to the new-post screen
                             e.preventDefault();
-                            // Open our custom bottom sheet instead
                             setShowComposeMenu(true);
                         },
                     }}
                 />
-
                 <Tabs.Screen
                     name="journal"
                     options={{
@@ -112,8 +107,6 @@ export default function TabLayout() {
                         },
                     }}
                 />
-
-                {/* 🚨 UPDATED: Using your actual filename 'you' */}
                 <Tabs.Screen
                     name="you"
                     options={{
@@ -123,12 +116,10 @@ export default function TabLayout() {
                         },
                     }}
                 />
-
-                {/* Hide the 'goals' tab from the bottom bar so it doesn't show up as an extra tab */}
                 <Tabs.Screen
                     name="goals"
                     options={{
-                        href: null, // This hides it from the tab bar
+                        href: null,
                     }}
                 />
             </Tabs>
@@ -141,7 +132,6 @@ export default function TabLayout() {
                 onRequestClose={function () { setShowComposeMenu(false); }}
             >
                 <View style={styles.modalContainer}>
-                    {/* Clicking the dark background closes the menu */}
                     <TouchableOpacity
                         style={styles.backdrop}
                         activeOpacity={1}
@@ -166,7 +156,7 @@ export default function TabLayout() {
                                         key={index}
                                         style={[styles.menuItem, { backgroundColor: colors.surface, borderColor: colors.border }]}
                                         onPress={function () {
-                                            setShowComposeMenu(false); // Close menu first
+                                            setShowComposeMenu(false);
                                             setTimeout(function () { router.push(item.route as any); }, 100);
                                         }}
                                     >
@@ -191,7 +181,16 @@ export default function TabLayout() {
 
 var styles = StyleSheet.create({
     modalContainer: { flex: 1, justifyContent: "flex-end" },
-    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" },
+
+    backdrop: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.6)"
+    },
+
     sheet: {
         borderTopLeftRadius: radius.xl,
         borderTopRightRadius: radius.xl,
