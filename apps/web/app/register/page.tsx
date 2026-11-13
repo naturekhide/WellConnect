@@ -40,11 +40,10 @@ export default function RegisterPage() {
                 });
 
                 if (result?.ok) {
-                    // 👇 Go straight to the app
-                    router.push("/connect");
+                    // 👇 New web users go straight to onboarding
+                    router.push("/onboarding");
                     router.refresh();
                 } else {
-                    // Fallback: if auto-login fails, send to login page
                     router.push("/login");
                 }
             } else {

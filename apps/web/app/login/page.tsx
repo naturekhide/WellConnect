@@ -41,7 +41,13 @@ function LoginContent() {
         if (result?.error) {
             setError("Invalid email/username or password");
         } else {
-            router.push("/dashboard");
+            // 👇 Check onboarding status on web
+            var hasSeen = localStorage.getItem("hasSeenOnboarding");
+            if (!hasSeen) {
+                router.push("/onboarding");
+            } else {
+                router.push("/dashboard");
+            }
             router.refresh();
         }
     };
