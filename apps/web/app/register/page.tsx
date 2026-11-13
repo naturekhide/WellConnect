@@ -23,6 +23,7 @@ export default function RegisterPage() {
         setLoading(true);
 
         try {
+            // 1. Register the user
             var r = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -30,7 +31,22 @@ export default function RegisterPage() {
             });
 
             if (r.ok) {
-                router.push("/login?registered=true");
+                // 2. Auto-login immediately after registration
+                var { signIn } = await import("next-auth/react");
+                var result = await signIn("credentials", {
+                    identifier: email,
+                    password: password,
+                    redirect: false,
+                });
+
+                if (result?.ok) {
+                    // 👇 Go straight to the app
+                    router.push("/connect");
+                    router.refresh();
+                } else {
+                    // Fallback: if auto-login fails, send to login page
+                    router.push("/login");
+                }
             } else {
                 var data = await r.json();
                 setError(data.error || "Registration failed");

@@ -43,21 +43,20 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
                     return null;
                 }
 
-                // 🚨 EMAIL VERIFICATION CHECK WITH AUTO-VERIFY
-                if (!user.emailVerified) {
-                    var accountAge = Date.now() - new Date(user.createdAt).getTime();
-                    var threeDays = 3 * 24 * 60 * 60 * 1000;
+                // 🚨 TEMPORARY: Email verification is bypassed.
+                // To re-enable, uncomment the block below and remove the auto-verify logic.
+                // if (!user.emailVerified) {
+                //     console.log("AUTH DEBUG: Unverified account", user.email);
+                //     throw new Error("Please verify your email address first.");
+                // }
 
-                    if (accountAge > threeDays) {
-                        await prisma.user.update({
-                            where: { id: user.id },
-                            data: { emailVerified: true }
-                        });
-                        console.log("AUTH DEBUG: Auto-verified old account", user.email);
-                    } else {
-                        console.log("AUTH DEBUG: Unverified new account", user.email);
-                        throw new Error("Please verify your email address first.");
-                    }
+                // 🚨 TEMPORARY: Auto-verify all users so they can log in immediately.
+                if (!user.emailVerified) {
+                    await prisma.user.update({
+                        where: { id: user.id },
+                        data: { emailVerified: true }
+                    });
+                    console.log("AUTH DEBUG: Auto-verified account", user.email);
                 }
 
                 console.log("AUTH DEBUG: Login successful for", user.email);

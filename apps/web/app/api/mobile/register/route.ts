@@ -23,23 +23,29 @@ export async function POST(request: NextRequest) {
 
     var hashedPassword = await bcrypt.hash(password, 10);
 
-    var verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-    var verifyExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
-
+    // 🚨 TEMPORARY: Skip email verification
     var user = await prisma.user.create({
         data: {
             name,
             username,
             email,
             password: hashedPassword,
-            emailVerified: false,
-            verifyToken: verifyCode,
-            verifyTokenExpiry: verifyExpiry,
+            emailVerified: true, // 👈 Auto-verify immediately
         },
     });
 
-    await sendVerificationEmail(email, verifyCode);
+    // 🚨 TEMPORARY: Skip sending the email
+    // var verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // var verifyExpiry = new Date(Date.now() + 15 * 60 * 1000);
+    // await prisma.user.update({
+    //     where: { id: user.id },
+    //     data: { verifyToken: verifyCode, verifyTokenExpiry: verifyExpiry }
+    // });
+    // await sendVerificationEmail(email, verifyCode);
 
-    // Return success, but NO token. User must verify first.
-    return NextResponse.json({ success: true, message: "Verification code sent", userId: user.id }, { status: 201 });
+    return NextResponse.json({
+        success: true,
+        message: "Account created successfully",
+        userId: user.id
+    }, { status: 201 });
 }

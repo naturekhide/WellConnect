@@ -30,10 +30,14 @@ export default function RegisterScreen() {
             var data = await r.json();
 
             if (r.ok) {
-                router.push({
-                    pathname: "/auth/verify-email",
-                    params: { email: email.trim(), password: password }
-                });
+                // 🚨 TEMPORARY: Skip email verification and go straight to the app
+                router.replace("/(tabs)/home");
+
+                // 👇 WHEN YOU GET A DOMAIN, REMOVE THE LINE ABOVE AND UNCOMMENT THIS:
+                // router.push({
+                //     pathname: "/auth/verify-email",
+                //     params: { email: email.trim(), password: password }
+                // });
                 return;
             } else {
                 setError(data.error || "Registration failed");
@@ -101,7 +105,7 @@ export default function RegisterScreen() {
                     placeholder="Email"
                     placeholderTextColor={colors.textTertiary}
                     keyboardType="email-address"
-                    autoCapitalize="none" // 👈 Added to prevent auto-capitalizing the first letter
+                    autoCapitalize="none"
                     value={email}
                     onChangeText={setEmail}
                 />
