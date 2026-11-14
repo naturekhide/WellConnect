@@ -34,7 +34,9 @@
       "expo-notifications",
       "expo-sharing",
       "expo-audio",
-      "expo-splash-screen"
+      "expo-splash-screen",
+      "expo-font",
+      "expo-asset"
     ],
     "extra": {
       "router": {},
