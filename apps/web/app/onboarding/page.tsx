@@ -31,21 +31,31 @@ export default function OnboardingPage() {
         if (currentSlide < slides.length - 1) {
             setCurrentSlide(currentSlide + 1);
         } else {
-            // 👇 Save and go to dashboard
             localStorage.setItem("hasSeenOnboarding", "true");
-            router.push("/dashboard");
+            router.push("/connect");
         }
     };
 
     var handleSkip = function () {
         localStorage.setItem("hasSeenOnboarding", "true");
-        router.push("/dashboard");
+        router.push("/connect");
     };
 
     var slide = slides[currentSlide];
 
     return (
-        <main style={{ background: C.background, minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+        // 👇 position fixed and zIndex ensures it covers the whole screen
+        <main style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            background: C.background,
+            display: "flex",
+            flexDirection: "column"
+        }}>
 
             {/* Skip Button */}
             <div style={{ padding: S.lg, paddingTop: 60, display: "flex", justifyContent: "flex-end" }}>
