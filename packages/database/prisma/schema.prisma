@@ -17,6 +17,7 @@ model User {
   name          String
   username      String?   @unique
   expoPushToken String?
+  lastTypingAt  DateTime?
   resetToken   String?
   resetTokenExpiry DateTime?
   emailVerified    Boolean  @default(false)
