@@ -41,12 +41,12 @@ function LoginContent() {
         if (result?.error) {
             setError("Invalid email/username or password");
         } else {
-            // 👇 Check onboarding status on web
+            // 👇 Strict check
             var hasSeen = localStorage.getItem("hasSeenOnboarding");
-            if (!hasSeen) {
-                router.push("/onboarding");
-            } else {
+            if (hasSeen === "true") {
                 router.push("/dashboard");
+            } else {
+                router.push("/onboarding");
             }
             router.refresh();
         }

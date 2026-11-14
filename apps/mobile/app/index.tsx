@@ -47,11 +47,12 @@ export default function Index() {
         if (!isLoading) {
             var timer = setTimeout(async function () {
                 if (isAuthenticated) {
+                    // 👇 Strict check
                     var hasSeen = await AsyncStorage.getItem("hasSeenOnboarding");
-                    if (!hasSeen) {
-                        router.replace("/onboarding");
-                    } else {
+                    if (hasSeen === "true") {
                         router.replace("/(tabs)/home");
+                    } else {
+                        router.replace("/onboarding");
                     }
                 } else {
                     router.replace("/auth/login");

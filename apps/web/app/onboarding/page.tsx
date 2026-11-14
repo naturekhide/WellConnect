@@ -31,15 +31,15 @@ export default function OnboardingPage() {
         if (currentSlide < slides.length - 1) {
             setCurrentSlide(currentSlide + 1);
         } else {
-            // Finish onboarding
+            // 👇 Save and go to dashboard
             localStorage.setItem("hasSeenOnboarding", "true");
-            router.push("/connect");
+            router.push("/dashboard");
         }
     };
 
     var handleSkip = function () {
         localStorage.setItem("hasSeenOnboarding", "true");
-        router.push("/connect");
+        router.push("/dashboard");
     };
 
     var slide = slides[currentSlide];

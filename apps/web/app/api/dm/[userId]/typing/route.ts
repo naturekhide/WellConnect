@@ -6,7 +6,7 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
     var userId = await getCurrentUserId(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // 👇 Save the current timestamp to the database
+    // 👇 Save the current timestamp to the database for the CURRENT user
     try {
         await prisma.user.update({
             where: { id: userId },
@@ -21,10 +21,12 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     var userId = await getCurrentUserId(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // 👇 Check the timestamp of the OTHER user
+    // 👇 The params.userId is the person you are chatting WITH
+    var otherId = params.userId;
+
     try {
         var otherUser = await prisma.user.findUnique({
-            where: { id: userId }, // The other user's ID is the current user's ID in this context
+            where: { id: otherId }, // 👈 FIXED: Check the OTHER user's timestamp
             select: { lastTypingAt: true },
         });
 
