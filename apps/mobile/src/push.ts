@@ -1,11 +1,10 @@
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { Platform } from "react-native"; // 👈 Removed Alert
+import { Platform } from "react-native";
 import { getAuthToken } from "./api/client";
 
 var API_URL = "https://well-connect-web.vercel.app";
 
-// Only load notifications in a real build (not Expo Go)
 var Notifications: any = null;
 var isExpoGo = Constants.appOwnership === "expo";
 
@@ -59,11 +58,13 @@ export async function registerForPushNotifications() {
         }
 
         if (Platform.OS === "android") {
-            await Notifications.setNotificationChannelAsync("default", {
-                name: "default",
+            // 👇 Use a new channel ID (v2) to force Android to pick up the new importance settings
+            await Notifications.setNotificationChannelAsync("default_v2", {
+                name: "default_v2",
                 importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: "#059669",
+                lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
             });
         }
 
@@ -82,7 +83,6 @@ export async function registerForPushNotifications() {
             return null;
         }
 
-        // Send the token to the backend
         var res = await fetch(API_URL + "/api/users/push-token", {
             method: "POST",
             headers: {
