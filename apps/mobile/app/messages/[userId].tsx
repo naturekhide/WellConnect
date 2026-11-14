@@ -21,7 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import EmojiPicker from "rn-emoji-keyboard";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
-import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM, uploadImages, reactToMessage } from "../../src/api/client";
+import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM, uploadImages, reactToMessage, getAuthToken } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 import VoiceNoteButton from "../../components/VoiceNoteButton";
 import AudioMessage from "../../components/AudioMessage";
@@ -30,6 +30,7 @@ import AttachmentButton from "../../components/AttachmentButton";
 var MY_BUBBLE = "#059669";
 var THEIR_BUBBLE = "#132a25";
 var BG_COLOR = "#0a0f0d";
+var API_URL = "https://well-connect-web.vercel.app";
 
 function formatDate(dateString: string) {
     var d = new Date(dateString);
@@ -153,12 +154,33 @@ export default function ChatScreen() {
     var [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
     var [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
 
+    // 🚨 Typing state
+    var [otherIsTyping, setOtherIsTyping] = useState(false);
+    var typingTimeout = useRef<any>(null);
+
     var scrollRef = useRef<ScrollView>(null);
 
     useEffect(function () {
         loadInitial();
         var interval = setInterval(poll, 1500);
-        return function () { clearInterval(interval); };
+
+        // 🚨 Poll for typing indicator
+        var typingInterval = setInterval(async function () {
+            try {
+                var res = await fetch(`${API_URL}/api/dm/${otherId}/typing`, {
+                    headers: { Authorization: "Bearer " + getAuthToken() }
+                });
+                if (res.ok) {
+                    var data = await res.json();
+                    setOtherIsTyping(data.isTyping);
+                }
+            } catch (e) { }
+        }, 2000);
+
+        return function () {
+            clearInterval(interval);
+            clearInterval(typingInterval);
+        };
     }, [otherId]);
 
     useEffect(function () {
@@ -175,7 +197,6 @@ export default function ChatScreen() {
         setLoading(false);
     };
 
-    // 🚨 1. FIXED POLLING TO PREVENT DUPLICATES
     var poll = async function () {
         if (!messagesRef.current || !messagesRef.current.length) return;
         var last = messagesRef.current[messagesRef.current.length - 1].createdAt;
@@ -183,7 +204,6 @@ export default function ChatScreen() {
         try {
             var data = await getDMMessages(otherId, last);
             if (data.messages && data.messages.length > 0) {
-                // Filter out messages we already have locally
                 var existingIds = new Set(messagesRef.current.map((m: any) => m.id));
                 var newMessages = data.messages.filter((m: any) => !existingIds.has(m.id));
 
@@ -194,6 +214,20 @@ export default function ChatScreen() {
                 }
             }
         } catch (e) { }
+    };
+
+    // 🚨 Typing trigger function
+    var handleTyping = function () {
+        if (typingTimeout.current) return;
+
+        fetch(`${API_URL}/api/dm/${otherId}/typing`, {
+            method: "POST",
+            headers: { Authorization: "Bearer " + getAuthToken() }
+        });
+
+        typingTimeout.current = setTimeout(function () {
+            typingTimeout.current = null;
+        }, 2000);
     };
 
     var handleSend = async function () {
@@ -358,6 +392,15 @@ export default function ChatScreen() {
             </ScrollView>
 
             <View style={styles.composerWrapper}>
+                {/* 🚨 TYPING INDICATOR */}
+                {otherIsTyping && (
+                    <View style={{ paddingHorizontal: spacing.md, paddingBottom: 4 }}>
+                        <Text style={{ fontSize: 12, fontStyle: "italic", color: "#94a3b8" }}>
+                            {other?.name || "Someone"} is typing...
+                        </Text>
+                    </View>
+                )}
+
                 {replyingTo && (
                     <View style={[styles.replyPreview, { backgroundColor: THEIR_BUBBLE, borderLeftColor: MY_BUBBLE }]}>
                         <View style={{ flex: 1 }}>
@@ -403,7 +446,7 @@ export default function ChatScreen() {
                     <TextInput
                         style={styles.input}
                         value={text}
-                        onChangeText={setText}
+                        onChangeText={function (t) { setText(t); handleTyping(); }} // 👈 Typing trigger
                         placeholder={editingMessage ? "Edit message..." : "Message..."}
                         placeholderTextColor="#64748b"
                         multiline

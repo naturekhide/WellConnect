@@ -47,6 +47,10 @@ export default function WebChatPage() {
     const [loading, setLoading] = useState(true);
     const [showEmoji, setShowEmoji] = useState(false);
 
+    // Typing State
+    const [otherIsTyping, setOtherIsTyping] = useState(false);
+    const typingTimeout = useRef<any>(null);
+
     // Recording States
     const [isRecording, setIsRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
@@ -71,7 +75,22 @@ export default function WebChatPage() {
     useEffect(() => {
         loadChat();
         const interval = setInterval(loadChat, 3000);
-        return () => clearInterval(interval);
+        
+        // 👇 Poll for typing indicator every 2 seconds
+        const typingInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/dm/${otherId}/typing`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setOtherIsTyping(data.isTyping);
+                }
+            } catch (e) {}
+        }, 2000);
+
+        return () => {
+            clearInterval(interval);
+            clearInterval(typingInterval);
+        };
     }, [otherId]);
 
     useEffect(() => {
@@ -115,6 +134,14 @@ export default function WebChatPage() {
         setLoading(false);
     };
 
+    const handleTyping = () => {
+        if (typingTimeout.current) return;
+        fetch(`/api/dm/${otherId}/typing`, { method: "POST" });
+        typingTimeout.current = setTimeout(() => {
+            typingTimeout.current = null;
+        }, 2000);
+    };
+
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -124,7 +151,7 @@ export default function WebChatPage() {
             recorder.ondataavailable = (e) => chunks.push(e.data);
             recorder.onstop = () => {
                 const blob = new Blob(chunks, { type: "audio/webm" });
-                setPendingAudio(blob); // Save to state
+                setPendingAudio(blob);
                 setRecordingTime(0);
                 if (timerRef.current) clearInterval(timerRef.current);
             };
@@ -384,6 +411,13 @@ export default function WebChatPage() {
 
             <div style={{ padding: "20px 24px", borderTop: "1px solid #1e293b", position: "relative", flexShrink: 0 }}>
 
+                {/* 👇 TYPING INDICATOR */}
+                {otherIsTyping && (
+                    <div style={{ padding: "8px 16px", fontSize: "12px", color: "#94a3b8", fontStyle: "italic" }}>
+                        {other?.name || "Someone"} is typing...
+                    </div>
+                )}
+
                 {replyingTo && (
                     <div style={{ background: "#132a25", padding: "12px", borderRadius: "12px", marginBottom: "12px", display: "flex", justifyContent: "space-between", borderLeft: "4px solid #34d399" }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -403,7 +437,6 @@ export default function WebChatPage() {
                     </div>
                 )}
 
-                {/* 🚨 PENDING AUDIO PREVIEW */}
                 {pendingAudio && !isRecording && (
                     <div style={{ background: "#132a25", padding: "12px", borderRadius: "12px", marginBottom: "12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -450,7 +483,7 @@ export default function WebChatPage() {
                             <input
                                 type="text"
                                 value={text}
-                                onChange={(e) => setText(e.target.value)}
+                                onChange={(e) => { setText(e.target.value); handleTyping(); }} // 👈 Typing trigger
                                 placeholder="Message..."
                                 style={{ flex: 1, background: "none", border: "none", color: "#fff", fontSize: "15px", outline: "none" }}
                             />
