@@ -41,8 +41,8 @@ function LoginContent() {
         if (result?.error) {
             setError("Invalid email/username or password");
         } else {
-            // 👇 Always route to /connect on successful login
-            router.push("/connect");
+            // 👇 Route to /dashboard on successful login
+            router.push("/dashboard");
             router.refresh();
         }
     };

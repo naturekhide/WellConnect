@@ -75,7 +75,7 @@ export default function WebChatPage() {
     useEffect(() => {
         loadChat();
         const interval = setInterval(loadChat, 3000);
-        
+
         // 👇 Poll for typing indicator every 2 seconds
         const typingInterval = setInterval(async () => {
             try {
@@ -84,7 +84,7 @@ export default function WebChatPage() {
                     const data = await res.json();
                     setOtherIsTyping(data.isTyping);
                 }
-            } catch (e) {}
+            } catch (e) { }
         }, 2000);
 
         return () => {
