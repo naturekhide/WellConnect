@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuthStore } from "../../src/store/authStore";
 import { submitMood, getMoodStats, getMoodToday, getInsights, getJournal, getGoals, getDMUnreadCount } from "../../src/api/client";
 import { Skeleton } from "../../src/components";
@@ -17,6 +18,7 @@ var moodOptions = [
 export default function HomeScreen() {
     var router = useRouter();
     var colors = useColors();
+    var insets = useSafeAreaInsets();
     var { user } = useAuthStore();
     var [selectedMood, setSelectedMood] = useState<any>(null);
     var [submitted, setSubmitted] = useState(false);
@@ -79,7 +81,7 @@ export default function HomeScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
                 <View style={styles.content}>
                     <Skeleton width={200} height={28} />
                     <Skeleton width={220} height={16} style={{ marginTop: 8 }} />
@@ -99,7 +101,10 @@ export default function HomeScreen() {
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
-                contentContainerStyle={styles.content}
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingTop: insets.top + spacing.lg },
+                ]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
             >
                 <Text style={[styles.greeting, { color: colors.textPrimary }]}>

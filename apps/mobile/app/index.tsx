@@ -3,6 +3,7 @@ import { View, Animated, StyleSheet, Image, Text, Dimensions } from "react-nativ
 import { useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/store/authStore";
 import { useColors } from "../src/theme";
 
@@ -64,7 +65,7 @@ export default function Index() {
     }, [isLoading, isAuthenticated]);
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background, flex: 1 }]}>
             <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: scaleAnim }], alignItems: "center" }}>
                 <Image
                     source={require("../assets/wellconnect.png")}
@@ -74,7 +75,7 @@ export default function Index() {
                 <Text style={[styles.title, { color: colors.primary }]}>WellConnect</Text>
                 <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Connect • Feel • Grow</Text>
             </Animated.View>
-        </View>
+        </SafeAreaView>
     );
 }
 

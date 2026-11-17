@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Modal } from "react-native";
 import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors, spacing, radius } from "../../src/theme";
 
 export default function TabLayout() {
     var colors = useColors();
     var router = useRouter();
+    var insets = useSafeAreaInsets();
     var [showComposeMenu, setShowComposeMenu] = useState(false);
 
     var menuItems = [
@@ -44,8 +46,9 @@ export default function TabLayout() {
                     tabBarStyle: {
                         backgroundColor: colors.background,
                         borderTopColor: colors.border,
-                        height: 70,
-                        paddingBottom: 10,
+                        height: 60 + insets.bottom,
+                        paddingTop: 8,
+                        paddingBottom: insets.bottom + 8,
                     },
                     tabBarActiveTintColor: colors.primary,
                     tabBarInactiveTintColor: colors.textSecondary,
@@ -138,7 +141,7 @@ export default function TabLayout() {
                         onPress={function () { setShowComposeMenu(false); }}
                     />
 
-                    <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    <View style={[styles.sheet, { backgroundColor: colors.background, borderColor: colors.border, paddingBottom: spacing.lg + insets.bottom }]}>
                         <View style={styles.header}>
                             <Text style={[styles.title, { color: colors.textPrimary }]}>What's on your mind?</Text>
                             <TouchableOpacity
@@ -195,7 +198,6 @@ var styles = StyleSheet.create({
         borderTopLeftRadius: radius.xl,
         borderTopRightRadius: radius.xl,
         padding: spacing.lg,
-        paddingBottom: 40,
         borderWidth: 1,
         borderBottomWidth: 0
     },

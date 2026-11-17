@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // 👈 Import AsyncStorage
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore } from "../src/store/authStore";
 import { useThemeStore } from "../src/store/themeStore";
 import { loadToken } from "../src/api/client";
@@ -68,13 +69,13 @@ export default function RootLayout() {
     }
 
     return (
-        <>
+        <SafeAreaProvider>
             <StatusBar style={mode === "dark" ? "light" : "dark"} />
             <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen name="index" />
                 <Stack.Screen name="auth/login" />
                 <Stack.Screen name="auth/register" />
-                <Stack.Screen name="onboarding" /> {/* 👈 Add the onboarding route */}
+                <Stack.Screen name="onboarding" />
                 <Stack.Screen name="(tabs)" />
                 <Stack.Screen name="achievements" />
                 <Stack.Screen name="notifications" />
@@ -82,6 +83,6 @@ export default function RootLayout() {
                 <Stack.Screen name="feed/[id]" />
                 <Stack.Screen name="modal" options={{ presentation: "modal" }} />
             </Stack>
-        </>
+        </SafeAreaProvider>
     );
 }
