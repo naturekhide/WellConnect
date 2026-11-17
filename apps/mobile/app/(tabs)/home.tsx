@@ -83,16 +83,15 @@ export default function HomeScreen() {
         return (
             <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
                 <View style={styles.content}>
-                    <Skeleton width={200} height={28} />
-                    <Skeleton width={220} height={16} style={{ marginTop: 8 }} />
-                    <Skeleton width="100%" height={82} style={{ marginTop: 16 }} />
-                    <Skeleton width={100} height={14} style={{ marginTop: 16 }} />
-                    <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-                        <Skeleton width="31%" height={90} />
-                        <Skeleton width="31%" height={90} />
-                        <Skeleton width="31%" height={90} />
+                    <Skeleton width={200} height={24} />
+                    <Skeleton width={180} height={14} style={{ marginTop: 6 }} />
+                    <Skeleton width="100%" height={64} style={{ marginTop: 12 }} />
+                    <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
+                        <Skeleton width="31%" height={72} />
+                        <Skeleton width="31%" height={72} />
+                        <Skeleton width="31%" height={72} />
                     </View>
-                    <Skeleton width="100%" height={110} style={{ marginTop: 16 }} />
+                    <Skeleton width="100%" height={64} style={{ marginTop: 12 }} />
                 </View>
             </View>
         );
@@ -103,22 +102,26 @@ export default function HomeScreen() {
             <ScrollView
                 contentContainerStyle={[
                     styles.content,
-                    { paddingTop: insets.top + spacing.lg },
+                    { paddingTop: insets.top + spacing.sm },
                 ]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
             >
+                {/* GREETING */}
                 <Text style={[styles.greeting, { color: colors.textPrimary }]}>
                     Good {getTimeOfDay()}, {user?.name?.split(" ")[0] || "there"}
                 </Text>
                 <Text style={[styles.greetingSub, { color: colors.textSecondary }]}>How are you feeling today?</Text>
 
+                {/* INSIGHT — single-line banner, tap to expand later */}
                 {insight && (
                     <View style={[styles.insightCard, { backgroundColor: colors.surface, borderColor: colors.border, borderLeftColor: colors.primary }]}>
-                        <Text style={[styles.insightTitle, { color: colors.textPrimary }]}>💡 {insight.title}</Text>
-                        <Text style={[styles.insightText, { color: colors.textSecondary }]}>{insight.description}</Text>
+                        <Text style={[styles.insightTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                            💡 {insight.title}
+                        </Text>
                     </View>
                 )}
 
+                {/* MOOD */}
                 {submitted ? (
                     <View style={[styles.submittedBox, { backgroundColor: colors.primaryLight }]}>
                         <Text style={styles.submittedEmoji}>✅</Text>
@@ -155,12 +158,13 @@ export default function HomeScreen() {
                     </View>
                 )}
 
+                {/* YOUR WEEK — 3 compact stats */}
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your week</Text>
                 <View style={styles.weekRow}>
                     <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <Text style={styles.weekEmoji}>🔥</Text>
                         <Text style={[styles.weekNumber, { color: colors.primary }]}>{stats?.streak || 0}</Text>
-                        <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>day streak</Text>
+                        <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>streak</Text>
                     </View>
                     <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <Text style={styles.weekEmoji}>📝</Text>
@@ -174,57 +178,53 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
+                {/* WELLBEING — only shows when data exists, one compact row */}
                 {stats && stats.totalEntries > 0 && (
-                    <>
-                        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your wellbeing</Text>
-                        <View style={[styles.wellbeingCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                            <View style={styles.wellbeingRow}>
-                                <Text style={[styles.wellbeingLabel, { color: colors.textSecondary }]}>Avg mood</Text>
-                                <Text style={[styles.wellbeingValue, { color: colors.textPrimary }]}>{stats.averageScore}/10</Text>
-                            </View>
-                            <View style={[styles.progressBar, { backgroundColor: colors.surfaceAlt }]}>
-                                <View style={[styles.progressFill, { width: `${stats.averageScore * 10}%` as any, backgroundColor: colors.primary }]} />
-                            </View>
-                            <View style={styles.wellbeingRow}>
-                                <Text style={[styles.wellbeingLabel, { color: colors.textSecondary }]}>Dominant mood</Text>
-                                <Text style={[styles.wellbeingValue, { color: colors.textPrimary, textTransform: "capitalize" }]}>
-                                    {stats.dominantMood}
-                                </Text>
-                            </View>
+                    <View style={[styles.wellbeingRowCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                        <Text style={[styles.wellbeingLabel, { color: colors.textSecondary }]}>Avg mood</Text>
+                        <Text style={[styles.wellbeingValue, { color: colors.textPrimary }]}>{stats.averageScore}/10</Text>
+                        <View style={[styles.progressBar, { backgroundColor: colors.surfaceAlt }]}>
+                            <View style={[styles.progressFill, { width: `${stats.averageScore * 10}%` as any, backgroundColor: colors.primary }]} />
                         </View>
-                    </>
+                    </View>
                 )}
 
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
-                <View style={styles.quickRow}>
-                    <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/journal"); }}>
-                        <Text style={styles.quickEmoji}>📝</Text>
-                        <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Journal</Text>
+                {/* INBOX + QUICK — single row of chips */}
+                <View style={styles.chipRow}>
+                    <TouchableOpacity
+                        style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        onPress={function () { router.push("/(tabs)/journal"); }}
+                    >
+                        <Text style={styles.chipEmoji}>📝</Text>
+                        <Text style={[styles.chipText, { color: colors.textPrimary }]}>Journal</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/goals"); }}>
-                        <Text style={styles.quickEmoji}>🎯</Text>
-                        <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Goals</Text>
+                    <TouchableOpacity
+                        style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        onPress={function () { router.push("/(tabs)/goals"); }}
+                    >
+                        <Text style={styles.chipEmoji}>🎯</Text>
+                        <Text style={[styles.chipText, { color: colors.textPrimary }]}>Goals</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        onPress={function () { router.push("/my-circles"); }}
+                    >
+                        <Text style={styles.chipEmoji}>🌿</Text>
+                        <Text style={[styles.chipText, { color: colors.textPrimary }]}>Circles</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.chip, { backgroundColor: colors.surface, borderColor: colors.border }]}
+                        onPress={function () { router.push("/messages"); }}
+                    >
+                        <Text style={styles.chipEmoji}>💬</Text>
+                        <Text style={[styles.chipText, { color: colors.textPrimary }]}>Inbox</Text>
+                        {unreadDMs > 0 && (
+                            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.badgeText}>{unreadDMs}</Text>
+                            </View>
+                        )}
                     </TouchableOpacity>
                 </View>
-
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Inbox</Text>
-
-                <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: spacing.sm }]} onPress={function () { router.push("/my-circles"); }}>
-                    <Text style={styles.inboxEmoji}>🌿</Text>
-                    <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>My Circles</Text>
-                    <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/messages"); }}>
-                    <Text style={styles.inboxEmoji}>💬</Text>
-                    <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>Messages</Text>
-                    {unreadDMs > 0 && (
-                        <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                            <Text style={styles.badgeText}>{unreadDMs}</Text>
-                        </View>
-                    )}
-                    <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
-                </TouchableOpacity>
             </ScrollView>
         </View>
     );
@@ -239,90 +239,97 @@ function getTimeOfDay() {
 
 var styles = StyleSheet.create({
     container: { flex: 1 },
-    content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
-    greeting: { fontSize: 24, fontWeight: "700" },
-    greetingSub: { fontSize: 15, marginBottom: spacing.sm },
+    // Tighter padding overall
+    content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.lg },
+    greeting: { fontSize: 22, fontWeight: "700" },
+    greetingSub: { fontSize: 13 },
+
+    // Insight banner (single line)
     insightCard: {
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        borderLeftWidth: 4,
+        borderRadius: radius.md,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        borderLeftWidth: 3,
         borderWidth: 1,
-        ...shadow.sm,
     },
-    insightTitle: { fontSize: 14, fontWeight: "600", marginBottom: spacing.xs },
-    insightText: { fontSize: 13, lineHeight: 19 },
-    moodGrid: { flexDirection: "row", gap: spacing.sm },
+    insightTitle: { fontSize: 13, fontWeight: "600" },
+
+    // Mood grid — shorter cards
+    moodGrid: { flexDirection: "row", gap: spacing.xs },
     moodCard: {
         flex: 1,
         alignItems: "center",
-        padding: spacing.md,
+        paddingVertical: spacing.sm,
         borderRadius: radius.md,
         borderWidth: 2,
-        minHeight: 82,
+        minHeight: 64,
         justifyContent: "center",
     },
-    moodEmoji: { fontSize: 26, marginBottom: 4 },
-    moodText: { fontSize: 11, fontWeight: "600" },
-    submittedBox: { padding: spacing.lg, borderRadius: radius.lg, alignItems: "center" },
-    submittedEmoji: { fontSize: 28, marginBottom: 4 },
-    submittedText: { fontWeight: "600", fontSize: 14 },
-    checkedBox: { padding: spacing.lg, borderRadius: radius.lg, alignItems: "center", borderWidth: 1 },
-    checkedText: { fontSize: 14, textAlign: "center", fontWeight: "500" },
-    sectionTitle: { fontSize: 13, fontWeight: "600", marginTop: spacing.sm },
-    weekRow: { flexDirection: "row", gap: spacing.sm },
+    moodEmoji: { fontSize: 22, marginBottom: 2 },
+    moodText: { fontSize: 10, fontWeight: "600" },
+
+    submittedBox: { paddingVertical: spacing.md, borderRadius: radius.md, alignItems: "center" },
+    submittedEmoji: { fontSize: 22, marginBottom: 2 },
+    submittedText: { fontWeight: "600", fontSize: 13 },
+    checkedBox: { paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderRadius: radius.md, alignItems: "center", borderWidth: 1 },
+    checkedText: { fontSize: 12, textAlign: "center", fontWeight: "500" },
+
+    sectionTitle: { fontSize: 12, fontWeight: "600", marginTop: spacing.xs },
+
+    // Week cards — smaller
+    weekRow: { flexDirection: "row", gap: spacing.xs },
     weekCard: {
         flex: 1,
-        borderRadius: radius.lg,
-        padding: spacing.md,
+        borderRadius: radius.md,
+        paddingVertical: spacing.sm,
         alignItems: "center",
         borderWidth: 1,
         ...shadow.sm,
     },
-    weekEmoji: { fontSize: 20, marginBottom: 4 },
-    weekNumber: { fontSize: 22, fontWeight: "700" },
-    weekLabel: { fontSize: 10, marginTop: 2, fontWeight: "500" },
-    wellbeingCard: {
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        borderWidth: 1,
-        gap: spacing.md,
-        ...shadow.sm,
-    },
-    wellbeingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    wellbeingLabel: { fontSize: 13 },
-    wellbeingValue: { fontSize: 14, fontWeight: "600" },
-    progressBar: { height: 8, borderRadius: 4, overflow: "hidden" },
-    progressFill: { height: "100%", borderRadius: 4 },
-    quickRow: { flexDirection: "row", gap: spacing.sm },
-    quickCard: {
-        flex: 1,
-        borderRadius: radius.lg,
-        padding: spacing.lg,
-        alignItems: "center",
-        borderWidth: 1,
-        ...shadow.sm,
-    },
-    quickEmoji: { fontSize: 24, marginBottom: 6 },
-    quickTitle: { fontSize: 13, fontWeight: "600" },
-    inboxRow: {
+    weekEmoji: { fontSize: 16 },
+    weekNumber: { fontSize: 18, fontWeight: "700" },
+    weekLabel: { fontSize: 9, marginTop: 1, fontWeight: "500" },
+
+    // Wellbeing — one horizontal row
+    wellbeingRowCard: {
         flexDirection: "row",
         alignItems: "center",
-        gap: spacing.md,
-        padding: spacing.lg,
-        borderRadius: radius.lg,
+        gap: spacing.sm,
+        borderRadius: radius.md,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
         borderWidth: 1,
-        ...shadow.sm,
     },
-    inboxEmoji: { fontSize: 20 },
-    inboxTitle: { flex: 1, fontSize: 15, fontWeight: "500" },
-    badge: {
-        minWidth: 20,
-        height: 20,
-        borderRadius: 10,
+    wellbeingLabel: { fontSize: 12 },
+    wellbeingValue: { fontSize: 12, fontWeight: "700" },
+    progressBar: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
+    progressFill: { height: "100%", borderRadius: 3 },
+
+    // Chips row — 4 actions in one horizontal row
+    chipRow: { flexDirection: "row", gap: spacing.xs },
+    chip: {
+        flex: 1,
+        borderRadius: radius.md,
+        paddingVertical: spacing.sm,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: 6,
+        borderWidth: 1,
+        ...shadow.sm,
+        position: "relative",
     },
-    badgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-    inboxArrow: { fontSize: 16 },
+    chipEmoji: { fontSize: 18, marginBottom: 2 },
+    chipText: { fontSize: 11, fontWeight: "600" },
+
+    badge: {
+        position: "absolute",
+        top: 4,
+        right: 6,
+        minWidth: 16,
+        height: 16,
+        borderRadius: 8,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 4,
+    },
+    badgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
 });
