@@ -239,97 +239,98 @@ function getTimeOfDay() {
 
 var styles = StyleSheet.create({
     container: { flex: 1 },
-    // Tighter padding overall
-    content: { padding: spacing.md, gap: spacing.sm, paddingBottom: spacing.lg },
-    greeting: { fontSize: 22, fontWeight: "700" },
-    greetingSub: { fontSize: 13 },
+    // Increased gap back to md for breathing room, kept padding md
+    content: { padding: spacing.md, gap: spacing.md, paddingBottom: spacing.xl },
 
-    // Insight banner (single line)
+    greeting: { fontSize: 24, fontWeight: "700" },
+    greetingSub: { fontSize: 14 },
+
+    // Insight banner
     insightCard: {
         borderRadius: radius.md,
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
         paddingHorizontal: spacing.md,
         borderLeftWidth: 3,
         borderWidth: 1,
     },
-    insightTitle: { fontSize: 13, fontWeight: "600" },
+    insightTitle: { fontSize: 14, fontWeight: "600" },
 
-    // Mood grid — shorter cards
-    moodGrid: { flexDirection: "row", gap: spacing.xs },
+    // Mood grid — taller cards
+    moodGrid: { flexDirection: "row", gap: spacing.sm },
     moodCard: {
         flex: 1,
         alignItems: "center",
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
         borderRadius: radius.md,
         borderWidth: 2,
-        minHeight: 64,
+        minHeight: 78, // Brought back up from 64
         justifyContent: "center",
     },
-    moodEmoji: { fontSize: 22, marginBottom: 2 },
-    moodText: { fontSize: 10, fontWeight: "600" },
+    moodEmoji: { fontSize: 26, marginBottom: 4 },
+    moodText: { fontSize: 11, fontWeight: "600" },
 
-    submittedBox: { paddingVertical: spacing.md, borderRadius: radius.md, alignItems: "center" },
-    submittedEmoji: { fontSize: 22, marginBottom: 2 },
-    submittedText: { fontWeight: "600", fontSize: 13 },
-    checkedBox: { paddingVertical: spacing.md, paddingHorizontal: spacing.md, borderRadius: radius.md, alignItems: "center", borderWidth: 1 },
-    checkedText: { fontSize: 12, textAlign: "center", fontWeight: "500" },
+    submittedBox: { paddingVertical: spacing.lg, borderRadius: radius.md, alignItems: "center" },
+    submittedEmoji: { fontSize: 24, marginBottom: 4 },
+    submittedText: { fontWeight: "600", fontSize: 14 },
+    checkedBox: { paddingVertical: spacing.lg, paddingHorizontal: spacing.md, borderRadius: radius.md, alignItems: "center", borderWidth: 1 },
+    checkedText: { fontSize: 13, textAlign: "center", fontWeight: "500" },
 
-    sectionTitle: { fontSize: 12, fontWeight: "600", marginTop: spacing.xs },
+    sectionTitle: { fontSize: 13, fontWeight: "600", marginTop: spacing.xs },
 
-    // Week cards — smaller
-    weekRow: { flexDirection: "row", gap: spacing.xs },
+    // Week cards — taller and roomier
+    weekRow: { flexDirection: "row", gap: spacing.sm },
     weekCard: {
         flex: 1,
         borderRadius: radius.md,
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
         alignItems: "center",
         borderWidth: 1,
         ...shadow.sm,
     },
-    weekEmoji: { fontSize: 16 },
-    weekNumber: { fontSize: 18, fontWeight: "700" },
-    weekLabel: { fontSize: 9, marginTop: 1, fontWeight: "500" },
+    weekEmoji: { fontSize: 18, marginBottom: 2 },
+    weekNumber: { fontSize: 20, fontWeight: "700" },
+    weekLabel: { fontSize: 10, marginTop: 2, fontWeight: "500" },
 
-    // Wellbeing — one horizontal row
+    // Wellbeing row
     wellbeingRowCard: {
         flexDirection: "row",
         alignItems: "center",
-        gap: spacing.sm,
+        gap: spacing.md,
         borderRadius: radius.md,
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
         paddingHorizontal: spacing.md,
         borderWidth: 1,
     },
-    wellbeingLabel: { fontSize: 12 },
-    wellbeingValue: { fontSize: 12, fontWeight: "700" },
-    progressBar: { flex: 1, height: 6, borderRadius: 3, overflow: "hidden" },
-    progressFill: { height: "100%", borderRadius: 3 },
+    wellbeingLabel: { fontSize: 13 },
+    wellbeingValue: { fontSize: 13, fontWeight: "700" },
+    progressBar: { flex: 1, height: 8, borderRadius: 4, overflow: "hidden" },
+    progressFill: { height: "100%", borderRadius: 4 },
 
-    // Chips row — 4 actions in one horizontal row
-    chipRow: { flexDirection: "row", gap: spacing.xs },
+    // Chips row — taller, with better gaps
+    chipRow: { flexDirection: "row", gap: spacing.sm },
     chip: {
         flex: 1,
         borderRadius: radius.md,
-        paddingVertical: spacing.sm,
+        paddingVertical: spacing.md,
         alignItems: "center",
         justifyContent: "center",
         borderWidth: 1,
         ...shadow.sm,
         position: "relative",
     },
-    chipEmoji: { fontSize: 18, marginBottom: 2 },
-    chipText: { fontSize: 11, fontWeight: "600" },
+    chipEmoji: { fontSize: 20, marginBottom: 4 },
+    chipText: { fontSize: 12, fontWeight: "600" },
 
     badge: {
         position: "absolute",
-        top: 4,
+        top: 6,
         right: 6,
-        minWidth: 16,
-        height: 16,
-        borderRadius: 8,
+        minWidth: 18,
+        height: 18,
+        borderRadius: 9,
         alignItems: "center",
         justifyContent: "center",
         paddingHorizontal: 4,
     },
-    badgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
+    badgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
 });
