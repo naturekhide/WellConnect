@@ -41,7 +41,6 @@ export default function YouScreen() {
             var g = await getGoals();
             setGoalCount(g.length);
 
-            // 👇 Fetch links after we have the user ID
             if (user?.id) {
                 fetchLinks(user.id);
             }
@@ -129,7 +128,13 @@ export default function YouScreen() {
         setDownloadingPdf(true);
         try {
             var fileUri = FileSystem.documentDirectory + "wellconnect-report.pdf";
-            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri);
+
+            // 👇 FIXED: Fetch the token and pass it in headers
+            var token = getAuthToken();
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export-pdf`, fileUri, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
@@ -145,7 +150,13 @@ export default function YouScreen() {
         setDownloadingJson(true);
         try {
             var fileUri = FileSystem.documentDirectory + "wellconnect-data.json";
-            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri);
+
+            // 👇 FIXED: Fetch the token and pass it in headers
+            var token = getAuthToken();
+            var res = await FileSystem.downloadAsync(`${API_URL}/api/users/export`, fileUri, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
+
             if (res.status === 200) {
                 await Sharing.shareAsync(res.uri);
             } else {
@@ -169,7 +180,13 @@ export default function YouScreen() {
                     onPress: async function () {
                         setDeleting(true);
                         try {
-                            var res = await fetch(`${API_URL}/api/users/delete`, { method: "DELETE" });
+                            // 👇 FIXED: Fetch the token and pass it in headers
+                            var token = getAuthToken();
+                            var res = await fetch(`${API_URL}/api/users/delete`, {
+                                method: "DELETE",
+                                headers: token ? { Authorization: `Bearer ${token}` } : {}
+                            });
+
                             if (res.ok) {
                                 await logout();
                                 router.replace("/auth/login");
@@ -317,6 +334,15 @@ export default function YouScreen() {
                             <Text style={[styles.menuText, { color: colors.textPrimary }]}>{downloadingPdf ? "Generating..." : "Download Report (PDF)"}</Text>
                         </View>
                         {downloadingPdf ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>}
+                    </TouchableOpacity>
+
+                    {/* 👇 ADDED PRIVACY POLICY ROW */}
+                    <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.borderLight }]} onPress={function () { router.push("/privacy"); }}>
+                        <Text style={styles.menuIcon}>🔒</Text>
+                        <View style={styles.menuContent}>
+                            <Text style={[styles.menuText, { color: colors.textPrimary }]}>Privacy Policy</Text>
+                        </View>
+                        <Text style={[styles.menuArrow, { color: colors.textTertiary }]}>›</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity style={[styles.menuItem, styles.lastMenuItem]} onPress={function () { router.push("/settings"); }}>
