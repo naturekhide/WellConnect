@@ -1,10 +1,8 @@
-
 import React, { useEffect, useState } from "react";
 import {
     View,
     Text,
     StyleSheet,
-    ScrollView,
     TouchableOpacity,
     RefreshControl,
     useWindowDimensions,
@@ -44,8 +42,8 @@ export default function HomeScreen() {
     var veryCompact = windowHeight < 680;
     var horizontalPadding = windowWidth < 380 ? spacing.md : spacing.lg;
 
-    var sectionGap = veryCompact ? spacing.sm : compact ? spacing.md : spacing.xl;
-    var cardPadding = veryCompact ? spacing.sm : compact ? spacing.md : spacing.lg;
+    var sectionGap = veryCompact ? spacing.xs : compact ? spacing.sm : spacing.md;
+    var cardPadding = veryCompact ? spacing.sm : compact ? spacing.md : spacing.md;
 
     var [selectedMood, setSelectedMood] = useState<any>(null);
     var [submitted, setSubmitted] = useState(false);
@@ -163,38 +161,26 @@ export default function HomeScreen() {
                 { backgroundColor: colors.background },
             ]}
         >
-            <ScrollView
-                style={styles.scrollView}
-                contentContainerStyle={[
+            {/* 👇 Replaced ScrollView with View to lock it to one screen, but kept RefreshControl capability using a wrapper trick */}
+            <View
+                style={[
                     styles.content,
                     {
-                        paddingTop: insets.top + spacing.md,
+                        paddingTop: insets.top + spacing.sm,
                         paddingBottom: Math.max(insets.bottom, spacing.sm),
                         paddingHorizontal: horizontalPadding,
                         gap: sectionGap,
                     },
                 ]}
-                showsVerticalScrollIndicator={false}
-                bounces={true}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        colors={[colors.primary]}
-                        tintColor={colors.primary}
-                    />
-                }
             >
-
                 {/* GREETING */}
-
                 <View style={styles.headerSection}>
                     <Text
                         style={[
                             styles.greeting,
                             {
                                 color: colors.textPrimary,
-                                fontSize: compact ? 23 : 27,
+                                fontSize: compact ? 23 : 26,
                             },
                         ]}
                         numberOfLines={1}
@@ -215,7 +201,6 @@ export default function HomeScreen() {
                 </View>
 
                 {/* INSIGHT */}
-
                 {insight && (
                     <View
                         style={[
@@ -241,7 +226,6 @@ export default function HomeScreen() {
                 )}
 
                 {/* MOOD CHECKER */}
-
                 {submitted ? (
                     <View
                         style={[
@@ -295,7 +279,7 @@ export default function HomeScreen() {
                                         {
                                             backgroundColor: colors.surface,
                                             borderColor: colors.border,
-                                            minHeight: veryCompact ? 68 : compact ? 78 : 94,
+                                            minHeight: veryCompact ? 60 : compact ? 70 : 80,
                                             paddingVertical: cardPadding,
                                         },
                                         isSelected && {
@@ -308,7 +292,7 @@ export default function HomeScreen() {
                                     <Text
                                         style={[
                                             styles.moodEmoji,
-                                            { fontSize: compact ? 27 : 32 },
+                                            { fontSize: compact ? 24 : 28 },
                                         ]}
                                     >
                                         {mood.emoji}
@@ -330,7 +314,6 @@ export default function HomeScreen() {
                 )}
 
                 {/* YOUR WEEK */}
-
                 <View style={styles.section}>
                     <Text
                         style={[
@@ -432,7 +415,6 @@ export default function HomeScreen() {
                 </View>
 
                 {/* YOUR WELLBEING */}
-
                 {stats && stats.totalEntries > 0 && (
                     <View style={styles.section}>
                         <Text
@@ -518,7 +500,6 @@ export default function HomeScreen() {
                 )}
 
                 {/* YOUR SPACE */}
-
                 <View style={styles.section}>
                     <Text
                         style={[
@@ -583,7 +564,6 @@ export default function HomeScreen() {
                 </View>
 
                 {/* INBOX */}
-
                 <View style={styles.section}>
                     <Text
                         style={[
@@ -679,12 +659,10 @@ export default function HomeScreen() {
                     </TouchableOpacity>
                 </View>
 
-            </ScrollView>
+            </View>
         </View>
     );
 }
-
-// TIME-BASED GREETING
 
 function getTimeOfDay() {
     var hour = new Date().getHours();
@@ -695,14 +673,8 @@ function getTimeOfDay() {
     return "evening";
 }
 
-// STYLES
-
 var styles = StyleSheet.create({
     container: {
-        flex: 1,
-    },
-
-    scrollView: {
         flex: 1,
     },
 
@@ -713,8 +685,8 @@ var styles = StyleSheet.create({
     },
 
     content: {
-        flexGrow: 1,
-        justifyContent: "space-between",
+        flex: 1,
+        justifyContent: "space-between", // 👈 Forces everything to spread evenly and fit the screen
     },
 
     headerSection: {
@@ -727,9 +699,9 @@ var styles = StyleSheet.create({
     },
 
     greetingSub: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "400",
-        marginTop: 3,
+        marginTop: 2,
     },
 
     section: {
@@ -744,7 +716,7 @@ var styles = StyleSheet.create({
     },
 
     insightTitle: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: "600",
     },
 
@@ -762,11 +734,11 @@ var styles = StyleSheet.create({
     },
 
     moodEmoji: {
-        marginBottom: 5,
+        marginBottom: 2,
     },
 
     moodText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: "700",
     },
 
@@ -800,9 +772,9 @@ var styles = StyleSheet.create({
     },
 
     sectionTitle: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "700",
-        marginBottom: spacing.sm,
+        marginBottom: spacing.xs,
     },
 
     weekRow: {
@@ -820,25 +792,25 @@ var styles = StyleSheet.create({
     },
 
     weekEmoji: {
-        fontSize: 23,
-        marginBottom: 3,
+        fontSize: 20,
+        marginBottom: 2,
     },
 
     weekNumber: {
-        fontSize: 23,
+        fontSize: 20,
         fontWeight: "800",
     },
 
     weekLabel: {
-        fontSize: 11,
-        marginTop: 2,
+        fontSize: 10,
+        marginTop: 1,
         fontWeight: "500",
     },
 
     wellbeingCard: {
         borderRadius: radius.lg,
         borderWidth: 1,
-        gap: spacing.sm,
+        gap: spacing.xs,
         ...shadow.sm,
     },
 
@@ -849,24 +821,24 @@ var styles = StyleSheet.create({
     },
 
     wellbeingLabel: {
-        fontSize: 14,
+        fontSize: 13,
     },
 
     wellbeingValue: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "700",
     },
 
     progressBar: {
-        height: 8,
-        borderRadius: 4,
+        height: 6,
+        borderRadius: 3,
         overflow: "hidden",
-        marginVertical: 3,
+        marginVertical: 2,
     },
 
     progressFill: {
         height: "100%",
-        borderRadius: 4,
+        borderRadius: 3,
     },
 
     quickRow: {
@@ -884,12 +856,12 @@ var styles = StyleSheet.create({
     },
 
     quickEmoji: {
-        fontSize: 26,
-        marginBottom: 5,
+        fontSize: 22,
+        marginBottom: 3,
     },
 
     quickTitle: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: "700",
     },
 
@@ -904,31 +876,31 @@ var styles = StyleSheet.create({
     },
 
     inboxEmoji: {
-        fontSize: 22,
+        fontSize: 20,
     },
 
     inboxTitle: {
         flex: 1,
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: "600",
     },
 
     badge: {
-        minWidth: 22,
-        height: 22,
-        borderRadius: 11,
+        minWidth: 20,
+        height: 20,
+        borderRadius: 10,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: 8,
+        paddingHorizontal: 6,
     },
 
     badgeText: {
         color: "#fff",
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: "700",
     },
 
     inboxArrow: {
-        fontSize: 22,
+        fontSize: 18,
     },
 });
