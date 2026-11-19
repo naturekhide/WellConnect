@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, RefreshControl } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // 👈 Added
 import { getGoals, createGoal, toggleGoal } from "../../src/api/client";
 import { Button, EmptyState, Skeleton } from "../../src/components";
 import { tapLight } from "../../src/haptics";
@@ -13,6 +14,7 @@ var FREQUENCIES = [
 
 export default function GoalsScreen() {
     var colors = useColors();
+    var insets = useSafeAreaInsets(); // 👈 Added
     var [goals, setGoals] = useState<any[]>([]);
     var [title, setTitle] = useState("");
     var [frequency, setFrequency] = useState("daily");
@@ -59,7 +61,7 @@ export default function GoalsScreen() {
     if (loading) {
         return (
             <View style={[styles.container, { backgroundColor: colors.background }]}>
-                <View style={styles.content}>
+                <View style={[styles.content, { paddingTop: insets.top + spacing.lg }]}>
                     <Skeleton width={160} height={28} />
                     <Skeleton width={200} height={16} style={{ marginTop: 8 }} />
                     <Skeleton width="100%" height={190} style={{ marginTop: 16 }} />
@@ -76,7 +78,10 @@ export default function GoalsScreen() {
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <ScrollView
-                contentContainerStyle={styles.content}
+                contentContainerStyle={[
+                    styles.content,
+                    { paddingTop: insets.top + spacing.lg }, // 👈 Applied safe area padding
+                ]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
                 keyboardShouldPersistTaps="handled"
             >

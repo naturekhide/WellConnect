@@ -7,9 +7,10 @@ import {
     ActivityIndicator,
     RefreshControl,
     TouchableOpacity,
-    Modal, // 🚨 Replaced Alert with Modal
+    Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // 👈 Added
 import { getFeed, deleteFeedPost } from "../../src/api/client";
 import FeedPostCard from "../../components/FeedPostCard";
 import { Skeleton } from "../../src/components";
@@ -24,6 +25,7 @@ var TABS = [
 export default function FeedScreen() {
     var router = useRouter();
     var colors = useColors();
+    var insets = useSafeAreaInsets(); // 👈 Added
     var [posts, setPosts] = useState<any[]>([]);
     var [cursor, setCursor] = useState<string | null>(null);
     var [hasMore, setHasMore] = useState(false);
@@ -32,7 +34,6 @@ export default function FeedScreen() {
     var [refreshing, setRefreshing] = useState(false);
     var [activeTab, setActiveTab] = useState("for-you");
 
-    // 🚨 State for the custom modern delete modal
     var [postToDelete, setPostToDelete] = useState<string | null>(null);
     var [isDeleting, setIsDeleting] = useState(false);
 
@@ -81,12 +82,10 @@ export default function FeedScreen() {
         }));
     };
 
-    // 🚨 Trigger the modal
     var promptDelete = function (postId: string) {
         setPostToDelete(postId);
     };
 
-    // 🚨 Execute deletion when user confirms in the modal
     var confirmDelete = async function () {
         if (!postToDelete) return;
         setIsDeleting(true);
@@ -102,12 +101,14 @@ export default function FeedScreen() {
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
+            {/* 👇 Added paddingTop with insets.top to the header */}
             <View
                 style={[
                     styles.header,
                     {
                         borderBottomColor: colors.border,
                         backgroundColor: colors.background,
+                        paddingTop: insets.top + spacing.sm, 
                     },
                 ]}
             >
@@ -222,7 +223,7 @@ export default function FeedScreen() {
                                 key={post.id}
                                 post={post}
                                 onReactionChange={handleReactionChange}
-                                onDelete={promptDelete} // 🚨 Triggers the modal
+                                onDelete={promptDelete}
                             />
                         );
                     })
@@ -254,7 +255,6 @@ export default function FeedScreen() {
                 )}
             </ScrollView>
 
-            {/* 🚨 MODERN DELETE MODAL */}
             <Modal
                 visible={postToDelete !== null}
                 transparent={true}
@@ -301,7 +301,7 @@ var styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         paddingHorizontal: spacing.lg,
-        paddingTop: 20,
+        // Removed paddingTop: 20 because we handle it dynamically now
         paddingBottom: spacing.md,
         borderBottomWidth: 1,
     },
@@ -352,8 +352,6 @@ var styles = StyleSheet.create({
     caughtUp: { alignItems: "center", paddingVertical: spacing.xxl },
     caughtUpEmoji: { fontSize: 24, marginBottom: spacing.sm },
     caughtUpText: { fontSize: 13, fontWeight: "500" },
-
-    // 🚨 MODAL STYLES
     modalBackdrop: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.6)",
