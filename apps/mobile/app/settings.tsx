@@ -1,10 +1,10 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Modal, ActivityIndicator, FlatList } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
+import { useRouter, useFocusEffect } from "expo-router"; // 👈 Imported useFocusEffect
+import { useState, useEffect, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors, spacing, radius, shadow } from "../src/theme";
 import { useThemeStore } from "../src/store/themeStore";
-import { getBlockedUsers, unblockUser } from "../src/api/client"; // 👈 Import the new API functions
+import { getBlockedUsers, unblockUser } from "../src/api/client";
 
 export default function SettingsScreen() {
     var router = useRouter();
@@ -15,7 +15,6 @@ export default function SettingsScreen() {
     var [pushEnabled, setPushEnabled] = useState(true);
     var [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
-    // 🚨 Blocked Users State
     var [showBlockedModal, setShowBlockedModal] = useState(false);
     var [blockedUsers, setBlockedUsers] = useState<any[]>([]);
     var [loadingBlocked, setLoadingBlocked] = useState(false);
@@ -33,17 +32,26 @@ export default function SettingsScreen() {
 
     var handleOpenBlocked = function () {
         setShowBlockedModal(true);
-        fetchBlocked();
     };
+
+    // 👇 This forces the list to refresh every time you open the Settings screen
+    useFocusEffect(
+        useCallback(() => {
+            fetchBlocked();
+        }, [])
+    );
 
     var handleUnblock = async function (id: string) {
         try {
             await unblockUser(id);
+            // Remove them from the local state immediately so the UI updates
             setBlockedUsers(blockedUsers.filter(function (u) { return u.id !== id; }));
         } catch (e) {
             console.log("Failed to unblock", e);
         }
     };
+
+    // ... the rest of the return() JSX stays exactly the same!
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -123,15 +131,15 @@ export default function SettingsScreen() {
             </ScrollView>
 
             {/* 🚨 BLOCKED USERS MODAL */}
-            <Modal visible={showBlockedModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={function() { setShowBlockedModal(false); }}>
+            <Modal visible={showBlockedModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={function () { setShowBlockedModal(false); }}>
                 <View style={[styles.modalContainer, { backgroundColor: colors.background }]}>
                     <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
                         <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Blocked Users</Text>
-                        <TouchableOpacity onPress={function() { setShowBlockedModal(false); }}>
+                        <TouchableOpacity onPress={function () { setShowBlockedModal(false); }}>
                             <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 16 }}>Done</Text>
                         </TouchableOpacity>
                     </View>
-                    
+
                     {loadingBlocked ? (
                         <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
                             <ActivityIndicator size="large" color={colors.primary} />
@@ -145,9 +153,9 @@ export default function SettingsScreen() {
                     ) : (
                         <FlatList
                             data={blockedUsers}
-                            keyExtractor={function(item) { return item.id; }}
+                            keyExtractor={function (item) { return item.id; }}
                             contentContainerStyle={{ padding: spacing.lg }}
-                            renderItem={function({ item }) {
+                            renderItem={function ({ item }) {
                                 return (
                                     <View style={[styles.userRow, { borderBottomColor: colors.borderLight }]}>
                                         <View style={[styles.avatar, { backgroundColor: colors.surfaceAlt }]}>
@@ -157,9 +165,9 @@ export default function SettingsScreen() {
                                             <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>{item.name}</Text>
                                             <Text style={{ color: colors.textSecondary, fontSize: 13 }}>@{item.username}</Text>
                                         </View>
-                                        <TouchableOpacity 
-                                            style={[styles.unblockBtn, { borderColor: colors.danger }]} 
-                                            onPress={function() { handleUnblock(item.id); }}
+                                        <TouchableOpacity
+                                            style={[styles.unblockBtn, { borderColor: colors.danger }]}
+                                            onPress={function () { handleUnblock(item.id); }}
                                         >
                                             <Text style={{ color: colors.danger, fontWeight: "600", fontSize: 13 }}>Unblock</Text>
                                         </TouchableOpacity>
@@ -206,7 +214,7 @@ var styles = StyleSheet.create({
     rowContent: { flex: 1, paddingRight: spacing.md },
     rowLabel: { fontSize: 15, fontWeight: "500" },
     rowDetail: { fontSize: 12, marginTop: 3, lineHeight: 17 },
-    
+
     // Modal Styles
     modalContainer: { flex: 1 },
     modalHeader: {
