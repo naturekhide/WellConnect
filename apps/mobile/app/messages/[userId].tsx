@@ -18,6 +18,7 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context"; // 👈 Added Safe Area
 import EmojiPicker from "rn-emoji-keyboard";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -138,6 +139,7 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
 export default function ChatScreen() {
     var params = useLocalSearchParams();
     var router = useRouter();
+    var insets = useSafeAreaInsets(); // 👈 Added safe area
     var otherId = params.userId as string;
 
     var [messages, setMessages] = useState<any[]>([]);
@@ -153,8 +155,8 @@ export default function ChatScreen() {
     var [menuMessage, setMenuMessage] = useState<any>(null);
     var [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
     var [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
+    var [isBlocked, setIsBlocked] = useState(false); // 👈 Track block status
 
-    // 🚨 Typing state
     var [otherIsTyping, setOtherIsTyping] = useState(false);
     var typingTimeout = useRef<any>(null);
 
@@ -164,7 +166,6 @@ export default function ChatScreen() {
         loadInitial();
         var interval = setInterval(poll, 1500);
 
-        // 🚨 Poll for typing indicator
         var typingInterval = setInterval(async function () {
             try {
                 var res = await fetch(`${API_URL}/api/dm/${otherId}/typing`, {
@@ -189,10 +190,21 @@ export default function ChatScreen() {
 
     var loadInitial = async function () {
         try {
-            var results = await Promise.all([getDMMessages(otherId), getUserProfile(otherId)]);
-            setMessages(results[0].messages || []);
-            messagesRef.current = results[0].messages || [];
-            setOther(results[1]);
+            // 👇 Wrap both in try/catch so if messages fail, we still load the profile
+            var profileRes = await getUserProfile(otherId).catch(() => null);
+            if (profileRes) setOther(profileRes);
+
+            var msgRes = await getDMMessages(otherId).catch((err) => {
+                if (err.message && err.message.includes("403")) {
+                    setIsBlocked(true);
+                }
+                return null;
+            });
+
+            if (msgRes) {
+                setMessages(msgRes.messages || []);
+                messagesRef.current = msgRes.messages || [];
+            }
         } catch (e) { }
         setLoading(false);
     };
@@ -216,7 +228,6 @@ export default function ChatScreen() {
         } catch (e) { }
     };
 
-    // 🚨 Typing trigger function
     var handleTyping = function () {
         if (typingTimeout.current) return;
 
@@ -261,7 +272,7 @@ export default function ChatScreen() {
             setText("");
             setPendingAttachment(null);
         } catch (e: any) {
-            Alert.alert("Failed", e.message);
+            Alert.alert("Failed", e.message || "Could not send message.");
         }
         setSending(false);
     };
@@ -314,7 +325,7 @@ export default function ChatScreen() {
 
     if (loading) {
         return (
-            <View style={[styles.center, { backgroundColor: BG_COLOR }]}>
+            <View style={[styles.center, { backgroundColor: BG_COLOR, paddingTop: insets.top }]}>
                 <ActivityIndicator size="large" color={MY_BUBBLE} />
             </View>
         );
@@ -323,7 +334,8 @@ export default function ChatScreen() {
     return (
         <KeyboardAvoidingView style={[styles.container, { backgroundColor: BG_COLOR }]} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
 
-            <View style={[styles.header, { backgroundColor: BG_COLOR }]}>
+            {/* 👇 Added Safe Area to header */}
+            <View style={[styles.header, { backgroundColor: BG_COLOR, paddingTop: insets.top + spacing.sm }]}>
                 <TouchableOpacity onPress={function () { router.back(); }} style={{ padding: spacing.sm }}>
                     <Ionicons name="chevron-back" size={28} color="#fff" />
                 </TouchableOpacity>
@@ -349,7 +361,14 @@ export default function ChatScreen() {
             </View>
 
             <ScrollView ref={scrollRef} contentContainerStyle={styles.messagesContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                {messages.length === 0 ? (
+                {/* 👇 Show block warning if blocked */}
+                {isBlocked && (
+                    <View style={{ padding: spacing.md, backgroundColor: "#ef444420", borderRadius: radius.md, marginBottom: spacing.md, borderWidth: 1, borderColor: "#ef4444" }}>
+                        <Text style={{ color: "#ef4444", fontWeight: "600", textAlign: "center" }}>You cannot interact with this user right now.</Text>
+                    </View>
+                )}
+
+                {messages.length === 0 && !isBlocked ? (
                     <View style={styles.emptyBox}>
                         <Text style={{ fontSize: 40, marginBottom: spacing.md }}>💬</Text>
                         <Text style={{ color: "#64748b" }}>Say hi to start the conversation.</Text>
@@ -391,75 +410,75 @@ export default function ChatScreen() {
                 )}
             </ScrollView>
 
-            <View style={styles.composerWrapper}>
-                {/* 🚨 TYPING INDICATOR */}
-                {otherIsTyping && (
-                    <View style={{ paddingHorizontal: spacing.md, paddingBottom: 4 }}>
-                        <Text style={{ fontSize: 12, fontStyle: "italic", color: "#94a3b8" }}>
-                            {other?.name || "Someone"} is typing...
-                        </Text>
-                    </View>
-                )}
-
-                {replyingTo && (
-                    <View style={[styles.replyPreview, { backgroundColor: THEIR_BUBBLE, borderLeftColor: MY_BUBBLE }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#34d399" }}>Replying to {replyingTo.isMine ? "yourself" : other?.name}</Text>
-                            <Text style={{ fontSize: 12, color: "#94a3b8" }} numberOfLines={1}>{replyingTo.content}</Text>
+            {/* 👇 Hide composer if blocked */}
+            {!isBlocked && (
+                <View style={[styles.composerWrapper, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
+                    {otherIsTyping && (
+                        <View style={{ paddingHorizontal: spacing.md, paddingBottom: 4 }}>
+                            <Text style={{ fontSize: 12, fontStyle: "italic", color: "#94a3b8" }}>
+                                {other?.name || "Someone"} is typing...
+                            </Text>
                         </View>
-                        <TouchableOpacity onPress={function () { setReplyingTo(null); }}><Text style={{ color: "#94a3b8", fontSize: 16 }}>✕</Text></TouchableOpacity>
-                    </View>
-                )}
-
-                {editingMessage && (
-                    <View style={[styles.replyPreview, { backgroundColor: THEIR_BUBBLE, borderLeftColor: MY_BUBBLE }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#34d399" }}>Editing message</Text>
-                        </View>
-                        <TouchableOpacity onPress={function () { setEditingMessage(null); setText(""); }}><Text style={{ color: "#94a3b8", fontSize: 16 }}>✕</Text></TouchableOpacity>
-                    </View>
-                )}
-
-                {pendingAttachment && (
-                    <View style={[styles.previewBox, { backgroundColor: THEIR_BUBBLE }]}>
-                        {pendingAttachment.type === "image" ? (
-                            <Image source={{ uri: pendingAttachment.uri }} style={styles.previewImage} />
-                        ) : (
-                            <View style={styles.previewFile}>
-                                <Ionicons name="document-text" size={32} color={MY_BUBBLE} />
-                                <Text style={{ color: "#e2e8f0", marginLeft: 8, flex: 1 }} numberOfLines={1}>{pendingAttachment.name}</Text>
-                            </View>
-                        )}
-                        <TouchableOpacity onPress={function () { setPendingAttachment(null); }} style={styles.closePreview}>
-                            <Ionicons name="close-circle" size={24} color="#ef4444" />
-                        </TouchableOpacity>
-                    </View>
-                )}
-
-                <View style={[styles.composerRow, { backgroundColor: THEIR_BUBBLE }]}>
-                    <AttachmentButton onPress={function () { setShowAttachmentMenu(true); }} />
-
-                    <TouchableOpacity onPress={function () { setIsEmojiPickerOpen(true); }} style={styles.iconBtn}>
-                        <Ionicons name="happy-outline" size={24} color="#94a3b8" />
-                    </TouchableOpacity>
-
-                    <TextInput
-                        style={styles.input}
-                        value={text}
-                        onChangeText={function (t) { setText(t); handleTyping(); }} // 👈 Typing trigger
-                        placeholder={editingMessage ? "Edit message..." : "Message..."}
-                        placeholderTextColor="#64748b"
-                        multiline
-                    />
-                    {text.trim().length === 0 && !pendingAttachment && !editingMessage ? (
-                        <VoiceNoteButton userId={otherId} onSent={loadInitial} />
-                    ) : (
-                        <TouchableOpacity onPress={handleSend} disabled={(!text.trim() && !pendingAttachment) || sending} style={[styles.sendBtn, { backgroundColor: (text.trim() || pendingAttachment) ? MY_BUBBLE : "#1e293b" }]}>
-                            <Ionicons name="arrow-up" size={20} color={(text.trim() || pendingAttachment) ? "#fff" : "#64748b"} />
-                        </TouchableOpacity>
                     )}
+
+                    {replyingTo && (
+                        <View style={[styles.replyPreview, { backgroundColor: THEIR_BUBBLE, borderLeftColor: MY_BUBBLE }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 12, fontWeight: "600", color: "#34d399" }}>Replying to {replyingTo.isMine ? "yourself" : other?.name}</Text>
+                                <Text style={{ fontSize: 12, color: "#94a3b8" }} numberOfLines={1}>{replyingTo.content}</Text>
+                            </View>
+                            <TouchableOpacity onPress={function () { setReplyingTo(null); }}><Text style={{ color: "#94a3b8", fontSize: 16 }}>✕</Text></TouchableOpacity>
+                        </View>
+                    )}
+
+                    {editingMessage && (
+                        <View style={[styles.replyPreview, { backgroundColor: THEIR_BUBBLE, borderLeftColor: MY_BUBBLE }]}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 12, fontWeight: "600", color: "#34d399" }}>Editing message</Text>
+                            </View>
+                            <TouchableOpacity onPress={function () { setEditingMessage(null); setText(""); }}><Text style={{ color: "#94a3b8", fontSize: 16 }}>✕</Text></TouchableOpacity>
+                        </View>
+                    )}
+
+                    {pendingAttachment && (
+                        <View style={[styles.previewBox, { backgroundColor: THEIR_BUBBLE }]}>
+                            {pendingAttachment.type === "image" ? (
+                                <Image source={{ uri: pendingAttachment.uri }} style={styles.previewImage} />
+                            ) : (
+                                <View style={styles.previewFile}>
+                                    <Ionicons name="document-text" size={32} color={MY_BUBBLE} />
+                                    <Text style={{ color: "#e2e8f0", marginLeft: 8, flex: 1 }} numberOfLines={1}>{pendingAttachment.name}</Text>
+                                </View>
+                            )}
+                            <TouchableOpacity onPress={function () { setPendingAttachment(null); }} style={styles.closePreview}>
+                                <Ionicons name="close-circle" size={24} color="#ef4444" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    <View style={[styles.composerRow, { backgroundColor: THEIR_BUBBLE }]}>
+                        <AttachmentButton onPress={function () { setShowAttachmentMenu(true); }} />
+                        <TouchableOpacity onPress={function () { setIsEmojiPickerOpen(true); }} style={styles.iconBtn}>
+                            <Ionicons name="happy-outline" size={24} color="#94a3b8" />
+                        </TouchableOpacity>
+                        <TextInput
+                            style={styles.input}
+                            value={text}
+                            onChangeText={function (t) { setText(t); handleTyping(); }}
+                            placeholder={editingMessage ? "Edit message..." : "Message..."}
+                            placeholderTextColor="#64748b"
+                            multiline
+                        />
+                        {text.trim().length === 0 && !pendingAttachment && !editingMessage ? (
+                            <VoiceNoteButton userId={otherId} onSent={loadInitial} />
+                        ) : (
+                            <TouchableOpacity onPress={handleSend} disabled={(!text.trim() && !pendingAttachment) || sending} style={[styles.sendBtn, { backgroundColor: (text.trim() || pendingAttachment) ? MY_BUBBLE : "#1e293b" }]}>
+                                <Ionicons name="arrow-up" size={20} color={(text.trim() || pendingAttachment) ? "#fff" : "#64748b"} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
-            </View>
+            )}
 
             <Modal visible={showAttachmentMenu} transparent animationType="slide" onRequestClose={function () { setShowAttachmentMenu(false); }}>
                 <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)" }} activeOpacity={1} onPress={function () { setShowAttachmentMenu(false); }}>
@@ -467,28 +486,14 @@ export default function ChatScreen() {
                         <View style={{ backgroundColor: "#132a25", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: spacing.xl, paddingBottom: Platform.OS === "ios" ? 40 : spacing.xl }}>
                             <View style={{ width: 40, height: 4, backgroundColor: "#64748b", borderRadius: 2, alignSelf: "center", marginBottom: spacing.xl }} />
                             <Text style={{ fontSize: 18, fontWeight: "700", color: "#fff", marginBottom: spacing.lg }}>Attach</Text>
-
                             <View style={{ flexDirection: "row", gap: spacing.xl }}>
-                                <TouchableOpacity
-                                    style={{ alignItems: "center", gap: spacing.sm }}
-                                    onPress={function () {
-                                        setShowAttachmentMenu(false);
-                                        handlePickImage();
-                                    }}
-                                >
+                                <TouchableOpacity style={{ alignItems: "center", gap: spacing.sm }} onPress={function () { setShowAttachmentMenu(false); handlePickImage(); }}>
                                     <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(16, 185, 129, 0.15)", alignItems: "center", justifyContent: "center" }}>
                                         <Text style={{ fontSize: 28 }}>📷</Text>
                                     </View>
                                     <Text style={{ fontSize: 13, fontWeight: "500", color: "#fff" }}>Photo</Text>
                                 </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={{ alignItems: "center", gap: spacing.sm }}
-                                    onPress={function () {
-                                        setShowAttachmentMenu(false);
-                                        handlePickFile();
-                                    }}
-                                >
+                                <TouchableOpacity style={{ alignItems: "center", gap: spacing.sm }} onPress={function () { setShowAttachmentMenu(false); handlePickFile(); }}>
                                     <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(16, 185, 129, 0.15)", alignItems: "center", justifyContent: "center" }}>
                                         <Text style={{ fontSize: 28 }}>📄</Text>
                                     </View>
@@ -500,16 +505,7 @@ export default function ChatScreen() {
                 </TouchableOpacity>
             </Modal>
 
-            <EmojiPicker
-                open={isEmojiPickerOpen}
-                onClose={() => setIsEmojiPickerOpen(false)}
-                onEmojiSelected={(emojiObject) => setText((prev) => prev + emojiObject.emoji)}
-                theme={{
-                    backdrop: "#0a0f0d", container: "#132a25", header: "#fff", skinTonesContainer: "#1e293b",
-                    category: { icon: "#64748b", iconActive: MY_BUBBLE },
-                    search: { text: "#fff", placeholder: "#64748b", icon: "#64748b" }
-                }}
-            />
+            <EmojiPicker open={isEmojiPickerOpen} onClose={() => setIsEmojiPickerOpen(false)} onEmojiSelected={(emojiObject) => setText((prev) => prev + emojiObject.emoji)} theme={{ backdrop: "#0a0f0d", container: "#132a25", header: "#fff", skinTonesContainer: "#1e293b", category: { icon: "#64748b", iconActive: MY_BUBBLE }, search: { text: "#fff", placeholder: "#64748b", icon: "#64748b" } }} />
 
             <Modal visible={menuMessage !== null} transparent animationType="fade" onRequestClose={function () { setMenuMessage(null); }}>
                 <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.8)", justifyContent: "flex-end" }} activeOpacity={1} onPress={function () { setMenuMessage(null); }}>
@@ -525,26 +521,22 @@ export default function ChatScreen() {
                                         );
                                     })}
                                 </View>
-
                                 <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: "#1e293b" }} onPress={function () { setReplyingTo(menuMessage); setEditingMessage(null); setText(""); setMenuMessage(null); }}>
                                     <Ionicons name="arrow-undo-outline" size={22} color="#fff" style={{ marginRight: spacing.md }} />
                                     <Text style={{ fontSize: 16, color: "#fff" }}>Reply</Text>
                                 </TouchableOpacity>
-
                                 {menuMessage.isMine && (Date.now() - new Date(menuMessage.createdAt).getTime() < 15 * 60 * 1000) && (
                                     <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: "#1e293b" }} onPress={function () { setEditingMessage(menuMessage); setReplyingTo(null); setText(menuMessage.content); setMenuMessage(null); }}>
                                         <Ionicons name="pencil-outline" size={22} color="#fff" style={{ marginRight: spacing.md }} />
                                         <Text style={{ fontSize: 16, color: "#fff" }}>Edit</Text>
                                     </TouchableOpacity>
                                 )}
-
                                 {menuMessage.isMine && (
                                     <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: "#1e293b" }} onPress={function () { var idToDelete = menuMessage.id; setMenuMessage(null); setTimeout(function () { confirmDelete(idToDelete); }, 200); }}>
                                         <Ionicons name="trash-outline" size={22} color="#ef4444" style={{ marginRight: spacing.md }} />
                                         <Text style={{ fontSize: 16, color: "#ef4444" }}>Delete</Text>
                                     </TouchableOpacity>
                                 )}
-
                                 <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg }} onPress={function () { setMenuMessage(null); }}>
                                     <Ionicons name="close-outline" size={22} color="#64748b" style={{ marginRight: spacing.md }} />
                                     <Text style={{ fontSize: 16, color: "#64748b" }}>Cancel</Text>
@@ -561,7 +553,7 @@ export default function ChatScreen() {
 var styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: BG_COLOR },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    header: { flexDirection: "row", alignItems: "center", paddingTop: 60, paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: "#1e293b" },
+    header: { flexDirection: "row", alignItems: "center", paddingBottom: spacing.md, borderBottomWidth: 1, borderBottomColor: "#1e293b" },
     avatarSmall: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", marginRight: 12 },
     avatarSmallText: { color: "#fff", fontSize: 16, fontWeight: "800" },
     headerName: { fontSize: 16, fontWeight: "700" },
@@ -574,7 +566,7 @@ var styles = StyleSheet.create({
     quoteText: { fontSize: 12 },
     dateSeparator: { alignItems: "center", marginVertical: 16 },
     dateText: { fontSize: 12, fontWeight: "600", color: "#64748b", backgroundColor: "#132a25", paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12, overflow: "hidden" },
-    composerWrapper: { padding: spacing.md, paddingBottom: Platform.OS === "ios" ? 34 : spacing.md, backgroundColor: BG_COLOR, borderTopWidth: 1, borderTopColor: "#1e293b" },
+    composerWrapper: { padding: spacing.md, backgroundColor: BG_COLOR, borderTopWidth: 1, borderTopColor: "#1e293b" },
     replyPreview: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 12, borderRadius: 16, marginBottom: 8, borderLeftWidth: 3 },
     composerRow: { flexDirection: "row", alignItems: "center", borderRadius: 30, paddingHorizontal: 8, paddingVertical: 6 },
     iconBtn: { padding: 8 },
