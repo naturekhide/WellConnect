@@ -16,6 +16,11 @@ export default function CircleDetailPage() {
     var [tab, setTab] = useState("feed");
     var [joining, setJoining] = useState(false);
 
+    // 👇 Admin States
+    var [showAdminMenu, setShowAdminMenu] = useState(false);
+    var [pendingMembers, setPendingMembers] = useState<any[]>([]);
+    var [loadingMembers, setLoadingMembers] = useState(false);
+
     useEffect(function () { load(); }, [circleId]);
 
     var load = async function () {
@@ -46,6 +51,44 @@ export default function CircleDetailPage() {
         setJoining(false);
     };
 
+    // 👇 Admin Functions
+    var handleOpenAdmin = async function () {
+        setShowAdminMenu(true);
+        setLoadingMembers(true);
+        try {
+            var r = await fetch("/api/circles/" + circleId + "/members");
+            if (r.ok) {
+                var members = await r.json();
+                setPendingMembers(members.filter((m: any) => m.status === "pending"));
+            }
+        } catch (e) { }
+        setLoadingMembers(false);
+    };
+
+    var handleApprove = async function (userId: string) {
+        try {
+            var r = await fetch("/api/circles/" + circleId + "/members", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ targetUserId: userId, action: "approve" })
+            });
+            if (r.ok) {
+                setPendingMembers(pendingMembers.filter((m: any) => m.user.id !== userId));
+                setCircle({ ...circle, memberCount: circle.memberCount + 1 });
+            }
+        } catch (e) { }
+    };
+
+    var handleDeleteCircle = async function () {
+        if (!window.confirm("Are you sure? All messages and posts will be lost forever.")) return;
+        try {
+            var r = await fetch("/api/circles/" + circleId, { method: "DELETE" });
+            if (r.ok) {
+                router.replace("/connect");
+            }
+        } catch (e) { }
+    };
+
     if (loading) {
         return (
             <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: C.background }}>
@@ -71,9 +114,20 @@ export default function CircleDetailPage() {
             <div style={{ maxWidth: 600, margin: "0 auto", paddingBottom: 100 }}>
 
                 <div style={{ padding: S.lg, paddingTop: 60, paddingBottom: S.md, borderBottom: "1px solid " + C.border }}>
-                    <button onClick={function () { router.back(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: S.md }}>
-                        <span style={{ fontSize: 15, fontWeight: 500, color: C.textSecondary }}>← Back</span>
-                    </button>
+
+                    {/* 👇 Header with Back Button and Admin Gear */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: S.md }}>
+                        <button onClick={function () { router.back(); }} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                            <span style={{ fontSize: 15, fontWeight: 500, color: C.textSecondary }}>← Back</span>
+                        </button>
+
+                        {isCreator && (
+                            <button onClick={handleOpenAdmin} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 20 }}>
+                                ⚙️
+                            </button>
+                        )}
+                    </div>
+
                     <div style={{ display: "flex", alignItems: "center", gap: S.md }}>
                         <div style={{ width: 64, height: 64, borderRadius: R.md, background: circle.coverColor || C.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, flexShrink: 0 }}>
                             {circle.emoji || "🌿"}
@@ -153,11 +207,53 @@ export default function CircleDetailPage() {
                 )}
 
             </div>
+
+            {/* 👇 ADMIN SETTINGS MODAL (WEB) */}
+            {showAdminMenu && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 100, display: "flex", justifyContent: "center", alignItems: "center", padding: S.lg }}>
+                    <div style={{ background: C.surface, width: "100%", maxWidth: 500, borderRadius: R.xl, border: "1px solid " + C.border, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "80vh" }}>
+
+                        <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <h2 style={{ fontSize: 18, fontWeight: 700, color: C.textPrimary, margin: 0 }}>Admin Settings</h2>
+                            <button onClick={function () { setShowAdminMenu(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textSecondary, fontSize: 16, fontWeight: 600 }}>Close</button>
+                        </div>
+
+                        <div style={{ padding: S.lg, overflowY: "auto", flex: 1 }}>
+                            <h3 style={{ fontSize: 14, fontWeight: 600, color: C.textSecondary, margin: "0 0 " + S.md + "px 0" }}>Pending Requests</h3>
+
+                            {loadingMembers ? (
+                                <p style={{ color: C.textSecondary }}>Loading...</p>
+                            ) : pendingMembers.length === 0 ? (
+                                <p style={{ color: C.textTertiary, fontStyle: "italic", fontSize: 14 }}>No pending requests right now.</p>
+                            ) : (
+                                pendingMembers.map(function (m: any) {
+                                    return (
+                                        <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: S.md + " 0", borderBottom: "1px solid " + C.borderLight }}>
+                                            <div>
+                                                <p style={{ color: C.textPrimary, fontWeight: 600, fontSize: 15, margin: 0 }}>{m.user.name}</p>
+                                                <p style={{ color: C.textSecondary, fontSize: 13, margin: "2px 0 0 0" }}>@{m.user.username}</p>
+                                            </div>
+                                            <button onClick={function () { handleApprove(m.user.id); }} style={{ background: C.primary, color: "#fff", padding: "6px 16px", borderRadius: R.md, border: "none", fontWeight: 600, cursor: "pointer" }}>Approve</button>
+                                        </div>
+                                    );
+                                })
+                            )}
+
+                            <div style={{ marginTop: S.xl, paddingTop: S.xl, borderTop: "1px solid " + C.border }}>
+                                <button onClick={handleDeleteCircle} style={{ width: "100%", padding: S.md, background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444", borderRadius: R.md, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                                    Delete Circle
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </main>
     );
 }
 
 function CircleFeed({ circleId }: any) {
+    // ... Keep your existing CircleFeed code exactly the same!
     var C = useColors();
     var router = useRouter();
     var fileInputRef = useRef<HTMLInputElement>(null);
@@ -248,7 +344,7 @@ function CircleFeed({ circleId }: any) {
             });
 
             if (r.ok) {
-                await load(); // 👈 This refreshes the feed with the properly formatted data
+                await load();
                 setContent("");
                 previews.forEach(function (p) { URL.revokeObjectURL(p); });
                 setFiles([]);
@@ -355,6 +451,7 @@ function CircleFeed({ circleId }: any) {
         </div>
     );
 }
+
 
 // ─────────────────────────────────────────────────────────────
 // CHAT COMPONENT (Updated with Reactions & Voice Notes)
