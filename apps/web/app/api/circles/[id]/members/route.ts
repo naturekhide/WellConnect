@@ -8,13 +8,25 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     var userId = await getCurrentUserId(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    var circle = await prisma.circle.findUnique({ where: { id: params.id } });
-    if (!circle || circle.creatorId !== userId) {
+    // 1. Check if the current user is a member of this circle
+    var membership = await prisma.circleMember.findUnique({
+        where: { circleId_userId: { circleId: params.id, userId: userId } }
+    });
+
+    if (!membership || membership.status !== "approved") {
         return NextResponse.json({ error: "Not authorized to view members" }, { status: 403 });
     }
 
+    // 2. Determine if the current user is the creator
+    var circle = await prisma.circle.findUnique({ where: { id: params.id } });
+    var isCreator = circle?.creatorId === userId;
+
+    // 3. Fetch members. If creator, fetch all (including pending). If regular member, only fetch approved.
     var members = await prisma.circleMember.findMany({
-        where: { circleId: params.id },
+        where: {
+            circleId: params.id,
+            ...(isCreator ? {} : { status: "approved" }) // 👈 Filter pending for non-creators
+        },
         include: { user: { select: { id: true, name: true, username: true } } },
         orderBy: { joinedAt: "desc" }
     });
