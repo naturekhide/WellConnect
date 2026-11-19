@@ -250,3 +250,16 @@ export async function searchAll(q: string) { return apiFetch("/api/search?q=" + 
 export async function getNotifications() {
     return apiFetch("/api/notifications");
 }
+
+// ━━━━━ Blocking ━━━━━
+export async function getBlockedUsers() {
+    return apiFetch("/api/users/blocked");
+}
+
+export async function unblockUser(id: string) {
+    return apiFetch("/api/users/" + id + "/block", { method: "DELETE" });
+}
+
+export async function blockUser(id: string) {
+    return apiFetch("/api/users/" + id + "/block", { method: "POST" });
+}
