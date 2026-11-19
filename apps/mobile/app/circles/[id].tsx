@@ -368,10 +368,11 @@ function CircleFeed({ circleId, colors }: any) {
 
     useEffect(function () { load(); }, []);
 
-    var load = async function () {
+        var load = async function () {
         try {
-            var data = await getCirclePosts(circleId);
-            setPosts(data.posts || []);
+            var data = await getCircleMembers(circleId);
+            // 👇 The API returns the array directly, not wrapped in { members: [] }
+            getCircleMembers(data || []); 
         } catch (e) { }
         setLoading(false);
     };
@@ -627,30 +628,69 @@ function CircleChat({ circleId, colors }: any) {
 }
 
 function CircleMembersList({ circleId, colors }: any) {
-    // ... (Keep your existing CircleMembersList code exactly the same)
     var [members, setMembers] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
+
     useEffect(function () { load(); }, []);
-    var load = async function () { try { var data = await getCircleMembers(circleId); setMembers(data.members || []); } catch (e) { } setLoading(false); };
-    if (loading) return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
+
+    var load = async function () {
+        try {
+            // 👇 Using the helper from client.ts
+            var data = await getCircleMembers(circleId);
+
+            // The backend route returns the array directly, or it might be wrapped in .members
+            var list = Array.isArray(data) ? data : (data.members || []);
+            setMembers(list);
+        } catch (e) {
+            console.log("Error loading members", e);
+        }
+        setLoading(false);
+    };
+
+    if (loading) {
+        return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
+    }
+
+    if (members.length === 0) {
+        return (
+            <View style={{ alignItems: "center", paddingVertical: spacing.xxl }}>
+                <Text style={{ fontSize: 40, marginBottom: spacing.md }}>👥</Text>
+                <Text style={{ fontSize: 14, color: colors.textSecondary, margin: 0 }}>No members yet.</Text>
+            </View>
+        );
+    }
+
     return (
         <View style={{ padding: spacing.lg }}>
             {members.map(function (m: any) {
+                var isCreator = m.role === "creator";
+
                 return (
                     <View key={m.id} style={[styles.memberRow, { backgroundColor: colors.surface }]}>
-                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{m.user?.name?.charAt(0) || "U"}</Text></View>
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textPrimary }}>{m.user?.name || "User"}</Text>
-                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>@{m.user?.username || "user"}</Text>
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}>
+                            <Text style={{ color: "#fff", fontWeight: "700" }}>
+                                {m.user?.name?.charAt(0) || "U"}
+                            </Text>
                         </View>
-                        {m.role === "creator" && <Text style={[styles.creatorBadge, { backgroundColor: colors.primaryLight, color: colors.primary }]}>creator</Text>}
+                        <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textPrimary }}>
+                                {m.user?.name || "User"}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                                @{m.user?.username || "user"}
+                            </Text>
+                        </View>
+                        {isCreator && (
+                            <Text style={[styles.creatorBadge, { backgroundColor: colors.primaryLight, color: colors.primary }]}>
+                                creator
+                            </Text>
+                        )}
                     </View>
                 );
             })}
         </View>
     );
 }
-
 var styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },

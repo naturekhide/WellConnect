@@ -838,7 +838,9 @@ function CircleMembers({ circleId, creatorId }: any) {
             var r = await fetch("/api/circles/" + circleId + "/members");
             if (r.ok) {
                 var data = await r.json();
-                setMembers(data.members || []);
+                // 👇 Handle both direct array or wrapped object
+                var list = Array.isArray(data) ? data : (data.members || []);
+                setMembers(list);
             }
         } catch (e) { }
         setLoading(false);
@@ -888,14 +890,14 @@ function CircleMembers({ circleId, creatorId }: any) {
                                 overflow: "hidden",
                             }}
                         >
-                            {m.avatarUrl ? (
+                            {m.user?.avatarUrl ? (
                                 <img
-                                    src={m.avatarUrl}
-                                    alt={m.name}
+                                    src={m.user.avatarUrl}
+                                    alt={m.user.name}
                                     style={{ width: "100%", height: "100%", objectFit: "cover" }}
                                 />
                             ) : (
-                                (m.name || "?").charAt(0).toUpperCase()
+                                (m.user?.name || "?").charAt(0).toUpperCase()
                             )}
                         </div>
 
@@ -912,7 +914,7 @@ function CircleMembers({ circleId, creatorId }: any) {
                                         whiteSpace: "nowrap",
                                     }}
                                 >
-                                    {m.name}
+                                    {m.user?.name}
                                 </p>
                                 {isCreator && (
                                     <span
@@ -929,7 +931,7 @@ function CircleMembers({ circleId, creatorId }: any) {
                                     </span>
                                 )}
                             </div>
-                            {m.username && (
+                            {m.user?.username && (
                                 <p
                                     style={{
                                         fontSize: 12,
@@ -937,7 +939,7 @@ function CircleMembers({ circleId, creatorId }: any) {
                                         margin: "2px 0 0 0",
                                     }}
                                 >
-                                    @{m.username}
+                                    @{m.user?.username}
                                 </p>
                             )}
                         </div>
@@ -946,4 +948,4 @@ function CircleMembers({ circleId, creatorId }: any) {
             })}
         </div>
     );
-}
+} 
