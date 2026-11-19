@@ -103,7 +103,7 @@ export default function HomeScreen() {
             <ScrollView
                 contentContainerStyle={[
                     styles.content,
-                    { paddingTop: insets.top + spacing.xs },
+                    { paddingTop: insets.top + spacing.md, flexGrow: 1 },
                 ]}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
             >
@@ -162,28 +162,30 @@ export default function HomeScreen() {
                 )}
 
                 {/* YOUR WEEK */}
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your week</Text>
-                <View style={styles.weekRow}>
-                    <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={styles.weekEmoji}>🔥</Text>
-                        <Text style={[styles.weekNumber, { color: colors.primary }]}>{stats?.streak || 0}</Text>
-                        <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>streak</Text>
-                    </View>
-                    <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={styles.weekEmoji}>📝</Text>
-                        <Text style={[styles.weekNumber, { color: colors.primary }]}>{journalCount}</Text>
-                        <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>journal</Text>
-                    </View>
-                    <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                        <Text style={styles.weekEmoji}>🎯</Text>
-                        <Text style={[styles.weekNumber, { color: colors.primary }]}>{goalCount}</Text>
-                        <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>goals</Text>
+                <View>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your week</Text>
+                    <View style={styles.weekRow}>
+                        <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={styles.weekEmoji}>🔥</Text>
+                            <Text style={[styles.weekNumber, { color: colors.primary }]}>{stats?.streak || 0}</Text>
+                            <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>streak</Text>
+                        </View>
+                        <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={styles.weekEmoji}>📝</Text>
+                            <Text style={[styles.weekNumber, { color: colors.primary }]}>{journalCount}</Text>
+                            <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>journal</Text>
+                        </View>
+                        <View style={[styles.weekCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                            <Text style={styles.weekEmoji}>🎯</Text>
+                            <Text style={[styles.weekNumber, { color: colors.primary }]}>{goalCount}</Text>
+                            <Text style={[styles.weekLabel, { color: colors.textSecondary }]}>goals</Text>
+                        </View>
                     </View>
                 </View>
 
                 {/* YOUR WELLBEING */}
                 {stats && stats.totalEntries > 0 && (
-                    <>
+                    <View>
                         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your wellbeing</Text>
                         <View style={[styles.wellbeingCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                             <View style={styles.wellbeingRow}>
@@ -200,39 +202,43 @@ export default function HomeScreen() {
                                 </Text>
                             </View>
                         </View>
-                    </>
+                    </View>
                 )}
 
                 {/* YOUR SPACE */}
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
-                <View style={styles.quickRow}>
-                    <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/journal"); }}>
-                        <Text style={styles.quickEmoji}>📝</Text>
-                        <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Journal</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/goals"); }}>
-                        <Text style={styles.quickEmoji}>🎯</Text>
-                        <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Goals</Text>
-                    </TouchableOpacity>
+                <View>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Your space</Text>
+                    <View style={styles.quickRow}>
+                        <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/journal"); }}>
+                            <Text style={styles.quickEmoji}>📝</Text>
+                            <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Journal</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.quickCard, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/(tabs)/goals"); }}>
+                            <Text style={styles.quickEmoji}>🎯</Text>
+                            <Text style={[styles.quickTitle, { color: colors.textPrimary }]}>Goals</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* INBOX */}
-                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Inbox</Text>
-                <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: spacing.xs }]} onPress={function () { router.push("/my-circles"); }}>
-                    <Text style={styles.inboxEmoji}>🌿</Text>
-                    <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>My Circles</Text>
-                    <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/messages"); }}>
-                    <Text style={styles.inboxEmoji}>💬</Text>
-                    <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>Messages</Text>
-                    {unreadDMs > 0 && (
-                        <View style={[styles.badge, { backgroundColor: colors.primary }]}>
-                            <Text style={styles.badgeText}>{unreadDMs}</Text>
-                        </View>
-                    )}
-                    <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
-                </TouchableOpacity>
+                <View>
+                    <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Inbox</Text>
+                    <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border, marginBottom: spacing.sm }]} onPress={function () { router.push("/my-circles"); }}>
+                        <Text style={styles.inboxEmoji}>🌿</Text>
+                        <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>My Circles</Text>
+                        <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.inboxRow, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={function () { router.push("/messages"); }}>
+                        <Text style={styles.inboxEmoji}>💬</Text>
+                        <Text style={[styles.inboxTitle, { color: colors.textPrimary }]}>Messages</Text>
+                        {unreadDMs > 0 && (
+                            <View style={[styles.badge, { backgroundColor: colors.primary }]}>
+                                <Text style={styles.badgeText}>{unreadDMs}</Text>
+                            </View>
+                        )}
+                        <Text style={[styles.inboxArrow, { color: colors.textTertiary }]}>›</Text>
+                    </TouchableOpacity>
+                </View>
 
             </ScrollView>
         </View>
@@ -249,102 +255,106 @@ function getTimeOfDay() {
 var styles = StyleSheet.create({
     container: { flex: 1 },
 
-    // Reduced gap to keep it on one page, but added bottom padding
-    content: { padding: spacing.md, paddingBottom: spacing.xxl },
+    content: {
+        padding: spacing.lg,
+        paddingBottom: spacing.xl,
+        gap: spacing.lg,
+        flexGrow: 1,
+        justifyContent: "space-between"
+    },
 
-    headerSection: { marginBottom: spacing.xs },
-    greeting: { fontSize: 24, fontWeight: "700" },
-    greetingSub: { fontSize: 14, marginTop: 2 },
+    headerSection: { marginBottom: 0 },
+    greeting: { fontSize: 26, fontWeight: "700" },
+    greetingSub: { fontSize: 15, marginTop: 4 },
 
     insightCard: {
         borderRadius: radius.md,
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
         borderLeftWidth: 4,
         borderWidth: 1,
-        marginBottom: spacing.sm,
     },
-    insightTitle: { fontSize: 13, fontWeight: "600" },
+    insightTitle: { fontSize: 14, fontWeight: "600" },
 
-    moodGrid: { flexDirection: "row", gap: spacing.sm, marginBottom: spacing.xs },
+    moodGrid: { flexDirection: "row", gap: spacing.sm },
     moodCard: {
         flex: 1,
         alignItems: "center",
-        paddingVertical: spacing.sm,
-        borderRadius: radius.md,
+        paddingVertical: spacing.lg,
+        borderRadius: radius.lg,
         borderWidth: 2,
-        minHeight: 75,
+        minHeight: 90,
         justifyContent: "center",
     },
-    moodEmoji: { fontSize: 26, marginBottom: 4 },
-    moodText: { fontSize: 11, fontWeight: "600" },
+    moodEmoji: { fontSize: 32, marginBottom: 4 },
+    moodText: { fontSize: 12, fontWeight: "600" },
 
-    submittedBox: { padding: spacing.md, borderRadius: radius.md, alignItems: "center", marginBottom: spacing.sm },
-    submittedEmoji: { fontSize: 24, marginBottom: 4 },
-    submittedText: { fontWeight: "600", fontSize: 14 },
-    checkedBox: { padding: spacing.md, borderRadius: radius.md, alignItems: "center", borderWidth: 1, marginBottom: spacing.sm },
-    checkedText: { fontSize: 13, textAlign: "center", fontWeight: "500" },
+    submittedBox: { padding: spacing.xl, borderRadius: radius.lg, alignItems: "center" },
+    submittedEmoji: { fontSize: 32, marginBottom: 4 },
+    submittedText: { fontWeight: "600", fontSize: 15 },
+    checkedBox: { padding: spacing.xl, borderRadius: radius.lg, alignItems: "center", borderWidth: 1 },
+    checkedText: { fontSize: 14, textAlign: "center", fontWeight: "500" },
 
-    sectionTitle: { fontSize: 13, fontWeight: "600", marginTop: spacing.sm, marginBottom: spacing.xs },
+    sectionTitle: { fontSize: 15, fontWeight: "700", marginBottom: spacing.xs },
 
-    weekRow: { flexDirection: "row", gap: spacing.sm },
+    weekRow: { flexDirection: "row", gap: spacing.md },
     weekCard: {
         flex: 1,
-        borderRadius: radius.md,
-        paddingVertical: spacing.sm,
+        borderRadius: radius.lg,
+        paddingVertical: spacing.lg,
         alignItems: "center",
         borderWidth: 1,
         ...shadow.sm,
     },
-    weekEmoji: { fontSize: 18, marginBottom: 2 },
-    weekNumber: { fontSize: 20, fontWeight: "700" },
-    weekLabel: { fontSize: 10, marginTop: 2, fontWeight: "500" },
+    weekEmoji: { fontSize: 24, marginBottom: 4 },
+    weekNumber: { fontSize: 24, fontWeight: "700" },
+    weekLabel: { fontSize: 11, marginTop: 2, fontWeight: "500" },
 
     wellbeingCard: {
-        borderRadius: radius.md,
-        padding: spacing.md,
+        borderRadius: radius.lg,
+        padding: spacing.lg,
         borderWidth: 1,
-        gap: spacing.xs,
+        gap: spacing.sm,
         ...shadow.sm,
     },
     wellbeingRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    wellbeingLabel: { fontSize: 13 },
-    wellbeingValue: { fontSize: 14, fontWeight: "600" },
-    progressBar: { height: 6, borderRadius: 3, overflow: "hidden", marginVertical: 2 },
-    progressFill: { height: "100%", borderRadius: 3 },
+    wellbeingLabel: { fontSize: 14 },
+    wellbeingValue: { fontSize: 15, fontWeight: "700" },
+    progressBar: { height: 8, borderRadius: 4, overflow: "hidden", marginVertical: 4 },
+    progressFill: { height: "100%", borderRadius: 4 },
 
-    quickRow: { flexDirection: "row", gap: spacing.sm },
+    quickRow: { flexDirection: "row", gap: spacing.md },
     quickCard: {
         flex: 1,
-        borderRadius: radius.md,
-        paddingVertical: spacing.md,
+        borderRadius: radius.lg,
+        paddingVertical: spacing.lg,
         alignItems: "center",
         borderWidth: 1,
         ...shadow.sm,
     },
-    quickEmoji: { fontSize: 22, marginBottom: 4 },
-    quickTitle: { fontSize: 13, fontWeight: "600" },
+    quickEmoji: { fontSize: 28, marginBottom: 6 },
+    quickTitle: { fontSize: 15, fontWeight: "600" },
 
     inboxRow: {
         flexDirection: "row",
         alignItems: "center",
         gap: spacing.md,
-        paddingVertical: spacing.md,
-        paddingHorizontal: spacing.md,
-        borderRadius: radius.md,
+        paddingVertical: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        borderRadius: radius.lg,
         borderWidth: 1,
         ...shadow.sm,
     },
-    inboxEmoji: { fontSize: 18 },
-    inboxTitle: { flex: 1, fontSize: 14, fontWeight: "500" },
+    inboxEmoji: { fontSize: 22 },
+    inboxTitle: { flex: 1, fontSize: 16, fontWeight: "500" },
     badge: {
-        minWidth: 20,
-        height: 20,
-        borderRadius: 10,
+        minWidth: 22,
+        height: 22,
+        borderRadius: 11,
         alignItems: "center",
         justifyContent: "center",
-        paddingHorizontal: 6,
+        paddingHorizontal: 8,
     },
-    badgeText: { color: "#fff", fontSize: 11, fontWeight: "700" },
-    inboxArrow: { fontSize: 18 },
+    badgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+    inboxArrow: { fontSize: 20 },
 });
