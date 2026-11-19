@@ -1,20 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { headers } from "next/headers";
-import jwt from "jsonwebtoken";
+import { getCurrentUserId } from "@/lib/get-user";
 
-export async function GET(req: Request) {
+export const dynamic = "force-dynamic";
+
+export async function GET(request: NextRequest) {
     try {
-        const authHeader = headers().get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        var userId = await getCurrentUserId(request);
+        if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as { userId: string };
-
-        const blocks = await prisma.block.findMany({
-            where: { blockerId: decoded.userId },
+        var blocks = await prisma.block.findMany({
+            where: { blockerId: userId },
             include: {
                 blocked: {
                     select: { id: true, name: true, username: true }
@@ -22,11 +18,11 @@ export async function GET(req: Request) {
             }
         });
 
-        // 👇 Added ': any' to fix the TS7006 error
-        const blockedUsers = blocks.map((b: any) => b.blocked);
-        
+        var blockedUsers = blocks.map(function (b: any) { return b.blocked; });
         return NextResponse.json(blockedUsers);
+
     } catch (error) {
+        console.error("Failed to fetch blocked users:", error);
         return NextResponse.json({ error: "Failed to fetch blocked users" }, { status: 500 });
     }
 }

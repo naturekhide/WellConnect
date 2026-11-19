@@ -1,69 +1,57 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { headers } from "next/headers";
-import jwt from "jsonwebtoken";
+import { getCurrentUserId } from "@/lib/get-user";
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export const dynamic = "force-dynamic";
+
+export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        // 1. Get Auth Token
-        const authHeader = headers().get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        var userId = await getCurrentUserId(request);
+        if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as { userId: string };
-        const currentUserId = decoded.userId;
-
-        const targetUserId = params.id;
-
-        if (targetUserId === currentUserId) {
+        var targetUserId = params.id;
+        if (targetUserId === userId) {
             return NextResponse.json({ error: "You cannot block yourself" }, { status: 400 });
         }
 
-        // 2. Create the block (using upsert so it doesn't crash if already blocked)
         await prisma.block.upsert({
             where: {
                 blockerId_blockedId: {
-                    blockerId: currentUserId,
+                    blockerId: userId,
                     blockedId: targetUserId
                 }
             },
             create: {
-                blockerId: currentUserId,
+                blockerId: userId,
                 blockedId: targetUserId
             },
             update: {}
         });
 
         return NextResponse.json({ success: true, message: "User blocked" });
+
     } catch (error) {
+        console.error("Block failed:", error);
         return NextResponse.json({ error: "Failed to block user" }, { status: 500 });
     }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
     try {
-        // 1. Get Auth Token
-        const authHeader = headers().get("authorization");
-        if (!authHeader?.startsWith("Bearer ")) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        var userId = await getCurrentUserId(request);
+        if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-        const token = authHeader.split(" ")[1];
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as { userId: string };
-        const currentUserId = decoded.userId;
-
-        // 2. Delete the block record
         await prisma.block.deleteMany({
             where: {
-                blockerId: currentUserId,
+                blockerId: userId,
                 blockedId: params.id
             }
         });
 
         return NextResponse.json({ success: true, message: "User unblocked" });
+
     } catch (error) {
+        console.error("Unblock failed:", error);
         return NextResponse.json({ error: "Failed to unblock user" }, { status: 500 });
     }
 }
