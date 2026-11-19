@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import {
@@ -31,6 +32,9 @@ import {
     reactToPost,
     editCircleMessage,
     deleteCircleMessage,
+    getCircleMembersList, // 👈 New
+    manageCircleMember,   // 👈 New
+    deleteCircle,         // 👈 New
 } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 
@@ -85,16 +89,10 @@ function SwipeableMessage({ m, colors, onReply, onLongPress }: any) {
             </View>
 
             <Animated.View style={{ transform: [{ translateX: translateX }], alignItems: isMine ? "flex-end" : "flex-start" }} {...panResponder.panHandlers}>
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onLongPress={onLongPress}
-                    delayLongPress={300}
-                    style={{ maxWidth: "80%" }}
-                >
+                <TouchableOpacity activeOpacity={0.8} onLongPress={onLongPress} delayLongPress={300} style={{ maxWidth: "80%" }}>
                     {!isMine && <Text style={{ fontSize: 11, fontWeight: "600", color: colors.textSecondary, marginLeft: 4, marginBottom: 2 }}>{m.user?.name}</Text>}
 
                     <View style={[styles.bubble, { backgroundColor: isMine ? colors.primary : colors.surfaceAlt }]}>
-
                         {m.replyTo && (
                             <View style={[styles.quoteBox, { borderLeftColor: isMine ? "#fff" : colors.primary, backgroundColor: isMine ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.05)" }]}>
                                 <Text style={[styles.quoteName, { color: isMine ? "#fff" : colors.primary }]}>{m.replyTo.senderName}</Text>
@@ -103,7 +101,6 @@ function SwipeableMessage({ m, colors, onReply, onLongPress }: any) {
                         )}
 
                         <Text style={{ fontSize: 15, lineHeight: 21, color: isMine ? "#fff" : colors.textPrimary }}>{m.content}</Text>
-
                         <Text style={[styles.time, { color: isMine ? "rgba(255,255,255,0.7)" : colors.textTertiary, textAlign: isMine ? "right" : "left" }]}>
                             {new Date(m.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
                         </Text>
@@ -119,11 +116,17 @@ export default function CircleDetailScreen() {
     var params = useLocalSearchParams();
     var circleId = params.id as string;
     var colors = useColors();
+    var insets = useSafeAreaInsets();
 
     var [circle, setCircle] = useState<any>(null);
     var [loading, setLoading] = useState(true);
     var [tab, setTab] = useState("feed");
     var [joining, setJoining] = useState(false);
+
+    // 👇 Admin States
+    var [showAdminMenu, setShowAdminMenu] = useState(false);
+    var [pendingMembers, setPendingMembers] = useState<any[]>([]);
+    var [loadingMembers, setLoadingMembers] = useState(false);
 
     useEffect(function () { load(); }, [circleId]);
 
@@ -152,6 +155,41 @@ export default function CircleDetailScreen() {
         setJoining(false);
     };
 
+    var handleOpenAdmin = async function () {
+        setShowAdminMenu(true);
+        setLoadingMembers(true);
+        try {
+            var members = await getCircleMembersList(circleId);
+            // Filter to show only pending requests
+            setPendingMembers(members.filter((m: any) => m.status === "pending"));
+        } catch (e) {
+            console.log("Failed to load members", e);
+        }
+        setLoadingMembers(false);
+    };
+
+    var handleApprove = async function (userId: string) {
+        try {
+            await manageCircleMember(circleId, userId, "approve");
+            setPendingMembers(pendingMembers.filter((m: any) => m.user.id !== userId));
+            setCircle({ ...circle, memberCount: circle.memberCount + 1 });
+        } catch (e) { }
+    };
+
+    var handleDeleteCircle = function () {
+        Alert.alert("Delete Circle", "Are you sure? All messages and posts will be lost forever.", [
+            { text: "Cancel", style: "cancel" },
+            {
+                text: "Delete", style: "destructive", onPress: async function () {
+                    try {
+                        await deleteCircle(circleId);
+                        router.replace("/(tabs)/connect");
+                    } catch (e) { Alert.alert("Error", "Could not delete circle."); }
+                }
+            }
+        ]);
+    };
+
     if (loading) {
         return (
             <View style={[styles.center, { backgroundColor: colors.background }]}>
@@ -173,18 +211,23 @@ export default function CircleDetailScreen() {
     var isCreator = circle.myRole === "creator";
 
     return (
-        <KeyboardAvoidingView
-            style={[styles.container, { backgroundColor: colors.background }]}
-            behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-            <View style={[styles.topBar, { borderBottomColor: colors.border }]}>
+        <KeyboardAvoidingView style={[styles.container, { backgroundColor: colors.background }]} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+            <View style={[styles.topBar, { borderBottomColor: colors.border, paddingTop: insets.top + spacing.sm }]}>
                 <TouchableOpacity onPress={function () { router.back(); }} style={styles.backBtn}>
                     <Text style={[styles.backText, { color: colors.textPrimary }]}>←</Text>
                 </TouchableOpacity>
                 <Text style={[styles.topTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                     {circle.name}
                 </Text>
-                <View style={{ width: 32 }} />
+
+                {/* 👇 Admin Button goes here */}
+                {isCreator ? (
+                    <TouchableOpacity onPress={handleOpenAdmin} style={styles.backBtn}>
+                        <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
+                    </TouchableOpacity>
+                ) : (
+                    <View style={{ width: 32 }} />
+                )}
             </View>
 
             <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -269,11 +312,54 @@ export default function CircleDetailScreen() {
                     </>
                 )}
             </ScrollView>
+
+            {/* 👇 ADMIN SETTINGS MODAL */}
+            <Modal visible={showAdminMenu} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAdminMenu(false)}>
+                <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: colors.textPrimary }}>Admin Settings</Text>
+                        <TouchableOpacity onPress={() => setShowAdminMenu(false)}>
+                            <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 16 }}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
+                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.textSecondary, marginBottom: spacing.md }}>
+                            Pending Requests
+                        </Text>
+
+                        {loadingMembers ? (
+                            <ActivityIndicator color={colors.primary} />
+                        ) : pendingMembers.length === 0 ? (
+                            <Text style={{ color: colors.textTertiary, fontStyle: "italic" }}>No pending requests right now.</Text>
+                        ) : (
+                            pendingMembers.map((m: any) => (
+                                <View key={m.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                                    <View>
+                                        <Text style={{ color: colors.textPrimary, fontWeight: "600", fontSize: 15 }}>{m.user.name}</Text>
+                                        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>@{m.user.username}</Text>
+                                    </View>
+                                    <TouchableOpacity onPress={() => handleApprove(m.user.id)} style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.md }}>
+                                        <Text style={{ color: "#fff", fontWeight: "600" }}>Approve</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            ))
+                        )}
+
+                        <View style={{ marginTop: spacing.xxl, paddingTop: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border }}>
+                            <TouchableOpacity onPress={handleDeleteCircle} style={{ backgroundColor: "#ef444420", padding: spacing.lg, borderRadius: radius.lg, alignItems: "center", borderWidth: 1, borderColor: "#ef4444" }}>
+                                <Text style={{ color: "#ef4444", fontWeight: "700", fontSize: 16 }}>Delete Circle</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
 
 function CircleFeed({ circleId, colors }: any) {
+    // ... (Keep your existing CircleFeed code exactly the same)
     var [posts, setPosts] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
     var [content, setContent] = useState("");
@@ -291,37 +377,24 @@ function CircleFeed({ circleId, colors }: any) {
     };
 
     var handlePickImage = async function () {
-        if (images.length >= MAX_IMAGES) {
-            Alert.alert("Maximum " + MAX_IMAGES + " images");
-            return;
-        }
-
+        if (images.length >= MAX_IMAGES) { Alert.alert("Maximum " + MAX_IMAGES + " images"); return; }
         var result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsMultipleSelection: true,
             selectionLimit: MAX_IMAGES - images.length,
             quality: 0.8,
         });
-
         if (!result.canceled) {
             var prepared: string[] = [];
             for (var i = 0; i < result.assets.length; i++) {
                 var asset = result.assets[i];
                 if (!asset || !asset.uri) continue;
                 try {
-                    var manipulated = await ImageManipulator.manipulateAsync(
-                        asset.uri,
-                        [{ resize: { width: 1024 } }],
-                        { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
-                    );
+                    var manipulated = await ImageManipulator.manipulateAsync(asset.uri, [{ resize: { width: 1024 } }], { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG });
                     prepared.push(manipulated.uri);
-                } catch (e) {
-                    prepared.push(asset.uri);
-                }
+                } catch (e) { prepared.push(asset.uri); }
             }
-            if (prepared.length > 0) {
-                setImages(images.concat(prepared).slice(0, MAX_IMAGES));
-            }
+            if (prepared.length > 0) setImages(images.concat(prepared).slice(0, MAX_IMAGES));
         }
     };
 
@@ -338,42 +411,30 @@ function CircleFeed({ circleId, colors }: any) {
                 var uploadResult = await uploadImages(images);
                 urls = uploadResult.urls || [];
             }
-            var post = await createFeedPost(content.trim(), urls, false, circleId);
+            await createFeedPost(content.trim(), urls, false, circleId);
             await load();
             setContent("");
             setImages([]);
-        } catch (e: any) {
-            Alert.alert("Failed", e.message);
-        }
+        } catch (e: any) { Alert.alert("Failed", e.message); }
         setPosting(false);
     };
 
     var handleReact = async function (postId: string, type: string) {
         try {
             var res = await reactToPost(postId, type);
-            setPosts(posts.map(function (p: any) {
-                return p.id === postId ? { ...p, reactions: res.reactions, myReaction: res.myReaction } : p;
-            }));
+            setPosts(posts.map(function (p: any) { return p.id === postId ? { ...p, reactions: res.reactions, myReaction: res.myReaction } : p; }));
         } catch (e) { }
     };
 
-    if (loading) {
-        return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
-    }
+    if (loading) return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
 
     return (
         <View>
             <View style={[styles.composer, { borderBottomColor: colors.border }]}>
                 <TextInput
                     style={[styles.composerInput, { backgroundColor: colors.surface, color: colors.textPrimary, borderColor: colors.border }]}
-                    value={content}
-                    onChangeText={setContent}
-                    placeholder="Share something with the circle..."
-                    placeholderTextColor={colors.textTertiary}
-                    multiline
-                    maxLength={500}
+                    value={content} onChangeText={setContent} placeholder="Share something with the circle..." placeholderTextColor={colors.textTertiary} multiline maxLength={500}
                 />
-
                 {images.length > 0 && (
                     <View style={styles.imageGrid}>
                         {images.map(function (uri: string, i: number) {
@@ -388,29 +449,16 @@ function CircleFeed({ circleId, colors }: any) {
                         })}
                     </View>
                 )}
-
                 <View style={styles.composerActions}>
-                    <TouchableOpacity
-                        style={[styles.imageBtn, { borderColor: colors.border }]}
-                        onPress={handlePickImage}
-                        disabled={images.length >= MAX_IMAGES}
-                    >
+                    <TouchableOpacity style={[styles.imageBtn, { borderColor: colors.border }]} onPress={handlePickImage} disabled={images.length >= MAX_IMAGES}>
                         <Text style={{ fontSize: 16 }}>📷</Text>
                         <Text style={{ fontSize: 12, color: colors.textSecondary }}>{images.length}/{MAX_IMAGES}</Text>
                     </TouchableOpacity>
-
-                    <TouchableOpacity
-                        onPress={handlePost}
-                        disabled={(!content.trim() && images.length === 0) || posting}
-                        style={[styles.postBtn, { backgroundColor: (content.trim() || images.length > 0) ? colors.primary : colors.border }]}
-                    >
-                        <Text style={[styles.postBtnText, { color: (content.trim() || images.length > 0) ? "#fff" : colors.textTertiary }]}>
-                            {posting ? "Posting..." : "Post"}
-                        </Text>
+                    <TouchableOpacity onPress={handlePost} disabled={(!content.trim() && images.length === 0) || posting} style={[styles.postBtn, { backgroundColor: (content.trim() || images.length > 0) ? colors.primary : colors.border }]}>
+                        <Text style={[styles.postBtnText, { color: (content.trim() || images.length > 0) ? "#fff" : colors.textTertiary }]}>{posting ? "Posting..." : "Post"}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
-
             {posts.length === 0 ? (
                 <View style={styles.emptyBox}>
                     <Text style={{ fontSize: 40, marginBottom: spacing.md }}>🌿</Text>
@@ -422,50 +470,27 @@ function CircleFeed({ circleId, colors }: any) {
                         <View key={post.id} style={[styles.postCard, { borderBottomColor: colors.border }]}>
                             <View style={{ flexDirection: "row", gap: spacing.md }}>
                                 <View style={[styles.postAvatar, { backgroundColor: post.anonymous ? colors.surfaceAlt : colors.primary }]}>
-                                    <Text style={{ fontSize: 15, fontWeight: "700", color: post.anonymous ? colors.textSecondary : "#fff" }}>
-                                        {post.anonymous ? "🎭" : (post.author?.name?.charAt(0) || "U")}
-                                    </Text>
+                                    <Text style={{ fontSize: 15, fontWeight: "700", color: post.anonymous ? colors.textSecondary : "#fff" }}>{post.anonymous ? "🎭" : (post.author?.name?.charAt(0) || "U")}</Text>
                                 </View>
                                 <View style={{ flex: 1, minWidth: 0 }}>
                                     <Text style={[styles.postName, { color: colors.textPrimary }]}>
                                         {post.anonymous ? "Anonymous" : post.author?.name || "User"}
                                         <Text style={{ fontWeight: "400", color: colors.textTertiary }}>{" · " + timeAgo(post.createdAt)}</Text>
                                     </Text>
-                                    {post.content ? (
-                                        <Text style={[styles.postText, { color: colors.textPrimary }]}>{post.content}</Text>
-                                    ) : null}
-
+                                    {post.content ? <Text style={[styles.postText, { color: colors.textPrimary }]}>{post.content}</Text> : null}
                                     {post.imageUrls && post.imageUrls.length > 0 && (
                                         <View style={{ marginTop: spacing.sm }}>
-                                            {post.imageUrls.slice(0, 1).map(function (url: string, i: number) {
-                                                return (
-                                                    <Image
-                                                        key={i}
-                                                        source={{ uri: "https://well-connect-web.vercel.app" + url }}
-                                                        style={styles.postImage}
-                                                        resizeMode="cover"
-                                                    />
-                                                );
-                                            })}
+                                            <Image source={{ uri: "https://well-connect-web.vercel.app" + post.imageUrls[0] }} style={styles.postImage} resizeMode="cover" />
                                         </View>
                                     )}
-
                                     <View style={styles.postActions}>
                                         {REACTIONS.map(function (r) {
                                             var isActive = post.myReaction === r.type;
                                             var count = post.reactions?.[r.type] || 0;
                                             return (
-                                                <TouchableOpacity
-                                                    key={r.type}
-                                                    onPress={function () { handleReact(post.id, r.type); }}
-                                                    style={[styles.reactBtn, isActive && { backgroundColor: colors.primaryLight }]}
-                                                >
+                                                <TouchableOpacity key={r.type} onPress={function () { handleReact(post.id, r.type); }} style={[styles.reactBtn, isActive && { backgroundColor: colors.primaryLight }]}>
                                                     <Text style={{ fontSize: 16 }}>{r.emoji}</Text>
-                                                    {count > 0 && (
-                                                        <Text style={{ fontSize: 13, fontWeight: "600", color: isActive ? colors.primary : colors.textSecondary }}>
-                                                            {count}
-                                                        </Text>
-                                                    )}
+                                                    {count > 0 && <Text style={{ fontSize: 13, fontWeight: "600", color: isActive ? colors.primary : colors.textSecondary }}>{count}</Text>}
                                                 </TouchableOpacity>
                                             );
                                         })}
@@ -481,6 +506,7 @@ function CircleFeed({ circleId, colors }: any) {
 }
 
 function CircleChat({ circleId, colors }: any) {
+    // ... (Keep your existing CircleChat code exactly the same)
     var [messages, setMessages] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
     var [text, setText] = useState("");
@@ -490,22 +516,11 @@ function CircleChat({ circleId, colors }: any) {
     var [menuMessage, setMenuMessage] = useState<any>(null);
     var scrollRef = useRef<ScrollView>(null);
 
-    useEffect(function () {
-        loadInitial();
-        var interval = setInterval(poll, 3000);
-        return function () { clearInterval(interval); };
-    }, []);
-
-    useEffect(function () {
-        setTimeout(function () { scrollRef.current?.scrollToEnd({ animated: true }); }, 100);
-    }, [messages, replyingTo]);
+    useEffect(function () { loadInitial(); var interval = setInterval(poll, 3000); return function () { clearInterval(interval); }; }, []);
+    useEffect(function () { setTimeout(function () { scrollRef.current?.scrollToEnd({ animated: true }); }, 100); }, [messages, replyingTo]);
 
     var loadInitial = async function () {
-        try {
-            var data = await getCircleMessages(circleId);
-            setMessages(data.messages || []);
-        } catch (e) { }
-        setLoading(false);
+        try { var data = await getCircleMessages(circleId); setMessages(data.messages || []); } catch (e) { } setLoading(false);
     };
 
     var poll = async function () {
@@ -513,9 +528,7 @@ function CircleChat({ circleId, colors }: any) {
         var last = messages[messages.length - 1].createdAt;
         try {
             var data = await getCircleMessages(circleId, last);
-            if (data.messages && data.messages.length > 0) {
-                setMessages(messages.concat(data.messages));
-            }
+            if (data.messages && data.messages.length > 0) setMessages(messages.concat(data.messages));
         } catch (e) { }
     };
 
@@ -525,9 +538,7 @@ function CircleChat({ circleId, colors }: any) {
         try {
             if (editingMessage) {
                 var res = await editCircleMessage(circleId, editingMessage.id, text.trim());
-                setMessages(messages.map(function (m) {
-                    return m.id === editingMessage.id ? { ...m, content: res.content || text.trim() } : m;
-                }));
+                setMessages(messages.map(function (m) { return m.id === editingMessage.id ? { ...m, content: res.content || text.trim() } : m; }));
                 setEditingMessage(null);
             } else {
                 var msg = await sendCircleMessage(circleId, text.trim(), replyingTo?.id);
@@ -535,10 +546,7 @@ function CircleChat({ circleId, colors }: any) {
                 setReplyingTo(null);
             }
             setText("");
-        } catch (e: any) {
-            console.error("Send/Edit error:", e);
-            Alert.alert("Failed to save", e.message);
-        }
+        } catch (e: any) { Alert.alert("Failed to save", e.message); }
         setSending(false);
     };
 
@@ -547,149 +555,68 @@ function CircleChat({ circleId, colors }: any) {
             { text: "Cancel", style: "cancel" },
             {
                 text: "Delete", style: "destructive", onPress: async function () {
-                    try {
-                        await deleteCircleMessage(circleId, messageId);
-                        setMessages(messages.filter(function (m) { return m.id !== messageId; }));
-                    } catch (e: any) { Alert.alert("Failed", e.message); }
+                    try { await deleteCircleMessage(circleId, messageId); setMessages(messages.filter(function (m) { return m.id !== messageId; })); } catch (e: any) { Alert.alert("Failed", e.message); }
                 }
             }
         ]);
     };
 
-    var openMenu = function (m: any) {
-        setMenuMessage(m);
-    };
-
-    if (loading) {
-        return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
-    }
+    if (loading) return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
 
     return (
         <View>
-            <ScrollView
-                ref={scrollRef}
-                showsVerticalScrollIndicator={false}
-                style={{ maxHeight: 400 }}
-                contentContainerStyle={{ padding: spacing.lg }}
-            >
+            <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false} style={{ maxHeight: 400 }} contentContainerStyle={{ padding: spacing.lg }}>
                 {messages.length === 0 ? (
-                    <View style={styles.emptyBox}>
-                        <Text style={{ fontSize: 40, marginBottom: spacing.md }}>💬</Text>
-                        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No messages yet. Say hi.</Text>
-                    </View>
+                    <View style={styles.emptyBox}><Text style={{ fontSize: 40, marginBottom: spacing.md }}>💬</Text><Text style={[styles.emptyText, { color: colors.textSecondary }]}>No messages yet. Say hi.</Text></View>
                 ) : (
                     messages.map(function (m: any) {
-                        return (
-                            <SwipeableMessage
-                                key={m.id}
-                                m={m}
-                                colors={colors}
-                                onReply={function () { setReplyingTo(m); setEditingMessage(null); setText(""); }}
-                                onLongPress={function () { openMenu(m); }}
-                            />
-                        );
+                        return <SwipeableMessage key={m.id} m={m} colors={colors} onReply={function () { setReplyingTo(m); setEditingMessage(null); setText(""); }} onLongPress={function () { setMenuMessage(m); }} />;
                     })
                 )}
             </ScrollView>
 
             <View style={[styles.chatComposer, { borderTopColor: colors.border }]}>
-
                 {replyingTo && (
                     <View style={[styles.replyPreview, { backgroundColor: colors.surfaceAlt, borderLeftColor: colors.primary }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Replying to {replyingTo.isMine ? "yourself" : replyingTo.user?.name}</Text>
-                            <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={1}>{replyingTo.content}</Text>
-                        </View>
+                        <View style={{ flex: 1 }}><Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Replying to {replyingTo.isMine ? "yourself" : replyingTo.user?.name}</Text><Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={1}>{replyingTo.content}</Text></View>
                         <TouchableOpacity onPress={function () { setReplyingTo(null); }}><Text style={{ color: colors.textSecondary, fontSize: 16 }}>✕</Text></TouchableOpacity>
                     </View>
                 )}
-
                 {editingMessage && (
                     <View style={[styles.replyPreview, { backgroundColor: colors.surfaceAlt, borderLeftColor: colors.primary }]}>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Editing message</Text>
-                        </View>
+                        <View style={{ flex: 1 }}><Text style={{ fontSize: 12, fontWeight: "600", color: colors.primary }}>Editing message</Text></View>
                         <TouchableOpacity onPress={function () { setEditingMessage(null); setText(""); }}><Text style={{ color: colors.textSecondary, fontSize: 16 }}>✕</Text></TouchableOpacity>
                     </View>
                 )}
-
                 <View style={{ flexDirection: "row", gap: spacing.sm, alignItems: "flex-end" }}>
-                    <TextInput
-                        style={[styles.chatInput, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderColor: colors.border }]}
-                        value={text}
-                        onChangeText={setText}
-                        placeholder={editingMessage ? "Edit message..." : "Message the circle..."}
-                        placeholderTextColor={colors.textTertiary}
-                        multiline
-                    />
-                    <TouchableOpacity
-                        onPress={handleSend}
-                        disabled={!text.trim() || sending}
-                        style={[styles.chatSend, { backgroundColor: text.trim() ? colors.primary : colors.border }]}
-                    >
-                        <Text style={{ color: text.trim() ? "#fff" : colors.textTertiary, fontSize: 16, fontWeight: "700" }}>
-                            {sending ? "..." : (editingMessage ? "✓" : "→")}
-                        </Text>
+                    <TextInput style={[styles.chatInput, { backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderColor: colors.border }]} value={text} onChangeText={setText} placeholder={editingMessage ? "Edit message..." : "Message the circle..."} placeholderTextColor={colors.textTertiary} multiline />
+                    <TouchableOpacity onPress={handleSend} disabled={!text.trim() || sending} style={[styles.chatSend, { backgroundColor: text.trim() ? colors.primary : colors.border }]}>
+                        <Text style={{ color: text.trim() ? "#fff" : colors.textTertiary, fontSize: 16, fontWeight: "700" }}>{sending ? "..." : (editingMessage ? "✓" : "→")}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
 
-            {/* Custom Bottom Sheet Modal */}
-            <Modal
-                visible={menuMessage !== null}
-                transparent
-                animationType="fade"
-                onRequestClose={function () { setMenuMessage(null); }}
-            >
-                <TouchableOpacity
-                    style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
-                    activeOpacity={1}
-                    onPress={function () { setMenuMessage(null); }}
-                >
+            <Modal visible={menuMessage !== null} transparent animationType="fade" onRequestClose={function () { setMenuMessage(null); }}>
+                <TouchableOpacity style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }} activeOpacity={1} onPress={function () { setMenuMessage(null); }}>
                     <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl, paddingBottom: 40 }}>
                         {menuMessage && (
                             <View style={{ paddingTop: spacing.md }}>
-
-                                <TouchableOpacity
-                                    style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
-                                    onPress={function () { setReplyingTo(menuMessage); setEditingMessage(null); setText(""); setMenuMessage(null); }}
-                                >
-                                    <Ionicons name="arrow-undo-outline" size={22} color={colors.textPrimary} style={{ marginRight: spacing.md }} />
-                                    <Text style={{ fontSize: 16, color: colors.textPrimary }}>Reply</Text>
+                                <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight }} onPress={function () { setReplyingTo(menuMessage); setEditingMessage(null); setText(""); setMenuMessage(null); }}>
+                                    <Ionicons name="arrow-undo-outline" size={22} color={colors.textPrimary} style={{ marginRight: spacing.md }} /><Text style={{ fontSize: 16, color: colors.textPrimary }}>Reply</Text>
                                 </TouchableOpacity>
-
                                 {menuMessage.isMine && (Date.now() - new Date(menuMessage.createdAt).getTime() < 15 * 60 * 1000) && (
-                                    <TouchableOpacity
-                                        style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
-                                        onPress={function () { setEditingMessage(menuMessage); setReplyingTo(null); setText(menuMessage.content); setMenuMessage(null); }}
-                                    >
-                                        <Ionicons name="pencil-outline" size={22} color={colors.textPrimary} style={{ marginRight: spacing.md }} />
-                                        <Text style={{ fontSize: 16, color: colors.textPrimary }}>Edit</Text>
+                                    <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight }} onPress={function () { setEditingMessage(menuMessage); setReplyingTo(null); setText(menuMessage.content); setMenuMessage(null); }}>
+                                        <Ionicons name="pencil-outline" size={22} color={colors.textPrimary} style={{ marginRight: spacing.md }} /><Text style={{ fontSize: 16, color: colors.textPrimary }}>Edit</Text>
                                     </TouchableOpacity>
                                 )}
-
                                 {menuMessage.isMine && (
-                                    <TouchableOpacity
-                                        style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}
-                                        onPress={function () {
-                                            var idToDelete = menuMessage.id;
-                                            setMenuMessage(null);
-                                            setTimeout(function () { confirmDelete(idToDelete); }, 200);
-                                        }}
-                                    >
-                                        <Ionicons name="trash-outline" size={22} color={colors.danger} style={{ marginRight: spacing.md }} />
-                                        <Text style={{ fontSize: 16, color: colors.danger }}>Delete</Text>
+                                    <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.borderLight }} onPress={function () { var idToDelete = menuMessage.id; setMenuMessage(null); setTimeout(function () { confirmDelete(idToDelete); }, 200); }}>
+                                        <Ionicons name="trash-outline" size={22} color={colors.danger} style={{ marginRight: spacing.md }} /><Text style={{ fontSize: 16, color: colors.danger }}>Delete</Text>
                                     </TouchableOpacity>
                                 )}
-
-                                <TouchableOpacity
-                                    style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg }}
-                                    onPress={function () { setMenuMessage(null); }}
-                                >
-                                    <Ionicons name="close-outline" size={22} color={colors.textSecondary} style={{ marginRight: spacing.md }} />
-                                    <Text style={{ fontSize: 16, color: colors.textSecondary }}>Cancel</Text>
+                                <TouchableOpacity style={{ flexDirection: "row", alignItems: "center", padding: spacing.lg }} onPress={function () { setMenuMessage(null); }}>
+                                    <Ionicons name="close-outline" size={22} color={colors.textSecondary} style={{ marginRight: spacing.md }} /><Text style={{ fontSize: 16, color: colors.textSecondary }}>Cancel</Text>
                                 </TouchableOpacity>
-
                             </View>
                         )}
                     </View>
@@ -700,44 +627,23 @@ function CircleChat({ circleId, colors }: any) {
 }
 
 function CircleMembersList({ circleId, colors }: any) {
+    // ... (Keep your existing CircleMembersList code exactly the same)
     var [members, setMembers] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
-
     useEffect(function () { load(); }, []);
-
-    var load = async function () {
-        try {
-            var data = await getCircleMembers(circleId);
-            setMembers(data.members || []);
-        } catch (e) { }
-        setLoading(false);
-    };
-
-    if (loading) {
-        return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
-    }
-
+    var load = async function () { try { var data = await getCircleMembers(circleId); setMembers(data.members || []); } catch (e) { } setLoading(false); };
+    if (loading) return <ActivityIndicator style={{ marginTop: spacing.xl }} color={colors.primary} />;
     return (
         <View style={{ padding: spacing.lg }}>
             {members.map(function (m: any) {
                 return (
                     <View key={m.id} style={[styles.memberRow, { backgroundColor: colors.surface }]}>
-                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}>
-                            <Text style={{ color: "#fff", fontWeight: "700" }}>
-                                {m.user?.name?.charAt(0) || "U"}
-                            </Text>
-                        </View>
+                        <View style={[styles.memberAvatar, { backgroundColor: colors.primary }]}><Text style={{ color: "#fff", fontWeight: "700" }}>{m.user?.name?.charAt(0) || "U"}</Text></View>
                         <View style={{ flex: 1, minWidth: 0 }}>
-                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textPrimary }}>
-                                {m.user?.name || "User"}
-                            </Text>
-                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
-                                @{m.user?.username || "user"}
-                            </Text>
+                            <Text style={{ fontSize: 14, fontWeight: "600", color: colors.textPrimary }}>{m.user?.name || "User"}</Text>
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>@{m.user?.username || "user"}</Text>
                         </View>
-                        {m.role === "creator" && (
-                            <Text style={[styles.creatorBadge, { backgroundColor: colors.primaryLight, color: colors.primary }]}>creator</Text>
-                        )}
+                        {m.role === "creator" && <Text style={[styles.creatorBadge, { backgroundColor: colors.primaryLight, color: colors.primary }]}>creator</Text>}
                     </View>
                 );
             })}
@@ -748,10 +654,7 @@ function CircleMembersList({ circleId, colors }: any) {
 var styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    topBar: {
-        flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-        paddingHorizontal: spacing.lg, paddingTop: 60, paddingBottom: spacing.md, borderBottomWidth: 1,
-    },
+    topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: spacing.lg, paddingBottom: spacing.md, borderBottomWidth: 1 },
     backBtn: { width: 32, height: 32, justifyContent: "center" },
     backText: { fontSize: 22 },
     topTitle: { fontSize: 16, fontWeight: "700", flex: 1, textAlign: "center" },
@@ -778,11 +681,7 @@ var styles = StyleSheet.create({
     imageGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.sm },
     imageWrapper: { width: "48%", position: "relative" },
     imageThumb: { width: "100%", height: 120, borderRadius: radius.md },
-    imageRemove: {
-        position: "absolute", top: 6, right: 6,
-        backgroundColor: "rgba(0,0,0,0.7)", width: 24, height: 24, borderRadius: 12,
-        alignItems: "center", justifyContent: "center",
-    },
+    imageRemove: { position: "absolute", top: 6, right: 6, backgroundColor: "rgba(0,0,0,0.7)", width: 24, height: 24, borderRadius: 12, alignItems: "center", justifyContent: "center" },
     imageRemoveText: { color: "#fff", fontSize: 12, fontWeight: "700" },
     composerActions: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: spacing.md },
     imageBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.md, borderWidth: 1 },
@@ -803,8 +702,6 @@ var styles = StyleSheet.create({
     memberRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, padding: spacing.md, borderRadius: radius.md, marginBottom: spacing.sm },
     memberAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: "center", justifyContent: "center" },
     creatorBadge: { fontSize: 10, fontWeight: "600", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
-
-    // Shared Chat Styles
     bubble: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.lg },
     time: { fontSize: 10, opacity: 0.7, marginTop: 4 },
     quoteBox: { padding: 6, borderRadius: 6, marginBottom: 6, borderLeftWidth: 3 },

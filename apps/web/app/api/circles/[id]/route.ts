@@ -44,3 +44,43 @@ export async function GET(
         myStatus: membership?.status || null,
     });
 }
+
+// 👇 ADDED: Update Circle details
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    var circle = await prisma.circle.findUnique({ where: { id: params.id } });
+    if (!circle) return NextResponse.json({ error: "Circle not found" }, { status: 404 });
+    if (circle.creatorId !== userId) return NextResponse.json({ error: "Only the creator can edit" }, { status: 403 });
+
+    var body = await request.json();
+    var { name, description, emoji, coverColor, isPrivate } = body;
+
+    var updated = await prisma.circle.update({
+        where: { id: params.id },
+        data: {
+            name: name?.trim() || circle.name,
+            description: description !== undefined ? description.trim() : circle.description,
+            emoji: emoji || circle.emoji,
+            coverColor: coverColor || circle.coverColor,
+            isPrivate: isPrivate !== undefined ? isPrivate : circle.isPrivate,
+        },
+    });
+
+    return NextResponse.json(updated);
+}
+
+// 👇 ADDED: Delete Circle
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    var circle = await prisma.circle.findUnique({ where: { id: params.id } });
+    if (!circle) return NextResponse.json({ error: "Circle not found" }, { status: 404 });
+    if (circle.creatorId !== userId) return NextResponse.json({ error: "Only the creator can delete" }, { status: 403 });
+
+    await prisma.circle.delete({ where: { id: params.id } });
+
+    return NextResponse.json({ success: true, message: "Circle deleted" });
+}

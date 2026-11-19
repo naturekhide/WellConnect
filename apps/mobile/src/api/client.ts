@@ -220,6 +220,17 @@ export async function deleteCircleMessage(circleId: string, messageId: string) {
     return apiFetch("/api/circles/" + circleId + "/messages/" + messageId, { method: "DELETE" });
 }
 
+// 👇 NEW: Circle Management API
+export async function getCircleMembersList(id: string) {
+    return apiFetch("/api/circles/" + id + "/members");
+}
+export async function manageCircleMember(circleId: string, targetUserId: string, action: "approve" | "kick") {
+    return apiFetch("/api/circles/" + circleId + "/members", { method: "PATCH", body: JSON.stringify({ targetUserId, action }) });
+}
+export async function deleteCircle(id: string) {
+    return apiFetch("/api/circles/" + id, { method: "DELETE" });
+}
+
 // ━━━━━ Direct Messages ━━━━━
 export async function getConversations() { return apiFetch("/api/dm/conversations"); }
 export async function getDMMessages(userId: string, since?: string) {
