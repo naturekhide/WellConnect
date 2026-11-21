@@ -691,6 +691,7 @@ function CircleMembersList({ circleId, colors }: any) {
         </View>
     );
 }
+
 var styles = StyleSheet.create({
     container: { flex: 1 },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },

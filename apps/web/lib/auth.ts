@@ -43,6 +43,13 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
                     return null;
                 }
 
+                // 🛑 ADDED: Check if the user is suspended
+                if (user.suspended) {
+                    console.log("AUTH DEBUG: Suspended account attempted login", user.email);
+                    // Throw a specific error code so NextAuth can catch and handle it
+                    throw new Error("SuspendedAccount");
+                }
+
                 // 🚨 TEMPORARY: Email verification is bypassed.
                 // To re-enable, uncomment the block below and remove the auto-verify logic.
                 // if (!user.emailVerified) {
@@ -85,9 +92,19 @@ export var { handlers, signIn, signOut, auth } = NextAuth({
             }
             return session;
         },
+        // 👇 ADDED: Catch the error and redirect with a custom URL parameter
+        async redirect({ url, baseUrl }) {
+            // If NextAuth is redirecting due to a CredentialsSignin error
+            if (url.includes("error=CredentialsSignin")) {
+                // We append our custom parameter so the UI knows it was a suspension
+                return `${baseUrl}/login?error=SuspendedAccount`;
+            }
+            return url.startsWith(baseUrl) ? url : baseUrl;
+        },
     },
     pages: {
         signIn: "/login",
+        error: "/login",
     },
     secret: process.env.NEXTAUTH_SECRET,
 });

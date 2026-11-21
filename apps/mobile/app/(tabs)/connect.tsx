@@ -108,7 +108,7 @@ export default function FeedScreen() {
                     {
                         borderBottomColor: colors.border,
                         backgroundColor: colors.background,
-                        paddingTop: insets.top + spacing.sm, 
+                        paddingTop: insets.top + spacing.sm,
                     },
                 ]}
             >

@@ -30,20 +30,39 @@ function LoginContent() {
         setError("");
         setLoading(true);
 
-        var result = await signIn("credentials", {
-            identifier,
-            password,
-            redirect: false,
-        });
+        try {
+            // 1. 🛑 PRE-CHECK: Ask the database if this user is suspended
+            const checkRes = await fetch("/api/auth/check-suspension", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identifier }),
+            });
+            const checkData = await checkRes.json();
 
-        setLoading(false);
+            if (checkData.suspended) {
+                setError("Your account has been suspended. Please contact support.");
+                setLoading(false);
+                return; // Stop here. Do not call signIn.
+            }
 
-        if (result?.error) {
-            setError("Invalid email/username or password");
-        } else {
-            // 👇 Route to /dashboard on successful login
-            router.push("/dashboard");
-            router.refresh();
+            // 2. If they are active, proceed with normal NextAuth login
+            var result = await signIn("credentials", {
+                identifier,
+                password,
+                redirect: false,
+            });
+
+            setLoading(false);
+
+            if (result?.error) {
+                setError("Invalid email/username or password");
+            } else {
+                router.push("/dashboard");
+                router.refresh();
+            }
+        } catch (err) {
+            setLoading(false);
+            setError("An error occurred. Please try again.");
         }
     };
 
@@ -63,7 +82,6 @@ function LoginContent() {
         <main style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: S.lg, background: C.background }}>
             <div style={{ width: "100%", maxWidth: 380 }}>
 
-                {/* Header with Logo */}
                 <div style={{ textAlign: "center", marginBottom: S.xxl }}>
                     <img
                         src="/wellconnect.png"
