@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logAdminAction } from "@/lib/admin-logger";
 
 export async function DELETE(
     request: NextRequest,
@@ -12,6 +13,13 @@ export async function DELETE(
         await prisma.feedPost.update({
             where: { id },
             data: { deletedAt: new Date() },
+        });
+
+        // 🛑 Log the action
+        await logAdminAction({
+            action: "DELETE_POST",
+            targetId: id,
+            details: "Deleted a feed post"
         });
 
         return NextResponse.json({ success: true });

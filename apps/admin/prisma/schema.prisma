@@ -350,3 +350,14 @@ model ProfileLink {
 
   @@index([userId])
 }
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  action    String
+  targetId  String?
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

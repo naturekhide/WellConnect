@@ -352,3 +352,14 @@ model ProfileLink {
 
   @@index([userId])
 }
+
+model AdminLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  action    String   // e.g., "BAN_USER", "DELETE_POST", "CHANGE_ROLE"
+  targetId  String?  // The ID of the user/post being acted upon
+  details   String?  // e.g., "Changed role to ADMIN"
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

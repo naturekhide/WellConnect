@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { logAdminAction } from "@/lib/admin-logger";
 
 export async function PATCH(
     request: NextRequest,
@@ -18,6 +19,23 @@ export async function PATCH(
                 ...(suspended !== undefined && { suspended }),
             },
         });
+
+        // 🛑 Log the actions
+        if (role !== undefined) {
+            await logAdminAction({
+                action: "CHANGE_ROLE",
+                targetId: id,
+                details: `Changed role to ${role}`
+            });
+        }
+
+        if (suspended !== undefined) {
+            await logAdminAction({
+                action: suspended ? "BAN_USER" : "UNBAN_USER",
+                targetId: id,
+                details: suspended ? "Suspended user account" : "Reactivated user account"
+            });
+        }
 
         return NextResponse.json({ success: true, user: updatedUser });
     } catch (error) {
