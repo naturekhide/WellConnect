@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
     try {
+        console.log("DATABASE_URL starts with:", process.env.DATABASE_URL?.substring(0, 15));
         const { email, password } = await request.json();
 
         if (!email || !password) {
