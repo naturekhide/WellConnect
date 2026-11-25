@@ -32,9 +32,11 @@ import {
     reactToPost,
     editCircleMessage,
     deleteCircleMessage,
-    getCircleMembersList, // 👈 New
-    manageCircleMember,   // 👈 New
-    deleteCircle,         // 👈 New
+    getCircleMembersList,
+    manageCircleMember,
+    deleteCircle,
+    updateCircle,       // 👈 Make sure you added this in client.ts
+    kickCircleMember    // 👈 Make sure you added this in client.ts
 } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 
@@ -126,7 +128,15 @@ export default function CircleDetailScreen() {
     // 👇 Admin States
     var [showAdminMenu, setShowAdminMenu] = useState(false);
     var [pendingMembers, setPendingMembers] = useState<any[]>([]);
+    var [activeMembers, setActiveMembers] = useState<any[]>([]);
     var [loadingMembers, setLoadingMembers] = useState(false);
+
+    // 👇 Edit States
+    var [isEditing, setIsEditing] = useState(false);
+    var [editName, setEditName] = useState("");
+    var [editEmoji, setEditEmoji] = useState("");
+    var [editDescription, setEditDescription] = useState("");
+    var [savingEdit, setSavingEdit] = useState(false);
 
     useEffect(function () { load(); }, [circleId]);
 
@@ -158,10 +168,19 @@ export default function CircleDetailScreen() {
     var handleOpenAdmin = async function () {
         setShowAdminMenu(true);
         setLoadingMembers(true);
+        setIsEditing(false);
+
+        // Pre-fill edit form
+        setEditName(circle.name);
+        setEditEmoji(circle.emoji || "🌿");
+        setEditDescription(circle.description || "");
+
         try {
             var members = await getCircleMembersList(circleId);
-            // Filter to show only pending requests
-            setPendingMembers(members.filter((m: any) => m.status === "pending"));
+            var list = Array.isArray(members) ? members : (members.members || []);
+
+            setPendingMembers(list.filter((m: any) => m.status === "pending"));
+            setActiveMembers(list.filter((m: any) => m.status === "approved" && m.role !== "creator"));
         } catch (e) {
             console.log("Failed to load members", e);
         }
@@ -171,9 +190,47 @@ export default function CircleDetailScreen() {
     var handleApprove = async function (userId: string) {
         try {
             await manageCircleMember(circleId, userId, "approve");
+            var approved = pendingMembers.find((m: any) => m.user.id === userId);
             setPendingMembers(pendingMembers.filter((m: any) => m.user.id !== userId));
+            if (approved) setActiveMembers([...activeMembers, { ...approved, status: "approved" }]);
             setCircle({ ...circle, memberCount: circle.memberCount + 1 });
         } catch (e) { }
+    };
+
+    var handleSaveEdit = async function () {
+        setSavingEdit(true);
+        try {
+            await updateCircle(circleId, { name: editName, emoji: editEmoji, description: editDescription });
+            setCircle({ ...circle, name: editName, emoji: editEmoji, description: editDescription });
+            setIsEditing(false);
+        } catch (e) {
+            Alert.alert("Error", "Failed to update circle");
+        }
+        setSavingEdit(false);
+    };
+
+    var handleKickMember = function (memberId: string, memberName: string) {
+        Alert.alert(
+            "Remove Member",
+            `Are you sure you want to remove ${memberName} from the circle?`,
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async function () {
+                        try {
+                            await kickCircleMember(circleId, memberId);
+                            setPendingMembers(pendingMembers.filter((m: any) => m.user.id !== memberId));
+                            setActiveMembers(activeMembers.filter((m: any) => m.user.id !== memberId));
+                            setCircle({ ...circle, memberCount: Math.max(0, circle.memberCount - 1) });
+                        } catch (e) {
+                            Alert.alert("Error", "Failed to remove member");
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     var handleDeleteCircle = function () {
@@ -220,7 +277,6 @@ export default function CircleDetailScreen() {
                     {circle.name}
                 </Text>
 
-                {/* 👇 Admin Button goes here */}
                 {isCreator ? (
                     <TouchableOpacity onPress={handleOpenAdmin} style={styles.backBtn}>
                         <Ionicons name="settings-outline" size={24} color={colors.textPrimary} />
@@ -313,44 +369,114 @@ export default function CircleDetailScreen() {
                 )}
             </ScrollView>
 
-            {/* 👇 ADMIN SETTINGS MODAL */}
+            {/* 👇 UPDATED ADMIN SETTINGS MODAL */}
             <Modal visible={showAdminMenu} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAdminMenu(false)}>
-                <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: 60 }}>
+                <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top + 20 }}>
                     <View style={{ flexDirection: "row", justifyContent: "space-between", padding: spacing.lg, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-                        <Text style={{ fontSize: 20, fontWeight: "700", color: colors.textPrimary }}>Admin Settings</Text>
+                        <Text style={{ fontSize: 20, fontWeight: "700", color: colors.textPrimary }}>
+                            {isEditing ? "Edit Circle Details" : "Admin Settings"}
+                        </Text>
                         <TouchableOpacity onPress={() => setShowAdminMenu(false)}>
                             <Text style={{ color: colors.primary, fontWeight: "600", fontSize: 16 }}>Done</Text>
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView contentContainerStyle={{ padding: spacing.lg }}>
-                        <Text style={{ fontSize: 16, fontWeight: "700", color: colors.textSecondary, marginBottom: spacing.md }}>
-                            Pending Requests
-                        </Text>
+                        {isEditing ? (
+                            /* EDIT FORM VIEW */
+                            <View>
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Circle Name</Text>
+                                <TextInput
+                                    value={editName}
+                                    onChangeText={setEditName}
+                                    style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                                />
 
-                        {loadingMembers ? (
-                            <ActivityIndicator color={colors.primary} />
-                        ) : pendingMembers.length === 0 ? (
-                            <Text style={{ color: colors.textTertiary, fontStyle: "italic" }}>No pending requests right now.</Text>
-                        ) : (
-                            pendingMembers.map((m: any) => (
-                                <View key={m.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
-                                    <View>
-                                        <Text style={{ color: colors.textPrimary, fontWeight: "600", fontSize: 15 }}>{m.user.name}</Text>
-                                        <Text style={{ color: colors.textSecondary, fontSize: 13 }}>@{m.user.username}</Text>
-                                    </View>
-                                    <TouchableOpacity onPress={() => handleApprove(m.user.id)} style={{ backgroundColor: colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radius.md }}>
-                                        <Text style={{ color: "#fff", fontWeight: "600" }}>Approve</Text>
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Emoji</Text>
+                                <TextInput
+                                    value={editEmoji}
+                                    onChangeText={setEditEmoji}
+                                    maxLength={2}
+                                    style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                                />
+
+                                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Description</Text>
+                                <TextInput
+                                    value={editDescription}
+                                    onChangeText={setEditDescription}
+                                    multiline
+                                    numberOfLines={3}
+                                    style={[styles.input, { height: 100, textAlignVertical: "top", color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                                />
+
+                                <View style={{ flexDirection: "row", gap: spacing.md, marginTop: spacing.xl }}>
+                                    <TouchableOpacity onPress={() => setIsEditing(false)} style={[styles.modalBtn, { backgroundColor: "transparent", borderColor: colors.border, borderWidth: 1 }]}>
+                                        <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>Cancel</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={handleSaveEdit} disabled={savingEdit} style={[styles.modalBtn, { backgroundColor: colors.primary }]}>
+                                        <Text style={{ color: "#fff", fontWeight: "600" }}>{savingEdit ? "Saving..." : "Save"}</Text>
                                     </TouchableOpacity>
                                 </View>
-                            ))
-                        )}
+                            </View>
+                        ) : (
+                            /* MAIN MENU VIEW */
+                            <View>
+                                <TouchableOpacity onPress={() => setIsEditing(true)} style={[styles.modalBtn, { backgroundColor: "transparent", borderColor: colors.border, borderWidth: 1, marginBottom: spacing.xl }]}>
+                                    <Text style={{ color: colors.textPrimary, fontWeight: "600" }}>✏️ Edit Circle Details</Text>
+                                </TouchableOpacity>
 
-                        <View style={{ marginTop: spacing.xxl, paddingTop: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border }}>
-                            <TouchableOpacity onPress={handleDeleteCircle} style={{ backgroundColor: "#ef444420", padding: spacing.lg, borderRadius: radius.lg, alignItems: "center", borderWidth: 1, borderColor: "#ef4444" }}>
-                                <Text style={{ color: "#ef4444", fontWeight: "700", fontSize: 16 }}>Delete Circle</Text>
-                            </TouchableOpacity>
-                        </View>
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.textSecondary, marginBottom: spacing.md }}>
+                                    Pending Requests
+                                </Text>
+                                {loadingMembers ? (
+                                    <ActivityIndicator color={colors.primary} />
+                                ) : pendingMembers.length === 0 ? (
+                                    <Text style={{ color: colors.textTertiary, fontStyle: "italic", marginBottom: spacing.xl }}>No pending requests right now.</Text>
+                                ) : (
+                                    pendingMembers.map((m: any) => (
+                                        <View key={m.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                                            <View>
+                                                <Text style={{ color: colors.textPrimary, fontWeight: "600", fontSize: 15 }}>{m.user.name}</Text>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>@{m.user.username}</Text>
+                                            </View>
+                                            <View style={{ flexDirection: "row", gap: 8 }}>
+                                                <TouchableOpacity onPress={() => handleApprove(m.user.id)} style={{ backgroundColor: colors.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md }}>
+                                                    <Text style={{ color: "#fff", fontWeight: "600", fontSize: 12 }}>Approve</Text>
+                                                </TouchableOpacity>
+                                                <TouchableOpacity onPress={() => handleKickMember(m.user.id, m.user.name)} style={{ backgroundColor: colors.dangerLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md }}>
+                                                    <Text style={{ color: colors.danger, fontWeight: "600", fontSize: 12 }}>Reject</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    ))
+                                )}
+
+                                <Text style={{ fontSize: 16, fontWeight: "700", color: colors.textSecondary, marginTop: spacing.xl, marginBottom: spacing.md }}>
+                                    Current Members
+                                </Text>
+                                {activeMembers.length === 0 ? (
+                                    <Text style={{ color: colors.textTertiary, fontStyle: "italic" }}>No active members yet.</Text>
+                                ) : (
+                                    activeMembers.map((m: any) => (
+                                        <View key={m.id} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight }}>
+                                            <View>
+                                                <Text style={{ color: colors.textPrimary, fontWeight: "600", fontSize: 15 }}>{m.user.name}</Text>
+                                                <Text style={{ color: colors.textSecondary, fontSize: 13 }}>@{m.user.username}</Text>
+                                            </View>
+                                            <TouchableOpacity onPress={() => handleKickMember(m.user.id, m.user.name)} style={{ backgroundColor: "transparent", borderColor: colors.danger, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radius.md }}>
+                                                <Text style={{ color: colors.danger, fontWeight: "600", fontSize: 12 }}>Remove</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))
+                                )}
+
+                                <View style={{ marginTop: spacing.xxl, paddingTop: spacing.xl, borderTopWidth: 1, borderTopColor: colors.border }}>
+                                    <TouchableOpacity onPress={handleDeleteCircle} style={{ backgroundColor: "#ef444420", padding: spacing.lg, borderRadius: radius.lg, alignItems: "center", borderWidth: 1, borderColor: "#ef4444" }}>
+                                        <Text style={{ color: "#ef4444", fontWeight: "700", fontSize: 16 }}>Delete Circle</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        )}
                     </ScrollView>
                 </View>
             </Modal>
@@ -359,7 +485,6 @@ export default function CircleDetailScreen() {
 }
 
 function CircleFeed({ circleId, colors }: any) {
-    // ... (Keep your existing CircleFeed code exactly the same)
     var [posts, setPosts] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
     var [content, setContent] = useState("");
@@ -368,11 +493,10 @@ function CircleFeed({ circleId, colors }: any) {
 
     useEffect(function () { load(); }, []);
 
-        var load = async function () {
+    var load = async function () {
         try {
-            var data = await getCircleMembers(circleId);
-            // 👇 The API returns the array directly, not wrapped in { members: [] }
-            getCircleMembers(data || []); 
+            var data = await getCirclePosts(circleId);
+            setPosts(data.posts || []);
         } catch (e) { }
         setLoading(false);
     };
@@ -507,7 +631,6 @@ function CircleFeed({ circleId, colors }: any) {
 }
 
 function CircleChat({ circleId, colors }: any) {
-    // ... (Keep your existing CircleChat code exactly the same)
     var [messages, setMessages] = useState<any[]>([]);
     var [loading, setLoading] = useState(true);
     var [text, setText] = useState("");
@@ -635,10 +758,7 @@ function CircleMembersList({ circleId, colors }: any) {
 
     var load = async function () {
         try {
-            // 👇 Using the helper from client.ts
             var data = await getCircleMembers(circleId);
-
-            // The backend route returns the array directly, or it might be wrapped in .members
             var list = Array.isArray(data) ? data : (data.members || []);
             setMembers(list);
         } catch (e) {
@@ -749,4 +869,7 @@ var styles = StyleSheet.create({
     quoteName: { fontSize: 11, fontWeight: "700", marginBottom: 2 },
     quoteText: { fontSize: 12 },
     replyPreview: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: spacing.sm, borderRadius: radius.md, marginBottom: spacing.sm, borderLeftWidth: 3 },
+    inputLabel: { fontSize: 13, marginBottom: 6, marginTop: spacing.md },
+    input: { borderWidth: 1, borderRadius: radius.md, padding: spacing.md, fontSize: 15 },
+    modalBtn: { flex: 1, padding: spacing.md, borderRadius: radius.md, alignItems: "center" }
 });

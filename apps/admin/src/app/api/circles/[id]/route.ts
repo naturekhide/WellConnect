@@ -21,8 +21,8 @@ export async function DELETE(
         });
 
         // Log the action
-        await logAdminAction({ 
-            action: "DELETE_CIRCLE", 
+        await logAdminAction({
+            action: "DELETE_CIRCLE",
             targetId: id,
             details: `Deleted circle: ${circle?.name || id}`
         });

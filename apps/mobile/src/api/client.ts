@@ -274,3 +274,23 @@ export async function unblockUser(id: string) {
 export async function blockUser(id: string) {
     return apiFetch("/api/users/" + id + "/block", { method: "POST" });
 }
+
+// Edit Circle Details
+export async function updateCircle(circleId: string, data: { name?: string, emoji?: string, description?: string }) {
+    const res = await fetch(`/api/circles/${circleId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error("Failed to update circle");
+    return res.json();
+}
+
+// Kick a Member
+export async function kickCircleMember(circleId: string, memberId: string) {
+    const res = await fetch(`/api/circles/${circleId}/members/${memberId}`, {
+        method: "DELETE",
+    });
+    if (!res.ok) throw new Error("Failed to remove member");
+    return res.json();
+}

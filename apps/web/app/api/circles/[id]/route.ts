@@ -45,7 +45,7 @@ export async function GET(
     });
 }
 
-// 👇 ADDED: Update Circle details
+// 👇 Update Circle details
 export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
     var userId = await getCurrentUserId(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -71,7 +71,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     return NextResponse.json(updated);
 }
 
-// 👇 ADDED: Delete Circle
+// 👇 Delete Circle
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
     var userId = await getCurrentUserId(request);
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

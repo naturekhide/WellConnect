@@ -19,7 +19,15 @@ export default function CircleDetailPage() {
     // 👇 Admin States
     var [showAdminMenu, setShowAdminMenu] = useState(false);
     var [pendingMembers, setPendingMembers] = useState<any[]>([]);
+    var [activeMembers, setActiveMembers] = useState<any[]>([]);
     var [loadingMembers, setLoadingMembers] = useState(false);
+
+    // 👇 Edit Circle States
+    var [isEditing, setIsEditing] = useState(false);
+    var [editName, setEditName] = useState("");
+    var [editEmoji, setEditEmoji] = useState("");
+    var [editDescription, setEditDescription] = useState("");
+    var [savingEdit, setSavingEdit] = useState(false);
 
     useEffect(function () { load(); }, [circleId]);
 
@@ -55,11 +63,22 @@ export default function CircleDetailPage() {
     var handleOpenAdmin = async function () {
         setShowAdminMenu(true);
         setLoadingMembers(true);
+
+        // Pre-fill edit form
+        setEditName(circle.name);
+        setEditEmoji(circle.emoji || "🌿");
+        setEditDescription(circle.description || "");
+        setIsEditing(false);
+
         try {
             var r = await fetch("/api/circles/" + circleId + "/members");
             if (r.ok) {
                 var members = await r.json();
-                setPendingMembers(members.filter((m: any) => m.status === "pending"));
+                var list = Array.isArray(members) ? members : (members.members || []);
+
+                // Split into pending and active
+                setPendingMembers(list.filter((m: any) => m.status === "pending"));
+                setActiveMembers(list.filter((m: any) => m.status === "approved" && m.role !== "creator"));
             }
         } catch (e) { }
         setLoadingMembers(false);
@@ -73,8 +92,50 @@ export default function CircleDetailPage() {
                 body: JSON.stringify({ targetUserId: userId, action: "approve" })
             });
             if (r.ok) {
+                var approvedMember = pendingMembers.find((m: any) => m.user.id === userId);
                 setPendingMembers(pendingMembers.filter((m: any) => m.user.id !== userId));
+                if (approvedMember) {
+                    setActiveMembers([...activeMembers, { ...approvedMember, status: "approved" }]);
+                }
                 setCircle({ ...circle, memberCount: circle.memberCount + 1 });
+            }
+        } catch (e) { }
+    };
+
+    // 👇 NEW: Save Edit
+    var handleSaveEdit = async function (e: any) {
+        e.preventDefault();
+        setSavingEdit(true);
+        try {
+            var r = await fetch("/api/circles/" + circleId, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name: editName, emoji: editEmoji, description: editDescription }),
+            });
+            if (r.ok) {
+                var updated = await r.json();
+                setCircle({ ...circle, name: updated.name, emoji: updated.emoji, description: updated.description });
+                setIsEditing(false);
+            } else {
+                alert("Failed to update circle");
+            }
+        } catch (e) { }
+        setSavingEdit(false);
+    };
+
+    // 👇 NEW: Kick/Reject Member
+    var handleKickMember = async function (memberId: string, memberName: string) {
+        if (!window.confirm(`Are you sure you want to remove ${memberName} from the circle?`)) return;
+        try {
+            var r = await fetch("/api/circles/" + circleId + "/members/" + memberId, {
+                method: "DELETE",
+            });
+            if (r.ok) {
+                setPendingMembers(pendingMembers.filter((m: any) => m.user.id !== memberId));
+                setActiveMembers(activeMembers.filter((m: any) => m.user.id !== memberId));
+                setCircle({ ...circle, memberCount: Math.max(0, circle.memberCount - 1) });
+            } else {
+                alert("Failed to remove member");
             }
         } catch (e) { }
     };
@@ -214,36 +275,92 @@ export default function CircleDetailPage() {
                     <div style={{ background: C.surface, width: "100%", maxWidth: 500, borderRadius: R.xl, border: "1px solid " + C.border, overflow: "hidden", display: "flex", flexDirection: "column", maxHeight: "80vh" }}>
 
                         <div style={{ padding: S.lg, borderBottom: "1px solid " + C.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <h2 style={{ fontSize: 18, fontWeight: 700, color: C.textPrimary, margin: 0 }}>Admin Settings</h2>
+                            <h2 style={{ fontSize: 18, fontWeight: 700, color: C.textPrimary, margin: 0 }}>
+                                {isEditing ? "Edit Circle Details" : "Admin Settings"}
+                            </h2>
                             <button onClick={function () { setShowAdminMenu(false); }} style={{ background: "none", border: "none", cursor: "pointer", color: C.textSecondary, fontSize: 16, fontWeight: 600 }}>Close</button>
                         </div>
 
                         <div style={{ padding: S.lg, overflowY: "auto", flex: 1 }}>
-                            <h3 style={{ fontSize: 14, fontWeight: 600, color: C.textSecondary, margin: "0 0 " + S.md + "px 0" }}>Pending Requests</h3>
 
-                            {loadingMembers ? (
-                                <p style={{ color: C.textSecondary }}>Loading...</p>
-                            ) : pendingMembers.length === 0 ? (
-                                <p style={{ color: C.textTertiary, fontStyle: "italic", fontSize: 14 }}>No pending requests right now.</p>
+                            {/* EDIT FORM VIEW */}
+                            {isEditing ? (
+                                <form onSubmit={handleSaveEdit} style={{ display: "flex", flexDirection: "column", gap: S.md }}>
+                                    <div>
+                                        <label style={{ fontSize: 13, color: C.textSecondary, marginBottom: 4, display: "block" }}>Circle Name</label>
+                                        <input value={editName} onChange={function (e) { setEditName(e.target.value); }} required style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, background: C.background, color: C.textPrimary, boxSizing: "border-box" }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 13, color: C.textSecondary, marginBottom: 4, display: "block" }}>Emoji</label>
+                                        <input value={editEmoji} onChange={function (e) { setEditEmoji(e.target.value); }} maxLength={2} style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, background: C.background, color: C.textPrimary, boxSizing: "border-box" }} />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 13, color: C.textSecondary, marginBottom: 4, display: "block" }}>Description</label>
+                                        <textarea value={editDescription} onChange={function (e) { setEditDescription(e.target.value); }} rows={3} style={{ width: "100%", padding: S.md, borderRadius: R.md, border: "1px solid " + C.border, background: C.background, color: C.textPrimary, boxSizing: "border-box", resize: "none" }} />
+                                    </div>
+
+                                    <div style={{ display: "flex", gap: S.sm, marginTop: S.md }}>
+                                        <button type="button" onClick={function () { setIsEditing(false); }} style={{ flex: 1, padding: S.md, background: "transparent", border: "1px solid " + C.border, color: C.textPrimary, borderRadius: R.md, cursor: "pointer", fontWeight: 600 }}>Cancel</button>
+                                        <button type="submit" disabled={savingEdit} style={{ flex: 1, padding: S.md, background: C.primary, color: "#fff", border: "none", borderRadius: R.md, cursor: savingEdit ? "not-allowed" : "pointer", fontWeight: 600 }}>{savingEdit ? "Saving..." : "Save Changes"}</button>
+                                    </div>
+                                </form>
                             ) : (
-                                pendingMembers.map(function (m: any) {
-                                    return (
-                                        <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: S.md + " 0", borderBottom: "1px solid " + C.borderLight }}>
-                                            <div>
-                                                <p style={{ color: C.textPrimary, fontWeight: 600, fontSize: 15, margin: 0 }}>{m.user.name}</p>
-                                                <p style={{ color: C.textSecondary, fontSize: 13, margin: "2px 0 0 0" }}>@{m.user.username}</p>
-                                            </div>
-                                            <button onClick={function () { handleApprove(m.user.id); }} style={{ background: C.primary, color: "#fff", padding: "6px 16px", borderRadius: R.md, border: "none", fontWeight: 600, cursor: "pointer" }}>Approve</button>
-                                        </div>
-                                    );
-                                })
-                            )}
+                                /* MAIN ADMIN MENU VIEW */
+                                <>
+                                    <button onClick={function () { setIsEditing(true); }} style={{ width: "100%", padding: S.md, background: "transparent", border: "1px solid " + C.border, borderRadius: R.md, fontWeight: 600, color: C.textPrimary, cursor: "pointer", marginBottom: S.xl }}>
+                                        ✏️ Edit Circle Details
+                                    </button>
 
-                            <div style={{ marginTop: S.xl, paddingTop: S.xl, borderTop: "1px solid " + C.border }}>
-                                <button onClick={handleDeleteCircle} style={{ width: "100%", padding: S.md, background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444", borderRadius: R.md, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
-                                    Delete Circle
-                                </button>
-                            </div>
+                                    {/* PENDING REQUESTS */}
+                                    <h3 style={{ fontSize: 14, fontWeight: 600, color: C.textSecondary, margin: "0 0 " + S.md + "px 0" }}>Pending Requests</h3>
+                                    {loadingMembers ? (
+                                        <p style={{ color: C.textSecondary }}>Loading...</p>
+                                    ) : pendingMembers.length === 0 ? (
+                                        <p style={{ color: C.textTertiary, fontStyle: "italic", fontSize: 14, marginBottom: S.xl }}>No pending requests right now.</p>
+                                    ) : (
+                                        pendingMembers.map(function (m: any) {
+                                            return (
+                                                <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: S.md + " 0", borderBottom: "1px solid " + C.borderLight }}>
+                                                    <div>
+                                                        <p style={{ color: C.textPrimary, fontWeight: 600, fontSize: 15, margin: 0 }}>{m.user.name}</p>
+                                                        <p style={{ color: C.textSecondary, fontSize: 13, margin: "2px 0 0 0" }}>@{m.user.username}</p>
+                                                    </div>
+                                                    <div style={{ display: "flex", gap: S.sm }}>
+                                                        <button onClick={function () { handleApprove(m.user.id); }} style={{ background: C.primary, color: "#fff", padding: "6px 16px", borderRadius: R.md, border: "none", fontWeight: 600, cursor: "pointer" }}>Approve</button>
+                                                        <button onClick={function () { handleKickMember(m.user.id, m.user.name); }} style={{ background: C.dangerLight, color: C.danger, padding: "6px 16px", borderRadius: R.md, border: "none", fontWeight: 600, cursor: "pointer" }}>Reject</button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+
+                                    {/* ACTIVE MEMBERS */}
+                                    <h3 style={{ fontSize: 14, fontWeight: 600, color: C.textSecondary, margin: S.xl + "px 0 " + S.md + "px 0" }}>Current Members</h3>
+                                    {loadingMembers ? (
+                                        <p style={{ color: C.textSecondary }}>Loading...</p>
+                                    ) : activeMembers.length === 0 ? (
+                                        <p style={{ color: C.textTertiary, fontStyle: "italic", fontSize: 14 }}>No active members yet.</p>
+                                    ) : (
+                                        activeMembers.map(function (m: any) {
+                                            return (
+                                                <div key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: S.md + " 0", borderBottom: "1px solid " + C.borderLight }}>
+                                                    <div>
+                                                        <p style={{ color: C.textPrimary, fontWeight: 600, fontSize: 15, margin: 0 }}>{m.user.name}</p>
+                                                        <p style={{ color: C.textSecondary, fontSize: 13, margin: "2px 0 0 0" }}>@{m.user.username}</p>
+                                                    </div>
+                                                    <button onClick={function () { handleKickMember(m.user.id, m.user.name); }} style={{ background: "transparent", color: C.danger, padding: "6px 16px", borderRadius: R.md, border: "1px solid " + C.danger, fontWeight: 600, cursor: "pointer" }}>Remove</button>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+
+                                    <div style={{ marginTop: S.xl, paddingTop: S.xl, borderTop: "1px solid " + C.border }}>
+                                        <button onClick={handleDeleteCircle} style={{ width: "100%", padding: S.md, background: "rgba(239, 68, 68, 0.1)", color: "#ef4444", border: "1px solid #ef4444", borderRadius: R.md, fontWeight: 700, fontSize: 15, cursor: "pointer" }}>
+                                            Delete Circle
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -251,7 +368,6 @@ export default function CircleDetailPage() {
         </main>
     );
 }
-
 function CircleFeed({ circleId }: any) {
     // ... Keep your existing CircleFeed code exactly the same!
     var C = useColors();
