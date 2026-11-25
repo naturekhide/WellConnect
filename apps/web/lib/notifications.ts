@@ -1,6 +1,31 @@
 import { prisma } from "./prisma";
 import { sendPushNotification } from "./push";
 
+// 👇 NEW: Helper to make URLs look nice in notifications
+function getFriendlyMessageText(content: string) {
+    if (!content) return "New message";
+
+    var lower = content.toLowerCase();
+
+    // Check for voice notes
+    if (lower.startsWith("🎤 ")) return "🎤 Voice note";
+
+    // Check for attachments/URLs
+    if (lower.startsWith("http")) {
+        if (lower.match(/\.(jpeg|jpg|gif|png|webp)$/)) return "📷 Image";
+        if (lower.match(/\.(mp4|mov|webm)$/)) return "🎥 Video";
+        if (lower.match(/\.(pdf|doc|docx)$/)) return "📄 Document";
+        // Catch Vercel Blob URLs
+        if (lower.includes("blob.vercel-storage.com")) return "📎 Attachment";
+        return "🔗 Link";
+    }
+
+    // Normal text (truncate if too long)
+    if (content.length > 50) return content.substring(0, 47) + "...";
+
+    return content;
+}
+
 async function getPreferences(userId: string) {
     var prefs = await prisma.notificationPreference.findUnique({
         where: { userId },
@@ -33,17 +58,21 @@ export async function createNotification(
         if (type === "reaction" && !prefs.reactions) return false;
         if (type === "reply" && !prefs.replies) return false;
 
+        // 👇 APPLY THE FRIENDLY TEXT HELPER HERE
+        var cleanBody = getFriendlyMessageText(body);
+
         await prisma.notification.create({
             data: {
                 userId,
                 type,
                 title,
-                body,
+                body: cleanBody, // Save the clean text to the DB
                 link: link || null,
             },
         });
 
-        await sendPushNotification(userId, title, body, { link: link || null });
+        // Send the clean text to the phone
+        await sendPushNotification(userId, title, cleanBody, { link: link || null });
 
         return true;
     } catch (e) {

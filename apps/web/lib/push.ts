@@ -29,8 +29,8 @@ export async function sendPushNotification(
                 body: body,
                 data: data || {},
                 sound: "default",
-                priority: "high", // 👈 Tells Android to treat this as urgent
-                channelId: "default_v2", // 👈 Matches the channel ID created on mobile
+                priority: "high", 
+                channelId: "default_v3", 
             }),
         });
 

@@ -58,13 +58,13 @@ export async function registerForPushNotifications() {
         }
 
         if (Platform.OS === "android") {
-            // 👇 Use a new channel ID (v2) to force Android to pick up the new importance settings
-            await Notifications.setNotificationChannelAsync("default_v2", {
-                name: "default_v2",
-                importance: Notifications.AndroidImportance.MAX,
+            await Notifications.setNotificationChannelAsync("default_v3", {
+                name: "Messages & Alerts",
+                importance: Notifications.AndroidImportance.MAX, 
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: "#059669",
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+                sound: "default", 
             });
         }
 

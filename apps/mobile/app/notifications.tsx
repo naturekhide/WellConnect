@@ -6,6 +6,32 @@ import { getAuthToken } from "../src/api/client";
 
 var API_URL = "https://well-connect-web.vercel.app";
 
+function getFriendlyBody(content: string) {
+    if (!content) return "New notification";
+    var lower = content.toLowerCase();
+
+    // 1. Check for Voice Notes
+    if (lower.startsWith("🎤 ")) {
+        return "🎤 Voice note";
+    }
+
+    // 2. Check for Images / Videos / Docs
+    if (lower.startsWith("http")) {
+        if (lower.match(/\.(jpeg|jpg|gif|png|webp|heic)$/)) return "📷 Image";
+        if (lower.match(/\.(mp4|mov|webm)$/)) return "🎥 Video";
+        if (lower.match(/\.(pdf|doc|docx|xls|xlsx|csv)$/)) return "📄 Document";
+
+        // Catch Vercel Blob URLs
+        if (lower.includes("blob.vercel-storage.com")) return "📎 Attachment";
+
+        return "🔗 Link";
+    }
+
+    // 3. Normal text (truncate if too long)
+    if (content.length > 80) return content.substring(0, 77) + "...";
+    return content;
+}
+
 export default function NotificationsScreen() {
     var router = useRouter();
     var colors = useColors();
@@ -151,7 +177,8 @@ export default function NotificationsScreen() {
                                         <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>{n.title}</Text>
                                         {!n.isRead && <View style={[styles.dot, { backgroundColor: colors.primary }]} />}
                                     </View>
-                                    <Text style={[styles.cardBody, { color: colors.textSecondary }]}>{n.body}</Text>
+                                    {/* 👇 APPLIED THE HELPER HERE */}
+                                    <Text style={[styles.cardBody, { color: colors.textSecondary }]}>{getFriendlyBody(n.body)}</Text>
                                     <Text style={[styles.cardTime, { color: colors.textTertiary }]}>{timeAgo(n.createdAt)}</Text>
                                 </View>
                             </TouchableOpacity>

@@ -59,3 +59,30 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     return NextResponse.json({ success: true });
 }
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+    var userId = await getCurrentUserId(request);
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    var circle = await prisma.circle.findUnique({ where: { id: params.id } });
+    if (!circle || circle.creatorId !== userId) {
+        return NextResponse.json({ error: "Not authorized to manage members" }, { status: 403 });
+    }
+
+    // Extract memberId from query params or body
+    var url = new URL(request.url);
+    var memberId = url.searchParams.get("memberId");
+
+    if (!memberId) {
+        return NextResponse.json({ error: "Missing memberId" }, { status: 400 });
+    }
+
+    try {
+        await prisma.circleMember.delete({
+            where: { circleId_userId: { circleId: params.id, userId: memberId } }
+        });
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        return NextResponse.json({ error: "Failed to remove member" }, { status: 500 });
+    }
+}
