@@ -639,21 +639,67 @@ function CircleChat({ circleId, colors }: any) {
     var [editingMessage, setEditingMessage] = useState<any>(null);
     var [menuMessage, setMenuMessage] = useState<any>(null);
     var scrollRef = useRef<ScrollView>(null);
+    var messagesRef = useRef<any[]>([]);
 
-    useEffect(function () { loadInitial(); var interval = setInterval(poll, 3000); return function () { clearInterval(interval); }; }, []);
-    useEffect(function () { setTimeout(function () { scrollRef.current?.scrollToEnd({ animated: true }); }, 100); }, [messages, replyingTo]);
+    // 👇 1. Import EventSource at the top of the file if you haven't already
+    // import EventSource from "react-native-sse";
+
+    useEffect(function () {
+        loadInitial();
+
+        // 👇 2. REPLACE POLLING WITH SSE
+        var token = getAuthToken(); // Make sure this is imported or available
+        var es = new EventSource(`${API_URL}/api/circles/${circleId}/messages/stream`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        es.addEventListener("message", (event: any) => {
+            if (event.data) {
+                try {
+                    var newMessages = JSON.parse(event.data);
+
+                    setMessages((prev) => {
+                        // Prevent duplicates
+                        var uniqueNew = newMessages.filter((nm: any) => !prev.some((pm: any) => pm.id === nm.id));
+
+                        var formattedNew = uniqueNew.map((m: any) => ({
+                            id: m.id,
+                            content: m.content,
+                            createdAt: m.createdAt,
+                            isMine: m.userId === token, // Assuming you can map user id, otherwise use m.isMine from backend
+                            user: m.user,
+                            replyTo: null,
+                            reactions: []
+                        }));
+
+                        var updated = [...prev, ...formattedNew];
+                        messagesRef.current = updated;
+
+                        // Auto-scroll to bottom on new message
+                        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+
+                        return updated;
+                    });
+                } catch (e) {
+                    console.error("Failed to parse SSE data", e);
+                }
+            }
+        });
+
+        return function () {
+            es.close();
+        };
+    }, [circleId]);
 
     var loadInitial = async function () {
-        try { var data = await getCircleMessages(circleId); setMessages(data.messages || []); } catch (e) { } setLoading(false);
-    };
-
-    var poll = async function () {
-        if (!messages.length) return;
-        var last = messages[messages.length - 1].createdAt;
         try {
-            var data = await getCircleMessages(circleId, last);
-            if (data.messages && data.messages.length > 0) setMessages(messages.concat(data.messages));
+            var data = await getCircleMessages(circleId);
+            setMessages(data.messages || []);
+            messagesRef.current = data.messages || [];
         } catch (e) { }
+        setLoading(false);
     };
 
     var handleSend = async function () {
@@ -665,8 +711,8 @@ function CircleChat({ circleId, colors }: any) {
                 setMessages(messages.map(function (m) { return m.id === editingMessage.id ? { ...m, content: res.content || text.trim() } : m; }));
                 setEditingMessage(null);
             } else {
-                var msg = await sendCircleMessage(circleId, text.trim(), replyingTo?.id);
-                setMessages(messages.concat([msg]));
+                // 👇 3. Send to DB. The SSE stream will catch it and append it.
+                await sendCircleMessage(circleId, text.trim(), replyingTo?.id);
                 setReplyingTo(null);
             }
             setText("");
@@ -679,7 +725,10 @@ function CircleChat({ circleId, colors }: any) {
             { text: "Cancel", style: "cancel" },
             {
                 text: "Delete", style: "destructive", onPress: async function () {
-                    try { await deleteCircleMessage(circleId, messageId); setMessages(messages.filter(function (m) { return m.id !== messageId; })); } catch (e: any) { Alert.alert("Failed", e.message); }
+                    try {
+                        await deleteCircleMessage(circleId, messageId);
+                        setMessages(messages.filter(function (m) { return m.id !== messageId; }));
+                    } catch (e: any) { Alert.alert("Failed", e.message); }
                 }
             }
         ]);
