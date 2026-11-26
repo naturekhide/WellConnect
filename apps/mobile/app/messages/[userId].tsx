@@ -18,10 +18,11 @@ import {
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context"; // 👈 Added Safe Area
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import EmojiPicker from "rn-emoji-keyboard";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import EventSource from "react-native-sse"; // 👈 IMPORTED SSE
 import { getDMMessages, sendDM, getUserProfile, editDM, deleteDM, uploadImages, reactToMessage, getAuthToken } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 import VoiceNoteButton from "../../components/VoiceNoteButton";
@@ -139,7 +140,7 @@ function SwipeableMessage({ m, onReply, onLongPress, showAvatar }: any) {
 export default function ChatScreen() {
     var params = useLocalSearchParams();
     var router = useRouter();
-    var insets = useSafeAreaInsets(); // 👈 Added safe area
+    var insets = useSafeAreaInsets();
     var otherId = params.userId as string;
 
     var [messages, setMessages] = useState<any[]>([]);
@@ -155,7 +156,7 @@ export default function ChatScreen() {
     var [menuMessage, setMenuMessage] = useState<any>(null);
     var [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
     var [showAttachmentMenu, setShowAttachmentMenu] = useState(false);
-    var [isBlocked, setIsBlocked] = useState(false); // 👈 Track block status
+    var [isBlocked, setIsBlocked] = useState(false);
 
     var [otherIsTyping, setOtherIsTyping] = useState(false);
     var typingTimeout = useRef<any>(null);
@@ -164,8 +165,43 @@ export default function ChatScreen() {
 
     useEffect(function () {
         loadInitial();
-        var interval = setInterval(poll, 1500);
 
+        // 🛑 REPLACED POLLING WITH SERVER-SENT EVENTS
+        var es = new EventSource(`${API_URL}/api/dm/${otherId}/stream`, {
+            headers: {
+                Authorization: "Bearer " + getAuthToken(),
+            },
+        });
+
+        es.addEventListener("message", (event: any) => {
+            if (event.data) {
+                try {
+                    var newMessages = JSON.parse(event.data);
+                    setMessages((prev) => {
+                        // Prevent duplicates
+                        var uniqueNew = newMessages.filter((nm: any) => !prev.some((pm: any) => pm.id === nm.id));
+                        
+                        var formattedNew = uniqueNew.map((m: any) => ({
+                            id: m.id,
+                            content: m.content,
+                            createdAt: m.createdAt,
+                            isMine: m.senderId === otherId ? false : true, // We only receive others' messages via SSE
+                            sender: m.sender,
+                            replyTo: null,
+                            reactions: []
+                        }));
+
+                        var updated = [...prev, ...formattedNew];
+                        messagesRef.current = updated;
+                        return updated;
+                    });
+                } catch (e) {
+                    console.error("Failed to parse SSE data", e);
+                }
+            }
+        });
+
+        // Still poll for typing indicator (it changes too fast for DB SSE)
         var typingInterval = setInterval(async function () {
             try {
                 var res = await fetch(`${API_URL}/api/dm/${otherId}/typing`, {
@@ -179,7 +215,7 @@ export default function ChatScreen() {
         }, 2000);
 
         return function () {
-            clearInterval(interval);
+            es.close();
             clearInterval(typingInterval);
         };
     }, [otherId]);
@@ -190,7 +226,6 @@ export default function ChatScreen() {
 
     var loadInitial = async function () {
         try {
-            // 👇 Wrap both in try/catch so if messages fail, we still load the profile
             var profileRes = await getUserProfile(otherId).catch(() => null);
             if (profileRes) setOther(profileRes);
 
@@ -207,25 +242,6 @@ export default function ChatScreen() {
             }
         } catch (e) { }
         setLoading(false);
-    };
-
-    var poll = async function () {
-        if (!messagesRef.current || !messagesRef.current.length) return;
-        var last = messagesRef.current[messagesRef.current.length - 1].createdAt;
-
-        try {
-            var data = await getDMMessages(otherId, last);
-            if (data.messages && data.messages.length > 0) {
-                var existingIds = new Set(messagesRef.current.map((m: any) => m.id));
-                var newMessages = data.messages.filter((m: any) => !existingIds.has(m.id));
-
-                if (newMessages.length > 0) {
-                    var updatedMsgs = messagesRef.current.concat(newMessages);
-                    setMessages(updatedMsgs);
-                    messagesRef.current = updatedMsgs;
-                }
-            }
-        } catch (e) { }
     };
 
     var handleTyping = function () {
@@ -263,10 +279,8 @@ export default function ChatScreen() {
                 messagesRef.current = updatedMsgs;
                 setEditingMessage(null);
             } else {
-                var msg = await sendDM(otherId, finalContent, replyingTo?.id);
-                var newMsgs = messagesRef.current.concat([msg]);
-                setMessages(newMsgs);
-                messagesRef.current = newMsgs;
+                // 👇 Just send to DB. The SSE stream will instantly return it and append it.
+                await sendDM(otherId, finalContent, replyingTo?.id);
                 setReplyingTo(null);
             }
             setText("");
@@ -334,7 +348,6 @@ export default function ChatScreen() {
     return (
         <KeyboardAvoidingView style={[styles.container, { backgroundColor: BG_COLOR }]} behavior={Platform.OS === "ios" ? "padding" : undefined} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
 
-            {/* 👇 Added Safe Area to header */}
             <View style={[styles.header, { backgroundColor: BG_COLOR, paddingTop: insets.top + spacing.sm }]}>
                 <TouchableOpacity onPress={function () { router.back(); }} style={{ padding: spacing.sm }}>
                     <Ionicons name="chevron-back" size={28} color="#fff" />
@@ -361,7 +374,6 @@ export default function ChatScreen() {
             </View>
 
             <ScrollView ref={scrollRef} contentContainerStyle={styles.messagesContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                {/* 👇 Show block warning if blocked */}
                 {isBlocked && (
                     <View style={{ padding: spacing.md, backgroundColor: "#ef444420", borderRadius: radius.md, marginBottom: spacing.md, borderWidth: 1, borderColor: "#ef4444" }}>
                         <Text style={{ color: "#ef4444", fontWeight: "600", textAlign: "center" }}>You cannot interact with this user right now.</Text>
@@ -410,7 +422,6 @@ export default function ChatScreen() {
                 )}
             </ScrollView>
 
-            {/* 👇 Hide composer if blocked */}
             {!isBlocked && (
                 <View style={[styles.composerWrapper, { paddingBottom: Math.max(insets.bottom, spacing.md) }]}>
                     {otherIsTyping && (
