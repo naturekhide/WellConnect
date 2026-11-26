@@ -4,7 +4,23 @@ import { getCurrentUserId } from "@/lib/get-user";
 
 export const dynamic = "force-dynamic";
 
-// 🚨 Helper to send push notifications
+// 👇 1. Add the formatter right here
+function getFriendlyMessageText(content: string) {
+    if (!content) return "New message";
+    var lower = content.toLowerCase();
+    if (lower.startsWith("🎤 ")) return "🎤 Voice note";
+    if (lower.startsWith("http")) {
+        if (lower.match(/\.(jpeg|jpg|gif|png|webp)$/)) return "📷 Image";
+        if (lower.match(/\.(mp4|mov|webm)$/)) return "🎥 Video";
+        if (lower.match(/\.(pdf|doc|docx)$/)) return "📄 Document";
+        if (lower.includes("blob.vercel-storage.com")) return "📎 Attachment";
+        return "🔗 Link";
+    }
+    if (content.length > 50) return content.substring(0, 47) + "...";
+    return content;
+}
+
+// 🚨 2. Update the helper to use the new Android channel
 async function sendPushNotification(expoPushToken: string, title: string, body: string, link?: string) {
     if (!expoPushToken) return;
     try {
@@ -20,6 +36,8 @@ async function sendPushNotification(expoPushToken: string, title: string, body: 
                 title,
                 body,
                 data: { link: link || "/" },
+                priority: "high",          // 👈 Forces banner on Android
+                channelId: "default_v3",   // 👈 Uses the MAX importance channel
             }),
         });
     } catch (e) {
@@ -147,11 +165,14 @@ export async function POST(request: NextRequest, { params }: { params: { userId:
 
     // 🚨 Send the push notification if they have a token
     if (receiver?.expoPushToken) {
+        // 👇 3. Apply the formatter before sending
+        var cleanBody = getFriendlyMessageText(content);
+
         await sendPushNotification(
             receiver.expoPushToken,
             `New message from ${msg.sender.name}`,
-            content.length > 50 ? content.substring(0, 50) + "..." : content,
-            `/messages/${userId}` // 👈 Link to the chat screen
+            cleanBody,
+            `/messages/${userId}`
         );
     }
 
