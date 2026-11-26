@@ -12,7 +12,26 @@ if (!isExpoGo) {
     try {
         Notifications = require("expo-notifications");
         Notifications.setNotificationHandler({
-            handleNotification: async function () {
+            handleNotification: async function (notification: any) {
+                // 🛑 INTERCEPT AND REWRITE THE TEXT HERE
+                var content = notification.request.content;
+                var body = content.body || "";
+                var lower = body.toLowerCase();
+
+                if (lower.startsWith("http")) {
+                    if (lower.match(/\.(jpeg|jpg|gif|png|webp)$/) || lower.includes("blob.vercel-storage.com")) {
+                        content.body = "📷 Image";
+                    } else if (lower.match(/\.(mp4|mov|webm)$/)) {
+                        content.body = "🎥 Video";
+                    } else if (lower.match(/\.(pdf|doc|docx)$/)) {
+                        content.body = "📄 Document";
+                    } else {
+                        content.body = "📎 Attachment";
+                    }
+                } else if (lower.startsWith("🎤 ")) {
+                    content.body = "🎤 Voice note";
+                }
+
                 return {
                     shouldShowAlert: true,
                     shouldShowBanner: true,
@@ -60,11 +79,11 @@ export async function registerForPushNotifications() {
         if (Platform.OS === "android") {
             await Notifications.setNotificationChannelAsync("default_v3", {
                 name: "Messages & Alerts",
-                importance: Notifications.AndroidImportance.MAX, 
+                importance: Notifications.AndroidImportance.MAX,
                 vibrationPattern: [0, 250, 250, 250],
                 lightColor: "#059669",
                 lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
-                sound: "default", 
+                sound: "default",
             });
         }
 
