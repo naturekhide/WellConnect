@@ -30,6 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
                             ],
                             deletedAt: null,
                             createdAt: { gt: lastChecked },
+                            userId: { not: userId }
                         },
                         include: {
                             sender: { select: { id: true, name: true, username: true } },
@@ -40,6 +41,12 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
                     if (newMessages.length > 0) {
                         // Update the timestamp
                         lastChecked = new Date(newMessages[newMessages.length - 1].createdAt);
+                        var formatted = newMessages.map(function (m: any) {
+                            return {
+                                ...m,
+                                isMine: m.senderId === userId
+                            };
+                        });
 
                         // Send the new messages to the phone
                         var data = `data: ${JSON.stringify(newMessages)}\n\n`;

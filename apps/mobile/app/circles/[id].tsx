@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import EventSource from "react-native-sse"; // 👈 Added EventSource
 import {
     getCircle,
     joinCircle,
@@ -35,8 +36,9 @@ import {
     getCircleMembersList,
     manageCircleMember,
     deleteCircle,
-    updateCircle,       // 👈 Make sure you added this in client.ts
-    kickCircleMember    // 👈 Make sure you added this in client.ts
+    updateCircle,
+    kickCircleMember,
+    getAuthToken      // 👈 Added getAuthToken
 } from "../../src/api/client";
 import { useColors, spacing, radius } from "../../src/theme";
 
@@ -170,7 +172,6 @@ export default function CircleDetailScreen() {
         setLoadingMembers(true);
         setIsEditing(false);
 
-        // Pre-fill edit form
         setEditName(circle.name);
         setEditEmoji(circle.emoji || "🌿");
         setEditDescription(circle.description || "");
@@ -605,7 +606,15 @@ function CircleFeed({ circleId, colors }: any) {
                                     {post.content ? <Text style={[styles.postText, { color: colors.textPrimary }]}>{post.content}</Text> : null}
                                     {post.imageUrls && post.imageUrls.length > 0 && (
                                         <View style={{ marginTop: spacing.sm }}>
-                                            <Image source={{ uri: "https://well-connect-web.vercel.app" + post.imageUrls[0] }} style={styles.postImage} resizeMode="cover" />
+                                            <Image
+                                                source={{
+                                                    uri: post.imageUrls[0].startsWith("http")
+                                                        ? post.imageUrls[0]
+                                                        : "https://well-connect-web.vercel.app" + post.imageUrls[0]
+                                                }}
+                                                style={styles.postImage}
+                                                resizeMode="cover"
+                                            />
                                         </View>
                                     )}
                                     <View style={styles.postActions}>
@@ -641,19 +650,15 @@ function CircleChat({ circleId, colors }: any) {
     var scrollRef = useRef<ScrollView>(null);
     var messagesRef = useRef<any[]>([]);
 
-    // 👇 1. Import EventSource at the top of the file if you haven't already
-    // import EventSource from "react-native-sse";
-
     useEffect(function () {
         loadInitial();
 
-        // 👇 2. REPLACE POLLING WITH SSE
-        var token = getAuthToken(); // Make sure this is imported or available
-        var es = new EventSource(`${API_URL}/api/circles/${circleId}/messages/stream`, {
+        var token = getAuthToken();
+        var es = new EventSource(`https://well-connect-web.vercel.app/api/circles/${circleId}/messages/stream`, {
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-        });
+        } as any); // 👈 Added 'as any' to fix the TS error
 
         es.addEventListener("message", (event: any) => {
             if (event.data) {
@@ -661,14 +666,13 @@ function CircleChat({ circleId, colors }: any) {
                     var newMessages = JSON.parse(event.data);
 
                     setMessages((prev) => {
-                        // Prevent duplicates
                         var uniqueNew = newMessages.filter((nm: any) => !prev.some((pm: any) => pm.id === nm.id));
 
                         var formattedNew = uniqueNew.map((m: any) => ({
                             id: m.id,
                             content: m.content,
                             createdAt: m.createdAt,
-                            isMine: m.userId === token, // Assuming you can map user id, otherwise use m.isMine from backend
+                            isMine: m.isMine, // The backend already calculates this
                             user: m.user,
                             replyTo: null,
                             reactions: []
@@ -677,7 +681,6 @@ function CircleChat({ circleId, colors }: any) {
                         var updated = [...prev, ...formattedNew];
                         messagesRef.current = updated;
 
-                        // Auto-scroll to bottom on new message
                         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
 
                         return updated;
@@ -711,7 +714,6 @@ function CircleChat({ circleId, colors }: any) {
                 setMessages(messages.map(function (m) { return m.id === editingMessage.id ? { ...m, content: res.content || text.trim() } : m; }));
                 setEditingMessage(null);
             } else {
-                // 👇 3. Send to DB. The SSE stream will catch it and append it.
                 await sendCircleMessage(circleId, text.trim(), replyingTo?.id);
                 setReplyingTo(null);
             }
